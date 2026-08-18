@@ -1,0 +1,1 @@
+/home/yerinde/yerinde-project/packages/calamares/partman_devices.c

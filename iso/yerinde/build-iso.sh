@@ -389,13 +389,17 @@ verify_post() {
     || fail "POSTFAIL (§2c): yerinde-reboot.desktop OnlyShowIn=KDE yok"
   echo "POST OK (§2c): yerinde-reboot.desktop + yerinde-poweroff.desktop (systemctl reboot/poweroff + OnlyShowIn=KDE)"
 
-  # final18 §3 + final24 §2: calamares YENİDEN derlenmiş (-4: ANKA çevirisi
-  # ikiliye GÖMÜLÜ; -3'te lrelease atlanmıştı → başlıkta eski ad kalmıştı)
+  # final18 §3 + final24 §2 + final31: calamares -5 — ANKA çevirisi gömülü
+  # + check_big_enough /sys/block taraması (VM'de libparted probe yanlış
+  # negatif verip "en az 4 GB alan gerekli" uyarısı çıkarıyordu).
   local CDB
-  CDB=$(ls -d "$WA/var/lib/pacman/local/calamares-3.4.2-4" 2>/dev/null)
-  [ -n "$CDB" ] || fail "POSTFAIL (final24 §2): calamares-3.4.2-4 pacman local DB'de yok (ANKA çevirili yeniden derleme kurulmamış)"
+  CDB=$(ls -d "$WA/var/lib/pacman/local/calamares-3.4.2-5" 2>/dev/null)
+  [ -n "$CDB" ] || fail "POSTFAIL (final31): calamares-3.4.2-5 pacman local DB'de yok (/sys/block disk kontrolü yeniden derlemesi)"
   rg -q '^%VERSION%$' "$CDB/desc" || true
-  echo "POST OK (final24 §2): calamares-3.4.2-4 kuruldu (Türkçe ANKA çevirisi ikiliye gömülü)"
+  if ! grep -aq 'sys/block' "$WA/usr/lib/calamares/modules/welcome/libcalamares_viewmodule_welcome.so"; then
+    fail "POSTFAIL (final31): welcome.so içinde /sys/block taraması yok (libparted probe sürümü kurulu)"
+  fi
+  echo "POST OK (final31): calamares-3.4.2-5 kuruldu + welcome.so /sys/block disk kontrolü kanıtlı"
   echo "--- calamares pacman local desc ---"; sed -n '1,12p' "$CDB/desc" | sed 's/^/    /'
   echo "--- yerinde repo paketleri (URI= file:// repo) ---"
   ls "$WA/var/lib/pacman/sync/" | sed 's/^/    /'

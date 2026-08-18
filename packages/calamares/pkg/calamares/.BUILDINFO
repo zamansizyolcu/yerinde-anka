@@ -1,11 +1,11 @@
 format = 2
 pkgname = calamares
 pkgbase = calamares
-pkgver = 3.4.2-4
+pkgver = 3.4.2-5
 pkgarch = x86_64
-pkgbuild_sha256sum = 0353b7dad3e8c732013b3943fced8cb1b2908d24ff50ba90c7b0bcb60716af1b
+pkgbuild_sha256sum = a9dc3f0f932b0bb41484fe5e11e267b2f665af5be0b3a8a7c84ee81894322939
 packager = Unknown Packager
-builddate = 1786984831
+builddate = 1787049665
 builddir = /home/yerinde/yerinde-project/packages/calamares
 startdir = /home/yerinde/yerinde-project/packages/calamares
 buildtool = makepkg

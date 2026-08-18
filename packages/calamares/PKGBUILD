@@ -4,7 +4,7 @@
 _pkgname="calamares"
 pkgname="$_pkgname"
 pkgver=3.4.2
-pkgrel=4
+pkgrel=5
 pkgdesc="Distribution-independent installer framework"
 url="https://codeberg.org/Calamares/calamares"
 license=("GPL-3.0-or-later")
@@ -28,8 +28,10 @@ makedepends=(
 
 _pkgext="tar.gz"
 source=("$_pkgname-$pkgver.$_pkgext"::"$url/releases/download/v$pkgver/$_pkgname-$pkgver.$_pkgext"
-        'calamares_tr_TR.ts')
+        'calamares_tr_TR.ts'
+        'partman_devices.c')
 sha256sums=('733bbbb00dc9f84874bd5c22960952f317ea2537565431179fa2152b2fbfdccc'
+            'SKIP'
             'SKIP')
 
 prepare() {
@@ -53,6 +55,13 @@ PY
     exit 1
   fi
   echo "CALAMARES TR OK: lang/calamares_tr_TR.ts Yerinde markasıyla değiştirildi, hedeflerde Calamares YOK"
+
+  # final31 (disk alanı uyarısı): libparted probe VM'de yanlış negatif
+  # veriyor → check_big_enough /sys/block taramasıyla değiştirilir.
+  cp -f "$srcdir/partman_devices.c" src/modules/welcome/checker/partman_devices.c
+  grep -q 'opendir( "/sys/block"' src/modules/welcome/checker/partman_devices.c \
+    || { echo "PARTMAN PATCH FAIL: /sys/block taraması yerleşmedi -> build FAIL" >&2; exit 1; }
+  echo "PARTMAN PATCH OK: check_big_enough /sys/block deterministik tarama kullanıyor"
 }
 
 build() {

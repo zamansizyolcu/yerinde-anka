@@ -3,10 +3,10 @@
 pkgname = calamares
 pkgbase = calamares
 xdata = pkgtype=pkg
-pkgver = 3.4.2-4
+pkgver = 3.4.2-5
 pkgdesc = Distribution-independent installer framework
 url = https://codeberg.org/Calamares/calamares
-builddate = 1786984831
+builddate = 1787049665
 packager = Unknown Packager
 size = 10331441
 arch = x86_64
