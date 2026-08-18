@@ -273,16 +273,31 @@ verify_sources() {
     || fail "final24 §5 FAIL: script yerinde-ai-assistant paket adı içermiyor"
   echo "ASISTAN-KUR OK (final24 §5): script (bash -n OK, 755) + masaüstü + menü .desktop"
 
-  # final37.md §1: tıkla-kur = kurulum.sh SARICISI — kurulum.sh'te pip/venv YOK
-  if rg -q 'pip install' "$PROJ/yerinde-ai-assistant/kurulum.sh"; then
-    fail "final37 §1 FAIL: kurulum.sh içinde 'pip install' kaldı (pyrect çöküş yolu)"
+  # final38.md §1/§2: "hepsi ya da hiç" düzeltmesi — pacman tek tek + venv
+  # her zaman + eksikler pip ile TEK TEK. Yasak olan: 'pip install -r'
+  # (toplu requirements — tek kötü ad tüm kurulumu öldürürdü) ve
+  # pyautogui/pygetwindow/pyrect'in pip ile kurulması (pyrect çöküşü).
+  if rg -q 'pip install -r' "$PROJ/yerinde-ai-assistant/kurulum.sh"; then
+    fail "final38 FAIL: kurulum.sh içinde 'pip install -r' var (hepsi-ya-da-hiç yolu)"
   fi
-  if rg -q 'python -m venv' "$PROJ/yerinde-ai-assistant/kurulum.sh"; then
-    fail "final37 §1 FAIL: kurulum.sh içinde venv oluşturma kaldı"
+  if rg -q 'pip install [^|]*(pyautogui|pygetwindow|pyrect)' "$PROJ/yerinde-ai-assistant/kurulum.sh"; then
+    fail "final38 FAIL: kurulum.sh pyautogui/pygetwindow/pyrect pip ile kuruluyor (pyrect çöküşü)"
   fi
+  rg -q 'python -m venv --system-site-packages venv' "$PROJ/yerinde-ai-assistant/kurulum.sh" \
+    || fail "final38 §2 FAIL: kurulum.sh'te 'python -m venv --system-site-packages venv' yok"
+  rg -q 'pacman -S --needed --noconfirm "\$pkg"' "$PROJ/yerinde-ai-assistant/kurulum.sh" \
+    || fail "final38 §1 FAIL: kurulum.sh pacman tek tek kurmuyor (hepsi-ya-da-hiç kalmış)"
+  rg -q 'python-selenium\)  echo "selenium"' "$PROJ/yerinde-ai-assistant/kurulum.sh" \
+    || fail "final38 §1 FAIL: AD HARİTASI (python-selenium→selenium) yok"
   bash -n "$PROJ/yerinde-ai-assistant/kurulum.sh" \
-    || fail "final37 §1 FAIL: kurulum.sh bash -n hatası"
-  echo "ASISTAN-KUR OK (final37 §1): kurulum.sh pip/venv'siz (sistem paketleri) + tıkla-kur sarıcı"
+    || fail "final38 FAIL: kurulum.sh bash -n hatası"
+  bash -n "$PROJ/yerinde-ai-assistant/baslat.sh" \
+    || fail "final38 §3 FAIL: baslat.sh bash -n hatası"
+  rg -q 'PY="python3"' "$PROJ/yerinde-ai-assistant/baslat.sh" \
+    || fail "final38 §3 FAIL: baslat.sh'te sistem python3 fallback yok"
+  rg -q 'ModuleNotFoundError' "$PROJ/yerinde-ai-assistant/baslat.sh" \
+    || fail "final38 §3 FAIL: baslat.sh eksik modül Türkçe ipucu içermiyor"
+  echo "ASISTAN-KUR OK (final38 §1-§3): pacman tek tek + venv + pip fallback (pyrect yasağı) + güvenli baslat.sh"
 
   # final37.md §2: UEFI açılış GRUB (systemd-boot DEĞİL) — yeşil ANKA teması
   rg -q "'uefi\.grub'" "$ISO_DIR/profiledef.sh" \
