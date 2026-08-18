@@ -2015,12 +2015,15 @@ class YerindeLive:
             self.ui.write_debug(f"SES: çıkış cihazı okunamadı ({e})", level="WARN")
         try:
             # Yol 1: 24kHz pyaudio (varsayılan)
+            # final33 §4: ÇIKIŞ stream KESİN — rate=24000, channels=1,
+            # paInt16, frames_per_buffer=4096 (GİRİŞ mikrofon 16000 kalır).
             stream = await asyncio.to_thread(
                 pya.open,
                 format=FORMAT, channels=CHANNELS,
                 rate=RECV_SAMPLE_RATE, output=True,
+                frames_per_buffer=4096,
             )
-            self.ui.write_debug("SES: yol=1 pyaudio 24kHz")
+            self.ui.write_debug("SES: yol=1 pyaudio 24kHz (buffer=4096)")
         except Exception as e1:
             self.ui.write_debug(f"SES: 24kHz açılamadı ({e1})", level="WARN")
             try:
@@ -2029,9 +2032,10 @@ class YerindeLive:
                     pya.open,
                     format=FORMAT, channels=CHANNELS,
                     rate=RECV_SAMPLE_RATE * 2, output=True,
+                    frames_per_buffer=4096,
                 )
                 upsampled = True
-                self.ui.write_debug("SES: yol=2 pyaudio 48kHz (2x upsample)")
+                self.ui.write_debug("SES: yol=2 pyaudio 48kHz (2x upsample, buffer=4096)")
             except Exception as e2:
                 self.ui.write_debug(f"SES: 48kHz de açılamadı ({e2})", level="WARN")
                 # Yol 3: aplay subprocess yedeği
@@ -2047,7 +2051,24 @@ class YerindeLive:
             raise RuntimeError("Hiçbir ses çıkış yolu açılamadı")
         try:
             while True:
-                chunk = await self.audio_in_queue.get()
+                # final33 §4 UNDERRUN: kuyruk ~100ms boşsa dijital sessizlik
+                # yaz — PortAudio tamponu boşalıp çıtlama/kopma olmasın.
+                try:
+                    chunk = await asyncio.wait_for(
+                        self.audio_in_queue.get(), timeout=0.1)
+                except asyncio.TimeoutError:
+                    with self._speaking_lock:
+                        speaking_now = self._is_speaking
+                    if speaking_now:
+                        silence = b"\x00" * 4096
+                        if upsampled:
+                            silence = np.repeat(
+                                np.frombuffer(silence, np.int16), 2).tobytes()
+                        if stream is not None:
+                            await asyncio.to_thread(stream.write, silence)
+                        elif proc is not None:
+                            await asyncio.to_thread(proc.stdin.write, silence)
+                    continue
                 if chunk is None:
                     # turn_complete sentinel — tum ses calindi, dinlemeye gec
                     self.set_speaking(False)

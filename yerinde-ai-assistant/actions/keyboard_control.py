@@ -125,6 +125,28 @@ def _wayland_press(key: str, times: int) -> tuple[bool, str]:
         errors.append("wtype/ydotool kurulu değil")
     return False, " | ".join(errors)
 
+
+def _show_desktop_dbus() -> tuple[bool, str]:
+    """final33 §5 — 'masaüstünü göster' dbus yedeği (ydotool yoksa/devrede
+    değilse). KDE kglobalaccel kısayolunu DBus'tan tetikler; pencereler
+    ydotool/uinput izinleri OLMADAN iner. Önce doğrulanmış /component/kwin
+    yolu, ardından /desktop tahmini denenir (her ikisi de zararsızdır)."""
+    if not shutil.which("dbus-send"):
+        return False, "dbus-send yok"
+    for path in ("/component/kwin", "/desktop"):
+        try:
+            r = subprocess.run(
+                ["dbus-send", "--session", "--print-reply",
+                 "--dest=org.kde.kglobalaccel", path,
+                 "org.kde.kglobalaccel.Component.invokeShortcut",
+                 'string:Show Desktop'],
+                timeout=5, capture_output=True, text=True)
+            if r.returncode == 0 and "method return" in r.stdout:
+                return True, ""
+        except Exception:
+            continue
+    return False, "kglobalaccel Show Desktop tetiklenemedi"
+
 # Kanonik tuş adı → (pyautogui tuşları, xdotool tuşu, SendKeys kodu)
 KEYS = {
     "esc":       (["esc"],                 "Escape",       "{ESC}"),
@@ -204,6 +226,14 @@ def press_key(key: str, times: int = 1) -> str:
         ok, err = _wayland_press(key, times)
         if ok:
             return f"{label} tuşuna basıldı." + (f" ({times}×)" if times > 1 else "")
+        # final33 §5 zinciri (yalnız eylem katmanı; mesaj katmanı dokunulmaz):
+        # 2) ydotool YOKSA/BAŞARISIZSA → KDE kglobalaccel "Show Desktop"
+        if key == "win_d":
+            ok2, err2 = _show_desktop_dbus()
+            if ok2:
+                return f"{label} tuşuna basıldı." + (f" ({times}×)" if times > 1 else "")
+            err = f"{err} | {err2}"
+        # 3) ikisi de yoksa ESKİ Türkçe mesaj
         return (f"{label} tuşu GÖNDERİLEMEDİ (Wayland). Gerçek hata: {err}\n"
                 f"{YDOTOOL_MISSING_TR}")
 

@@ -234,6 +234,18 @@ verify_sources() {
   fi
   echo "IMAGES OK (final21 §2): yerinde-anka-lockup-720.png 3 konumda; eski ocagi png YOK"
 
+  # final33 (unpackfs çöküşü) DOĞRULA: canlı oturum root değil → Calamares
+  # pkexec + canlı-ortam polkit kuralıyla yetkili çalışmalı.
+  rg -q 'pkexec calamares' "$AIROOTFS/etc/xdg/autostart/calamares.desktop" \
+    || fail "final33 FAIL: autostart calamares.desktop pkexec içermiyor (yetkisiz calamares = unpackfs istisnası)"
+  [ -f "$AIROOTFS/etc/polkit-1/rules.d/49-yerinde-live-calamares.rules" ] \
+    || fail "final33 FAIL: 49-yerinde-live-calamares.rules yok"
+  rg -q 'program.*calamares' "$AIROOTFS/etc/polkit-1/rules.d/49-yerinde-live-calamares.rules" \
+    || fail "final33 FAIL: polkit kuralı calamares programına kısıtlı değil"
+  rg -q '49-yerinde-live-calamares.rules' "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
+    || fail "final33 FAIL: finalize polkit kuralını kurulu sistemden silmiyor"
+  echo "CALAMARES-PRIV OK (final33): autostart pkexec + canlı polkit kuralı + finalize temizliği"
+
   # final24.md §5: tıkla-çalıştır kurucu (script + 2 .desktop)
   [ -f "$AIROOTFS/usr/local/bin/yerinde-asistan-kur" ] \
     || fail "final24 §5 FAIL: airootfs/usr/local/bin/yerinde-asistan-kur yok"
@@ -503,6 +515,16 @@ verify_post() {
     || fail "POSTFAIL (final24 §5): kurucu script yerinde-ai-assistant içermiyor"
   echo "POST OK (final24 §5): yerinde-asistan-kur + masaüstü + menü .desktop ISO'da (asistanın KENDİSİ YOK — yalnız kurucu)"
   ls -l "$WA/usr/local/bin/yerinde-asistan-kur" | sed 's/^/    /'
+
+  # final33 POST: canlı calamares yetki zinciri
+  rg -q 'pkexec calamares' "$WA/etc/xdg/autostart/calamares.desktop" \
+    || fail "POSTFAIL (final33): autostart pkexec calamares ISO'da yok"
+  # Not: polkit paketi /etc/polkit-1/rules.d'yi 0750 root:polkitd yapar →
+  # yetkisiz test -f YANLIŞ NEGATİF verir; sudo ile bak.
+  sudo test -f "$WA/etc/polkit-1/rules.d/49-yerinde-live-calamares.rules" \
+    || fail "POSTFAIL (final33): canlı polkit kuralı ISO'da yok"
+  echo "POST OK (final33): calamares pkexec + polkit kuralı ISO'da (unpackfs yetki düzeltmesi)"
+  sudo ls -l "$WA/etc/polkit-1/rules.d/" | sed 's/^/    /'
 
   echo "== TÜM POST DOĞRULAMALAR BAŞARILI =="
 }

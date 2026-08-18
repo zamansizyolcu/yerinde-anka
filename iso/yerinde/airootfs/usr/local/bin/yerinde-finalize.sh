@@ -19,6 +19,9 @@ fi
 ls -l "$R/boot/vmlinuz-linux"
 
 rm -f "$R/etc/xdg/autostart/calamares.desktop"
+# final33 (unpackfs düzeltmesi): canlı-ortam polkit kuralı kurulu sisteme
+# GİRMEZ (parolasız calamares pkexec izni yalnız canlıda geçerliydi).
+rm -f "$R/etc/polkit-1/rules.d/49-yerinde-live-calamares.rules"
 rm -f "$R/etc/sddm.conf.d/yerinde-autologin.conf"
 rm -f "$R/etc/xdg/autostart/yerinde-live.desktop"
 

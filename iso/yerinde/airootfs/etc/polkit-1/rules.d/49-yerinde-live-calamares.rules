@@ -1,0 +1,12 @@
+// final33 (unpackfs çöküşü): canlı oturum "yerinde" kullanıcısıyla açılır
+// (final30, cacyhos paritesi); Calamares autostart'ta pkexec ile çalışır.
+// Bu kural YALNIZCA /usr/bin/calamares programı için, yerel-etkin wheel
+// oturumlarına parolasız izin verir. KURULU SİSTEME TAŞINMAZ —
+// yerinde-finalize.sh kurulum sonunda bu dosyayı hedeften siler.
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.policykit.exec" &&
+        action.lookup("program") == "/usr/bin/calamares" &&
+        subject.local && subject.active && subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});
