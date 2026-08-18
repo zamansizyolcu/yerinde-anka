@@ -1,1 +1,1 @@
-/usr/lib/systemd/system/ydotoold.service
+/etc/systemd/system/ydotoold.service

@@ -1,0 +1,38 @@
+# YERINDE ANKA GRUB UEFI teması (final37.md §2 + §3)
+# Düz yeşil zemin #0B3D2E + küçük "yerinde ANKA" lockup üst-orta
+# (background.png içinde, krem/turuncu). Başlık krem, menü yazıları
+# krem (#EFE9DC), SEÇİLİ satır turuncu yazı (#C74A1F).
+# Türkçe glyph garantisi (ı İ ş Ş ğ Ğ ç Ç ö Ö ü Ü — "ortamı" doğru
+# görünür): DejaVuSans'tan --range=0x0-0x17F ile üretilmiş anka-tr
+# fontları (anka-tr.pf2 32px, anka-tr-44.pf2 44px başlık). ISO
+# grub.cfg bunları loadfont ile yükler; kurulu sistemde /etc/grub.d/
+# 00_header tema dizinindeki tüm .pf2'leri otomatik yükler.
+# NOT: GRUB 2.14 boot_menu'da item_background yoktur.
+
+desktop-image: "background.png"
+desktop-image-scale-method: "stretch"
+desktop-color: "#0B3D2E"
+
+title-text: "GRUB Açılış Menüsü"
+title-font: "anka-tr-44 Regular 44"
+title-color: "#EFE9DC"
+
+terminal-font: "anka-tr Regular 32"
+terminal-left: "10%"
+terminal-top: "80%"
+terminal-width: "80%"
+terminal-height: "12%"
+
++ boot_menu {
+    left = 18%
+    top = 40%
+    width = 64%
+    height = 36%
+    item_color = "#EFE9DC"
+    selected_item_color = "#C74A1F"
+    item_font = "anka-tr Regular 32"
+    selected_item_font = "anka-tr Regular 32"
+    item_height = 56
+    item_spacing = 10
+    item_padding = 6
+}

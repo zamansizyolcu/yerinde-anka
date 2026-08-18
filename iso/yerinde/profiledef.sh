@@ -8,8 +8,11 @@ iso_application="Yerinde ANKA"
 iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
 install_dir="arch"
 buildmodes=('iso')
+# final37 §2: UEFI açılış systemd-boot yerine GRUB — yeşil ANKA teması
+# + Türkçe glyph'li anka-tr fontları ISO menüsünde (tema/grub.cfg/
+# loopback.cfg + themes/anka/, mkarchiso bunları /boot/grub altına koyar)
 bootmodes=('bios.syslinux'
-           'uefi.systemd-boot')
+           'uefi.grub')
 pacman_conf="pacman.conf"
 airootfs_image_type="squashfs"
 airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '15')

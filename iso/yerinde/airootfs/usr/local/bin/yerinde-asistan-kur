@@ -1,8 +1,13 @@
 #!/bin/bash
-# final25.md: YERINDE Asistanı kurucu — akıllı mesaj + 3 erişim yolu:
+# final25.md + final27.md + final37.md §1: YERINDE Asistanı kurucu —
+# kurulum.sh SARICISI (kendi kurulum/pip/venv mantığı YOK):
 #   1) pacman [yerinde] repo (LAN: host'ta 'python -m http.server')
-#   2) yerel klasör (İndirilenler, imza bazlı)
-#   3) git clone (kamu GitHub kaynağı; internet VARSA)
+#      — paket, tüm pip bağımlılıklarını vendor/ içinde hazır getirir
+#   2) yerel klasör (İndirilenler, imza bazlı) → ./kurulum.sh
+#      (kurulum.sh final37'den beri pip/venv KULLANMAZ: yalnız pacman
+#      sistem paketleri → pyrect sdist derlemesi imkânsız)
+#   3) git clone (kamu GitHub kaynağı; internet VARSA) → ./kurulum.sh
+#   4) hiçbiri tutmazsa final27 mesaj ayrışımıyla durum özeti + hata
 # NOT: set -e YOK — her adım kendi hatasını yönetir.
 
 echo "======================================"

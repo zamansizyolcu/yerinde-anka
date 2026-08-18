@@ -120,12 +120,18 @@ if [ -d /sys/firmware/efi ]; then
     set -e
     chroot "$R" grub-install --target=x86_64-efi --efi-directory="$ESP_INNER" \
       --bootloader-id=YerindeANKA --removable --no-nvram
+    # final37 §2 + §3: yeşil ANKA teması + Türkçe fontlar /boot/grub'a;
+    # fontlar ayrıca ESP'ye de gömülür (emniyet — 00_header tema dizinindeki
+    # tüm .pf2'leri zaten otomatik yükler).
     mkdir -p "$R/boot/grub/themes"
-    cp -r "$R/usr/share/grub/themes/yerinde" "$R/boot/grub/themes/"
-    mkdir -p "$ESP/grub/fonts"
-    cp "$R/usr/share/grub/unicode.pf2" "$ESP/grub/fonts/unifont.pf2"
+    cp -r "$R/usr/share/grub/themes/anka" "$R/boot/grub/themes/"
+    mkdir -p "$ESP/grub/fonts" "$R/boot/grub/fonts"
+    cp "$R/usr/share/grub/themes/anka/anka-tr.pf2" "$ESP/grub/fonts/anka-tr.pf2"
+    cp "$R/usr/share/grub/themes/anka/anka-tr.pf2" "$R/boot/grub/fonts/anka-tr.pf2"
+    cp "$R/usr/share/grub/unicode.pf2" "$ESP/grub/fonts/unifont.pf2" 2>/dev/null || true
     grep -q '^GRUB_THEME=' "$R/etc/default/grub" 2>/dev/null \
-      || echo 'GRUB_THEME="/boot/grub/themes/yerinde/theme.txt"' >> "$R/etc/default/grub"
+      || echo 'GRUB_THEME="/boot/grub/themes/anka/theme.txt"' >> "$R/etc/default/grub"
+    sed -i 's|^GRUB_THEME=.*|GRUB_THEME="/boot/grub/themes/anka/theme.txt"|' "$R/etc/default/grub"
     chroot "$R" grub-mkconfig -o /boot/grub/grub.cfg
     # final15.md §1: GRUB menü yazılarını Türkçeleştir (idempotent).
     # 10_linux alt menüyü "Advanced options for ${OS}" (OS=Yerinde ANKA Linux)
@@ -140,9 +146,9 @@ if [ -d /sys/firmware/efi ]; then
       || echo "GRUB TR UYARI: UEFI Firmware Settings satırı yok (BIOS sisteminde beklenir)" >> /tmp/finalize.log
   ) >> /tmp/finalize.log 2>&1 || GRUB_OK=0
   if [ "$GRUB_OK" -eq 1 ]; then
-    echo "--- UEFI: GRUB OK (temali)" >> /tmp/finalize.log
+    echo "--- UEFI: GRUB OK (yeşil ANKA temalı, final37)" >> /tmp/finalize.log
     echo "grub" > "$R/etc/yerinde-bootloader"
-    ls -l "$R/boot/grub/themes/yerinde" "$ESP/EFI/BOOT" >> /tmp/finalize.log 2>&1
+    ls -l "$R/boot/grub/themes/anka" "$R/boot/grub/fonts" "$ESP/EFI/BOOT" "$ESP/grub/fonts" >> /tmp/finalize.log 2>&1
   else
     echo "--- UEFI: GRUB basarisiz -> systemd-boot fallback" >> /tmp/finalize.log
     cp -v "$R/boot/vmlinuz-linux" "$ESP/vmlinuz-linux" >> /tmp/finalize.log 2>&1

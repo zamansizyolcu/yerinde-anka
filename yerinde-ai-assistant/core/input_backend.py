@@ -72,27 +72,85 @@ BTN_LEFT, BTN_RIGHT, BTN_MIDDLE = 0xC0, 0xC1, 0xC2
 
 
 # ══ Temel yürütücü ══════════════════════════════════════════════════════════
+def _ydotool_socket_candidates() -> list[str]:
+    """final36: bilinen tüm ydotool soketleri, öncelik sırasıyla."""
+    cands: list[str] = []
+    env_sock = os.environ.get("YDOTOOL_SOCKET")
+    if env_sock:
+        cands.append(env_sock)
+    cands.append("/run/ydotool.socket")            # yerinde-anka sistem daemonu
+    xdg = os.environ.get("XDG_RUNTIME_DIR", "")
+    if xdg:
+        cands.append(f"{xdg}/ydotool.socket")      # kullanıcı daemonu (yeni ad)
+        cands.append(f"{xdg}/.ydotool_socket")     # kullanıcı daemonu (eski ad)
+    seen: set[str] = set()
+    return [c for c in cands if not (c in seen or seen.add(c))]
+
+
+def _spawn_user_ydotoold() -> bool:
+    """final36 ÖZ-ONARIM: hiçbir soket yanıt vermiyorsa VE daemon yoksa,
+    kullanıcı adına bir ydotoold başlat ($XDG_RUNTIME_DIR altında, 0600).
+    /dev/uinput erişimi (uinput grubu) olan her oturumda çalışır."""
+    try:
+        if subprocess.run(["pgrep", "-x", "ydotoold"], timeout=5,
+                          capture_output=True).returncode == 0:
+            return False  # daemon VAR ama sokete erişilemiyor → başlatma
+    except Exception:
+        pass
+    xdg = os.environ.get("XDG_RUNTIME_DIR")
+    if not xdg or not shutil.which("ydotoold"):
+        return False
+    sock = f"{xdg}/ydotool.socket"
+    try:
+        subprocess.Popen(
+            ["ydotoold", "--socket-path", sock, "--socket-perm", "0600"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True)
+        import time
+        time.sleep(0.3)
+        return True
+    except Exception:
+        return False
+
+
 def run_ydotool(args: list[str], timeout: int = 10) -> tuple[bool, str]:
     """ydotool'u gerçek çıkış koduyla çalıştırır → (başarı, hata).
 
-    Soket emniyeti: YDOTOOL_SOCKET ayarlı DEĞİLSE /run/ydotool.socket
-    varsayılır (yerinde-anka canlı/kurulu sistemde ydotoold sistem servisi
-    orada dinler, 0660 + uinput grubu). Kullanıcı servisi kuran kurulumlar
-    kendi env'ini zaten set eder — bu yalnız eksik durumda güvenliği sağlar.
-    Klavye VE fare tüm ydotool çağrları bu fonksiyondan geçer."""
+    final36: soket KEŞFİ — aday soketleri sırayla dener (sistem daemonu
+    /run/ydotool.socket 0660 uinput; kullanıcı daemonu XDG altında).
+    Hepsi başarısızsa bir kez kullanıcı daemonu SPOT başlatıp yeniden
+    dener. Klavye VE fare tüm ydotool çağrıları bu fonksiyondan geçer."""
     if not ydotool_available():
         return False, YDOTOOL_MISSING_TR
-    env = dict(os.environ)
-    env.setdefault("YDOTOOL_SOCKET", "/run/ydotool.socket")
-    try:
-        r = subprocess.run(["ydotool"] + args, timeout=timeout,
-                           capture_output=True, text=True, env=env)
-        ok = r.returncode == 0
-        return ok, ("" if ok else (r.stderr or r.stdout or "bilinmeyen hata").strip())
-    except FileNotFoundError:
-        return False, "ydotool bulunamadı"
-    except Exception as e:
-        return False, str(e)
+
+    def _try(sock: str | None) -> tuple[bool, str]:
+        env = dict(os.environ)
+        if sock:
+            env["YDOTOOL_SOCKET"] = sock
+        try:
+            r = subprocess.run(["ydotool"] + args, timeout=timeout,
+                               capture_output=True, text=True, env=env)
+            ok = r.returncode == 0
+            return ok, ("" if ok else (r.stderr or r.stdout or "bilinmeyen hata").strip())
+        except FileNotFoundError:
+            return False, "ydotool bulunamadı"
+        except Exception as e:
+            return False, str(e)
+
+    errors: list[str] = []
+    for sock in _ydotool_socket_candidates():
+        ok, err = _try(sock)
+        if ok:
+            return True, ""
+        errors.append(f"{sock}: {err}")
+
+    if _spawn_user_ydotoold():
+        ok, err = _try(None)  # spawn edilen soket adaylar içinde
+        if ok:
+            return True, ""
+        errors.append(f"öz-onarım sonrası: {err}")
+
+    return False, " | ".join(errors)
 
 
 # ══ Klavye ══════════════════════════════════════════════════════════════════

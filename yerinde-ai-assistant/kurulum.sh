@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# YERINDE — CachyOS (Arch Linux) kurulum betiği
+# YERINDE — CachyOS / Yerinde ANKA (Arch Linux) kurulum betiği
+# final37 §1: pip/venv YOK — yalnızca sistem paketleri (pacman).
+# Bu betik tıkla-kur (yerinde-asistan-kur) tarafından SARICI olarak
+# çağrılır: pacman paketi yoksa yerel klasörden/clone'dan bu betik koşar.
 set -e
 
 echo "══════════════════════════════════════════"
-echo "  YERINDE CachyOS — Kurulum"
+echo "  YERINDE — Kurulum (sistem paketleri)"
 echo "══════════════════════════════════════════"
 
-# final24.md §4 + aifinal.md §1: Yerinde ANKA ön adımı — numpy/Pillow/pyaudio
-# SİSTEMden (wheel'siz kaynak derlemeyi ve gcc hatasını baştan engeller;
-# venv --system-site-packages bunları otomatik görür). ydotool: Wayland
-# klavye/fare kontrolü (aifinal.md §2).
-sudo pacman -S --needed python-numpy python-pillow python-opencv \
-    python-pyaudio portaudio ydotool || true
+# final24.md §4 + aifinal.md §1 + final37 §1: numpy/Pillow/pyaudio gibi tüm
+# python kütüphaneleri SİSTEM paketi olarak kurulur (aşağıda [2/3] adımında
+# tek liste halinde; wheel'siz kaynak derleme baştan engellenir). ydotool:
+# Wayland klavye/fare kontrolü (aifinal.md §2) — [1/3] PKGS listesinde.
 
 # ══ Wayland girdi altyapısı (aifinal.md §2): ydotool daemon + uinput ════════
 # ydotoold: ydotool'un tuş/fare olaylarını /dev/uinput üzerinden göndermesi
@@ -22,10 +23,20 @@ sudo pacman -S --needed python-numpy python-pillow python-opencv \
 if [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
     echo
     echo "[*] Wayland oturumu algılandı — ydotool altyapısı hazırlanıyor..."
-    if ! systemctl --user enable --now ydotoold 2>/dev/null; then
-        sudo systemctl enable --now ydotoold 2>/dev/null || \
-            sudo systemctl enable --now ydotool 2>/dev/null || \
-            echo "[UYARI] ydotoold servisi etkinleştirilemedi (paketi kurulu mu?)"
+    # final36: önce SAĞLIKLI sistem soketi var mı bak (yerinde-anka:
+    # /run/ydotool.socket 0660 + uinput grubu) — varsa hiçbir servise
+    # dokunma (çift daemon olmasın).
+    if [ -S /run/ydotool.socket ] && [ -w /run/ydotool.socket ]; then
+        echo "[OK] /run/ydotool.socket hazır (sistem daemonu çalışıyor)."
+    else
+        # Arch/CachyOS ydotool paketi KULLANICI birimi çıkarır ve adı
+        # 'ydotool.service'tir ('ydotoold' DEĞİL — eski satır bu yüzden
+        # hep başarısız oluyordu). Kullanıcı daemonu XDG altında soket açar.
+        if ! systemctl --user enable --now ydotool 2>/dev/null; then
+            sudo systemctl enable --now ydotoold 2>/dev/null || \
+                sudo systemctl enable --now ydotool 2>/dev/null || \
+                echo "[UYARI] ydotoold servisi etkinleştirilemedi — asistan çalışırken öz-onarım dener."
+        fi
     fi
     sudo usermod -aG uinput,input "$USER" 2>/dev/null || true
     echo 'uinput' | sudo tee /etc/modules-load.d/uinput.conf >/dev/null 2>&1 || true
@@ -33,13 +44,13 @@ if [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
 fi
 
 echo
-echo "[1/4] Gerekli sistem paketleri kontrol ediliyor (pacman)..."
+echo "[1/3] Gerekli sistem paketleri kontrol ediliyor (pacman)..."
 # pipewire-pulse: 'parec' sağlar — sounddevice/PortAudio sessiz kalırsa
 #   (hata vermeden mikrofon verisi göndermezse) MicStream buna otomatik
 #   düşer. wtype/ydotool: Wayland oturumunda klavye/fare kontrolü için
 #   xdotool/pyautogui işe yaramaz; bu ikisi gerçek Wayland araçlarıdır.
 #   grim: Wayland'de ekran görüntüsü yakalama (mss çalışmaz) için gereklidir.
-PKGS="python python-pip tk portaudio pipewire-pulse xclip wl-clipboard espeak-ng ffmpeg xdotool wtype ydotool grim"
+PKGS="python tk portaudio pipewire-pulse xclip wl-clipboard espeak-ng ffmpeg xdotool wtype ydotool grim"
 MISSING=""
 for p in $PKGS; do
     pacman -Qi "$p" >/dev/null 2>&1 || MISSING="$MISSING $p"
@@ -107,52 +118,37 @@ else
 fi
 
 echo
-echo "[2/4] Sanal ortam oluşturuluyor (venv)..."
-# --system-site-packages: LibreOffice'in python-uno modülü SİSTEM
-# python'una kurulur; venv onu görebilsin diye şart. Ayrıca sistemden gelen
-# python-numpy/python-pyaudio gibi paketleri de görür → pip asla derleme
-# DENEMEZ (aifinal.md §1). Eski/bozuk venv'i temizleyerek başla.
-rm -rf venv
-python -m venv --system-site-packages venv
-source venv/bin/activate
-
-echo
-echo "[3/4] Python paketleri kuruluyor..."
-pip install --upgrade pip
-# aifinal.md §1: pip kaynak derlemeye düşerse (numpy/pyaudio wheel bulunamadı
-# vb.) Türkçe fallback ile yönlendir — sistem paketleri kuruluysa venv
-# --system-site-packages sayesinde pip bunları derlemeden GÖRÜR.
-if ! pip install -r requirements.txt; then
-    echo
-    echo "Derleme hatası (numpy/pyaudio): sudo pacman -S python-numpy python-pyaudio portaudio"
-    exit 1
-fi
-
-# ultralytics (YOLO11 - kamerada canlı nesne algılama) kasıtlı olarak
-# requirements.txt dışında tutuluyor (torch bağımlılığı büyük ve bazı
-# platformlarda ABI çatışması yaşayabiliyor). yolo_enabled varsayılan
-# olarak AÇIK olduğundan, burada AYRI ve best-effort olarak kurmayı
-# deniyoruz - başarısız olursa kurulumu DURDURMUYOR, YERİNDE zaten
-# ultralytics eksikse kamerayı otomatik "sadece önizleme" moduna
-# düşürüyor (bkz. backend/vision_engine.py).
-echo
-echo "[*] Kamera nesne algılama (YOLO11) için ultralytics kuruluyor..."
-if pip install ultralytics -q; then
-    echo "[OK] ultralytics kuruldu - kamerada canlı nesne algılama (YOLO11) hazır."
-    echo "[*] YOLO11n model ağırlıkları indiriliyor (ilk kullanımda beklememek için)..."
-    if python3 -c "from ultralytics import YOLO; YOLO('yolo11n.pt')" >/dev/null 2>&1; then
-        echo "[OK] yolo11n.pt indirildi/hazır."
-    else
-        echo "[UYARI] yolo11n.pt şimdi indirilemedi (internet yok/erişilemedi olabilir)."
-        echo "        İlk kamera kullanımında otomatik indirilmeyi deneyecek."
-    fi
+echo "[2/3] Python kütüphaneleri SİSTEM paketi olarak kontrol ediliyor..."
+# final37 §1: venv + pip YOLU TAMAMEN KALDIRILDI. Kök neden: pyautogui'nin
+# pyrect bağımlılığı sdist olarak pip build-isolation'da derleniyor ve
+# temiz sistemlerde çöküyordu. Python kütüphaneleri ARTIK yalnızca pacman
+# paketlerinden gelir (önceden derli, hiçbir sdist derlemesi YOK).
+# Depolarda OLMAYAN kütüphaneler (google-genai, piper-tts, faster-whisper,
+# pdfplumber, python-docx, python-pptx, sounddevice, dvrip, ultralytics,
+# pyautogui) uygulama tarafından ZARİFÇE atlanır: pyaudio mikrofonu yeter,
+# TTS espeak-ng'ye düşer, kamera önizleme modunda kalır, Gemini/genai
+# seçeneği pas geçer (main.py importları try/except korumalı).
+# NOT: pacman paketi yoluyla kurulanlarda (yerinde-ai-assistant) bu
+# kütüphanelerin hepsi vendor/ içinde hazır gelir.
+PYPKGS="python-numpy python-pillow python-opencv python-pyaudio portaudio \
+python-psutil python-requests python-pyperclip python-mss python-selenium \
+python-vosk python-av python-openpyxl python-websocket-client"
+PYMISSING=""
+for p in $PYPKGS; do
+    pacman -Qi "$p" >/dev/null 2>&1 || PYMISSING="$PYMISSING $p"
+done
+if [ -n "$PYMISSING" ]; then
+    echo "Eksik python paketleri bulundu:$PYMISSING"
+    sudo pacman -S --needed $PYMISSING || \
+        echo "[UYARI] Bazı paketler kurulamadı (depolar erişilemiyor olabilir) — ilgili özellikler zarifçe devre dışı kalır."
 else
-    echo "[UYARI] ultralytics kurulamadı - kamera sadece önizleme modunda çalışacak."
-    echo "        Sonradan elle kurmak için: source venv/bin/activate && pip install ultralytics"
+    echo "Tüm python kütüphaneleri sistemde kurulu."
 fi
+# Eski kurulumlardan kalmış venv varsa kaldır (artık kullanılmıyor).
+rm -rf venv
 
 echo
-echo "[4/4] Yapılandırma dosyası hazırlanıyor..."
+echo "[3/3] Yapılandırma dosyası hazırlanıyor..."
 mkdir -p config
 if [ ! -f config/api_keys.json ]; then
     cp config/api_keys.example.json config/api_keys.json

@@ -155,6 +155,9 @@ _KGLOBALACCEL = {
     "alt_tab": ("kwin", "Walk Through Windows"),
     "alt_f4":  ("kwin", "Window Close"),
     "win_tab": ("kwin", "Overview"),
+    # final36: "başlat menüsünü aç" — plasmashell launcher (canlı invoke
+    # ile doğrulandı: method return)
+    "win":     ("plasmashell", "activate application launcher"),
 }
 
 

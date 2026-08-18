@@ -1,0 +1,19 @@
+# final36: Arch ydotool paketi YALNIZ kullanıcı birimi çıkarır
+# (usr/lib/systemd/user/ydotool.service) — /usr/lib/systemd/system/
+# altında ydotoold.service YOKTUR. Bu yüzden multi-user.target.wants
+# linki boşa bakıyordu ve sistem daemonu HİÇ çalışmıyordu (fare +
+# ydotool'lu tüm sesli komutlar başarısız, dbus'lı "masaüstünü göster"
+# çalışıyordu). Bu gerçek sistem birimi airootfs'te gelir; drop-in
+# (ydotoold.service.d/yerinde.conf) Group=uinput + /run/ydotool.socket
+# 0660 ayarlarını verir.
+[Unit]
+Description=YDOTOOL Daemon (uinput sanal girdi)
+After=systemd-udevd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ydotoold
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

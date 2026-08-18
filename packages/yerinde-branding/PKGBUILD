@@ -2,7 +2,7 @@
 
 pkgname=yerinde-branding
 pkgver=1.2.0
-pkgrel=17
+pkgrel=18
 pkgdesc="Yerinde branding package"
 arch=('any')
 url="https://yerinde.example.com"
@@ -39,6 +39,10 @@ source=(
   'grub-background.png'
   'grub-logo.png'
   'grub-theme.txt'
+  'anka-background.png'
+  'anka-theme.txt'
+  'anka-tr.pf2'
+  'anka-tr-44.pf2'
   'DejaVuSans-32.pf2'
   'DejaVuSans-44.pf2'
   'select_c.png'
@@ -56,7 +60,7 @@ source=(
   'yerinde-reboot.desktop'
   'yerinde-poweroff.desktop'
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm644 "$srcdir/os-release" "$pkgdir/etc/os-release"
@@ -119,6 +123,19 @@ EOF
     install -Dm644 "$srcdir/select_$s.png" "$pkgdir/usr/share/grub/themes/yerinde/select_$s.png"
   done
 
+  # final37.md §2 + §3: UEFI GRUB yeşil ANKA teması (ISO + kurulu sistem)
+  # /usr/share/grub/themes/anka/ — yeşil #0B3D2E zemin + krem #EFE9DC yazı +
+  # turuncu #C74A1F seçili satır + Türkçe glyph'li anka-tr fontları
+  # (DejaVuSans --range=0x0-0x17F: ı İ ş ğ ç ö ü tam kapsam).
+  # Kurulu sistemde yerinde-finalize.sh bunları /boot/grub/themes/anka'ya
+  # kopyalar + GRUB_THEME atar; /etc/grub.d/00_header tema dizinindeki tüm
+  # .pf2'leri otomatik yükler.
+  install -dm755 "$pkgdir/usr/share/grub/themes/anka"
+  install -Dm644 "$srcdir/anka-background.png" "$pkgdir/usr/share/grub/themes/anka/background.png"
+  install -Dm644 "$srcdir/anka-theme.txt" "$pkgdir/usr/share/grub/themes/anka/theme.txt"
+  install -Dm644 "$srcdir/anka-tr.pf2" "$pkgdir/usr/share/grub/themes/anka/anka-tr.pf2"
+  install -Dm644 "$srcdir/anka-tr-44.pf2" "$pkgdir/usr/share/grub/themes/anka/anka-tr-44.pf2"
+
   # Doğrulama (final13.md §4): 5 duvar kağıdı metadata.desktop'ı eksikse FAIL
   for t in Hologram-Mavi Krem Dalga-Mavi Yesil Mor; do
     [ -f "$pkgdir/usr/share/wallpapers/Yerinde-Destek-$t/metadata.desktop" ] \
@@ -155,6 +172,23 @@ EOF
   grep -q 'DejaVu Sans Regular 32' "$pkgdir/usr/share/grub/themes/yerinde/theme.txt" \
     || { echo "GRUB THEME FAIL: item_font 32px yok -> build FAIL" >&2; exit 1; }
   echo "GRUB THEME OK: baslik/renk/serit/font icerigi dogrulandi"
+
+  # Doğrulama (final37.md §2 + §3): UEFI yeşil ANKA teması içerik kontrolü
+  for f in background.png theme.txt anka-tr.pf2 anka-tr-44.pf2; do
+    [ -s "$pkgdir/usr/share/grub/themes/anka/$f" ] \
+      || { echo "ANKA THEME FAIL: $f yok/boyut 0 -> build FAIL" >&2; exit 1; }
+  done
+  grep -q 'desktop-color: "#0B3D2E"' "$pkgdir/usr/share/grub/themes/anka/theme.txt" \
+    || { echo "ANKA THEME FAIL: yeşil zemin #0B3D2E yok -> build FAIL" >&2; exit 1; }
+  grep -q 'item_color = "#EFE9DC"' "$pkgdir/usr/share/grub/themes/anka/theme.txt" \
+    || { echo "ANKA THEME FAIL: krem menü yazısı #EFE9DC yok -> build FAIL" >&2; exit 1; }
+  grep -q 'selected_item_color = "#C74A1F"' "$pkgdir/usr/share/grub/themes/anka/theme.txt" \
+    || { echo "ANKA THEME FAIL: turuncu seçili satır #C74A1F yok -> build FAIL" >&2; exit 1; }
+  grep -q 'title-text: "GRUB Açılış Menüsü"' "$pkgdir/usr/share/grub/themes/anka/theme.txt" \
+    || { echo "ANKA THEME FAIL: title-text 'GRUB Açılış Menüsü' yok -> build FAIL" >&2; exit 1; }
+  grep -q 'anka-tr Regular 32' "$pkgdir/usr/share/grub/themes/anka/theme.txt" \
+    || { echo "ANKA THEME FAIL: Türkçe anka-tr font referansı yok -> build FAIL" >&2; exit 1; }
+  echo "ANKA THEME OK: yeşil zemin + krem/turuncu yazı + Türkçe anka-tr fontları doğrulandı"
 
   # Doğrulama (final19.md §2): xsessions/plasma.desktop YOK olmalı (X11 kapatıldı)
   if [ -f "$pkgdir/usr/share/xsessions/plasma.desktop" ]; then

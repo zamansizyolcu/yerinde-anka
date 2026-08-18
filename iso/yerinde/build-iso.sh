@@ -101,6 +101,17 @@ verify_sources() {
   done
   [ -L "$AIROOTFS/etc/systemd/system/multi-user.target.wants/ydotoold.service" ] \
     || fail "final27 §2 FAIL: ydotoold wants linki yok"
+  # final36: link HEDEFİ GERÇEKTEN VAR MI? (Arch ydotool paketi yalnız
+  # kullanıcı birimi çıkarır — system/ydotoold.service YOKTUR; boşa bakan
+  # link yüzünden daemon hiç çalışmıyordu. airootfs'te gerçek birim var.)
+  # NOT: hedef mutlak yol → airootfs KÖKÜNE göre çözülür (readlink -f
+  # host kökünü kullanır, yanlış negatif verir).
+  local YT
+  YT="$(readlink "$AIROOTFS/etc/systemd/system/multi-user.target.wants/ydotoold.service")"
+  case "$YT" in /*) YT="$AIROOTFS$YT" ;; esac
+  [ -f "$YT" ] || fail "final36 FAIL: ydotoold wants linki boşa bakıyor (hedef yok: $YT)"
+  [ -f "$AIROOTFS/etc/systemd/system/ydotoold.service" ] \
+    || fail "final36 FAIL: airootfs/etc/systemd/system/ydotoold.service yok (paket system birimi çıkarmıyor)"
   rg -q 'KERNEL=="uinput", GROUP="uinput", MODE="0660"' \
     "$AIROOTFS/etc/udev/rules.d/80-uinput.rules" \
     || fail "final27 §2 FAIL: 80-uinput.rules içeriği yanlış"
@@ -261,6 +272,53 @@ verify_sources() {
   rg -q 'yerinde-ai-assistant' "$AIROOTFS/usr/local/bin/yerinde-asistan-kur" \
     || fail "final24 §5 FAIL: script yerinde-ai-assistant paket adı içermiyor"
   echo "ASISTAN-KUR OK (final24 §5): script (bash -n OK, 755) + masaüstü + menü .desktop"
+
+  # final37.md §1: tıkla-kur = kurulum.sh SARICISI — kurulum.sh'te pip/venv YOK
+  if rg -q 'pip install' "$PROJ/yerinde-ai-assistant/kurulum.sh"; then
+    fail "final37 §1 FAIL: kurulum.sh içinde 'pip install' kaldı (pyrect çöküş yolu)"
+  fi
+  if rg -q 'python -m venv' "$PROJ/yerinde-ai-assistant/kurulum.sh"; then
+    fail "final37 §1 FAIL: kurulum.sh içinde venv oluşturma kaldı"
+  fi
+  bash -n "$PROJ/yerinde-ai-assistant/kurulum.sh" \
+    || fail "final37 §1 FAIL: kurulum.sh bash -n hatası"
+  echo "ASISTAN-KUR OK (final37 §1): kurulum.sh pip/venv'siz (sistem paketleri) + tıkla-kur sarıcı"
+
+  # final37.md §2: UEFI açılış GRUB (systemd-boot DEĞİL) — yeşil ANKA teması
+  rg -q "'uefi\.grub'" "$ISO_DIR/profiledef.sh" \
+    || fail "final37 §2 FAIL: profiledef.sh'te uefi.grub bootmode yok"
+  if rg -q "uefi\.systemd-boot" "$ISO_DIR/profiledef.sh"; then
+    fail "final37 §2 FAIL: profiledef.sh'te uefi.systemd-boot hâlâ var"
+  fi
+  [ -d "$ISO_DIR/efiboot" ] \
+    && fail "final37 §2 FAIL: efiboot/ (systemd-boot) duruyor — silinmeliydi"
+  [ -f "$ISO_DIR/grub/themes/anka/theme.txt" ] \
+    || fail "final37 §2 FAIL: grub/themes/anka/theme.txt yok"
+  for c in 'desktop-color: "#0B3D2E"' 'item_color = "#EFE9DC"' \
+           'selected_item_color = "#C74A1F"' 'title-text: "GRUB Açılış Menüsü"'; do
+    rg -qF "$c" "$ISO_DIR/grub/themes/anka/theme.txt" \
+      || fail "final37 §2 FAIL: theme.txt'te '$c' yok (yeşil/krem/turuncu tema)"
+  done
+  for f in background.png anka-tr.pf2 anka-tr-44.pf2; do
+    [ -s "$ISO_DIR/grub/themes/anka/$f" ] \
+      || fail "final37 §2 FAIL: grub/themes/anka/$f yok veya boyut 0"
+  done
+  rg -q 'set theme="/boot/grub/themes/anka/theme\.txt"' "$ISO_DIR/grub/grub.cfg" \
+    || fail "final37 §2 FAIL: grub.cfg'de set theme= /boot/grub/themes/anka yok (root-göreli olmalı — \${prefix} memdisk'e işaret eder)"
+  rg -q 'terminal_output gfxterm' "$ISO_DIR/grub/grub.cfg" \
+    || fail "final37 §2 FAIL: grub.cfg terminal_output gfxterm yok (siyah konsol menü)"
+  # final37.md §3: Türkçe font yükleme + Türkçe menü metinleri (ASCII'ye KAÇMA YOK)
+  rg -q 'loadfont /boot/grub/themes/anka/anka-tr\.pf2' "$ISO_DIR/grub/grub.cfg" \
+    || fail "final37 §3 FAIL: grub.cfg anka-tr.pf2 loadfont etmiyor (root-göreli)"
+  rg -q 'kurulum ortamı' "$ISO_DIR/grub/grub.cfg" \
+    || fail "final37 §3 FAIL: grub.cfg menü metinleri Türkçe değil ('kurulum ortamı' yok)"
+  rg -q 'kurulum ortamı' "$ISO_DIR/grub/loopback.cfg" \
+    || fail "final37 §3 FAIL: loopback.cfg menü metinleri Türkçe değil"
+  rg -q 'themes/anka' "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
+    || fail "final37 §2 FAIL: finalize.sh anka temasını kurmuyor"
+  rg -q 'GRUB_THEME="/boot/grub/themes/anka/theme\.txt"' "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
+    || fail "final37 §2 FAIL: finalize.sh GRUB_THEME anka ayarlamıyor"
+  echo "UEFI-GRUB OK (final37 §2/§3): uefi.grub + yeşil ANKA teması + anka-tr Türkçe font + Türkçe menü"
 }
 
 # --- SDDM QML testi (VM'siz, offscreen) ---
@@ -347,6 +405,12 @@ verify_post() {
   done
   [ -L "$WA/etc/systemd/system/multi-user.target.wants/ydotoold.service" ] \
     || fail "POSTFAIL (final27 §2): ydotoold wants linki ISO'da yok"
+  local YTW
+  YTW="$(readlink "$WA/etc/systemd/system/multi-user.target.wants/ydotoold.service")"
+  case "$YTW" in /*) YTW="$WA$YTW" ;; esac
+  [ -f "$YTW" ] || fail "POSTFAIL (final36): ydotoold wants linki boşa bakıyor (hedef yok: $YTW)"
+  [ -f "$WA/etc/systemd/system/ydotoold.service" ] \
+    || fail "POSTFAIL (final36): sistem ydotoold.service ISO'da yok (daemon çalışmaz — fare komutları ölür)"
   if ls "$WA/etc/systemd/system/multi-user.target.wants/"ollama.service 2>/dev/null; then
     fail "POSTFAIL (§1 inceltme): multi-user.target.wants ollama linki var"
   fi
@@ -460,6 +524,50 @@ verify_post() {
     fail "POSTFAIL (final24 §1): grub theme.txt'te + image bloğu var (logo resmi kaldırılacaktı)"
   fi
   echo "POST OK (final24 §1): GRUB teması TEK lockup (title-text YOK, tek desktop-image)"
+
+  # final37 §2 + §3 POST: UEFI GRUB + yeşil ANKA teması + Türkçe font ISO'da
+  # (mkarchiso 89: ISO 9660 hazırlama dizini work/iso — altına arch/ boot/ EFI/)
+  local ISOFS
+  ISOFS="$ISO_DIR/work/iso"
+  [ -d "$ISOFS" ] || fail "POSTFAIL (final37): work/x86_64/iso yok"
+  [ -f "$ISOFS/boot/grub/grub.cfg" ] || fail "POSTFAIL (final37): ISO /boot/grub/grub.cfg yok"
+  [ -f "$ISOFS/boot/grub/themes/anka/theme.txt" ] \
+    || fail "POSTFAIL (final37 §2): ISO /boot/grub/themes/anka/theme.txt yok"
+  for c in 'desktop-color: "#0B3D2E"' 'item_color = "#EFE9DC"' \
+           'selected_item_color = "#C74A1F"' 'title-text: "GRUB Açılış Menüsü"'; do
+    rg -qF "$c" "$ISOFS/boot/grub/themes/anka/theme.txt" \
+      || fail "POSTFAIL (final37 §2): ISO theme.txt'te '$c' yok"
+  done
+  for f in background.png anka-tr.pf2 anka-tr-44.pf2; do
+    [ -s "$ISOFS/boot/grub/themes/anka/$f" ] \
+      || fail "POSTFAIL (final37 §3): ISO /boot/grub/themes/anka/$f yok/boş"
+  done
+  rg -q 'set theme="/boot/grub/themes/anka/theme\.txt"' "$ISOFS/boot/grub/grub.cfg" \
+    || fail "POSTFAIL (final37 §2): ISO grub.cfg set theme= anka yok (root-göreli)"
+  rg -q 'kurulum ortamı' "$ISOFS/boot/grub/grub.cfg" \
+    || fail "POSTFAIL (final37 §3): ISO grub.cfg Türkçe menü yok ('ortamı')"
+  rg -q 'loadfont /boot/grub/themes/anka/anka-tr\.pf2' "$ISOFS/boot/grub/grub.cfg" \
+    || fail "POSTFAIL (final37 §3): ISO grub.cfg anka-tr.pf2 loadfont yok (root-göreli)"
+  # UEFI önyükleyici GERÇEKTEN GRUB (systemd-boot izi YOK)
+  [ -f "$ISOFS/EFI/BOOT/BOOTx64.EFI" ] \
+    || fail "POSTFAIL (final37 §2): EFI/BOOT/BOOTx64.EFI yok"
+  if ! grep -aq 'grub' "$ISOFS/EFI/BOOT/BOOTx64.EFI"; then
+    fail "POSTFAIL (final37 §2): BOOTx64.EFI GRUB değil (grub imzası yok)"
+  fi
+  if grep -aq 'systemd-boot' "$ISOFS/EFI/BOOT/BOOTx64.EFI"; then
+    fail "POSTFAIL (final37 §2): BOOTx64.EFI systemd-boot görünüyor"
+  fi
+  if [ -e "$ISOFS/loader/loader.conf" ]; then
+    fail "POSTFAIL (final37 §2): ISO /loader/loader.conf var (systemd-boot kalıntı)"
+  fi
+  # kurulu sistem tarafı: branding paketi anka temasıyla + finalize anka kuruyor
+  [ -f "$WA/usr/share/grub/themes/anka/theme.txt" ] \
+    || fail "POSTFAIL (final37 §2): /usr/share/grub/themes/anka/theme.txt yok (branding -18?)"
+  rg -q 'themes/anka' "$WA/usr/local/bin/yerinde-finalize.sh" \
+    || fail "POSTFAIL (final37 §2): finalize.sh themes/anka kurmuyor"
+  echo "POST OK (final37 §2/§3): ISO GRUB UEFI + yeşil/krem/turuncu ANKA teması + anka-tr pf2 + Türkçe menü; BOOTx64.EFI GRUB"
+  echo "--- ls ISO grub/themes/anka (kanıt) ---"
+  ls -l "$ISOFS/boot/grub/themes/anka/" | sed 's/^/    /'
 
   # REGRESYON: sudoers wheel + ilk-oturum betiği
   [ -f "$WA/etc/sudoers.d/wheel" ] || fail "POSTFAIL (regresyon): /etc/sudoers.d/wheel yok"
