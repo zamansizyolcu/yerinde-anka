@@ -73,12 +73,20 @@ BTN_LEFT, BTN_RIGHT, BTN_MIDDLE = 0xC0, 0xC1, 0xC2
 
 # ══ Temel yürütücü ══════════════════════════════════════════════════════════
 def run_ydotool(args: list[str], timeout: int = 10) -> tuple[bool, str]:
-    """ydotool'u gerçek çıkış koduyla çalıştırır → (başarı, hata)."""
+    """ydotool'u gerçek çıkış koduyla çalıştırır → (başarı, hata).
+
+    Soket emniyeti: YDOTOOL_SOCKET ayarlı DEĞİLSE /run/ydotool.socket
+    varsayılır (yerinde-anka canlı/kurulu sistemde ydotoold sistem servisi
+    orada dinler, 0660 + uinput grubu). Kullanıcı servisi kuran kurulumlar
+    kendi env'ini zaten set eder — bu yalnız eksik durumda güvenliği sağlar.
+    Klavye VE fare tüm ydotool çağrları bu fonksiyondan geçer."""
     if not ydotool_available():
         return False, YDOTOOL_MISSING_TR
+    env = dict(os.environ)
+    env.setdefault("YDOTOOL_SOCKET", "/run/ydotool.socket")
     try:
         r = subprocess.run(["ydotool"] + args, timeout=timeout,
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, env=env)
         ok = r.returncode == 0
         return ok, ("" if ok else (r.stderr or r.stdout or "bilinmeyen hata").strip())
     except FileNotFoundError:

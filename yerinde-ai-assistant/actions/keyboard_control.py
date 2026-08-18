@@ -126,26 +126,48 @@ def _wayland_press(key: str, times: int) -> tuple[bool, str]:
     return False, " | ".join(errors)
 
 
+def _kglobalaccel_invoke(component: str, shortcut: str,
+                         path: str | None = None) -> tuple[bool, str]:
+    """final35 — kglobalaccel kısayolunu DBus'tan tetikler (genel yardımcı).
+    Yalnız okuma değil ÇAĞIRMA yapar; dönüş 'method return' ise başarılıdır."""
+    if not shutil.which("dbus-send"):
+        return False, "dbus-send yok"
+    try:
+        r = subprocess.run(
+            ["dbus-send", "--session", "--print-reply",
+             "--dest=org.kde.kglobalaccel",
+             path or f"/component/{component}",
+             "org.kde.kglobalaccel.Component.invokeShortcut",
+             f'string:{shortcut}'],
+            timeout=5, capture_output=True, text=True)
+        if r.returncode == 0 and "method return" in r.stdout:
+            return True, ""
+        return False, (r.stderr or r.stdout or "bilinmeyen hata").strip()
+    except Exception as e:
+        return False, str(e)
+
+
+# final35: "masaüstünü göster" dbus yedeği (final33) TÜM pencere yönetimi
+# kısayollarına genelleştirildi. Kısayol adları bu KDE 6.29 hostta
+# allShortcutInfos ile DOĞRULANDI ("Walk Through Windows", "Window Close",
+# "Overview" aynen bu adlarla kayıtlı). win_d ayrı ele alınır (aşağıda).
+_KGLOBALACCEL = {
+    "alt_tab": ("kwin", "Walk Through Windows"),
+    "alt_f4":  ("kwin", "Window Close"),
+    "win_tab": ("kwin", "Overview"),
+}
+
+
 def _show_desktop_dbus() -> tuple[bool, str]:
     """final33 §5 — 'masaüstünü göster' dbus yedeği (ydotool yoksa/devrede
     değilse). KDE kglobalaccel kısayolunu DBus'tan tetikler; pencereler
     ydotool/uinput izinleri OLMADAN iner. Önce doğrulanmış /component/kwin
     yolu, ardından /desktop tahmini denenir (her ikisi de zararsızdır)."""
-    if not shutil.which("dbus-send"):
-        return False, "dbus-send yok"
-    for path in ("/component/kwin", "/desktop"):
-        try:
-            r = subprocess.run(
-                ["dbus-send", "--session", "--print-reply",
-                 "--dest=org.kde.kglobalaccel", path,
-                 "org.kde.kglobalaccel.Component.invokeShortcut",
-                 'string:Show Desktop'],
-                timeout=5, capture_output=True, text=True)
-            if r.returncode == 0 and "method return" in r.stdout:
-                return True, ""
-        except Exception:
-            continue
-    return False, "kglobalaccel Show Desktop tetiklenemedi"
+    ok, err = _kglobalaccel_invoke("kwin", "Show Desktop")
+    if ok:
+        return True, ""
+    ok2, err2 = _kglobalaccel_invoke("kwin", "Show Desktop", path="/desktop")
+    return ok2, (err2 if not ok2 else "")
 
 # Kanonik tuş adı → (pyautogui tuşları, xdotool tuşu, SendKeys kodu)
 KEYS = {
@@ -226,10 +248,17 @@ def press_key(key: str, times: int = 1) -> str:
         ok, err = _wayland_press(key, times)
         if ok:
             return f"{label} tuşuna basıldı." + (f" ({times}×)" if times > 1 else "")
-        # final33 §5 zinciri (yalnız eylem katmanı; mesaj katmanı dokunulmaz):
-        # 2) ydotool YOKSA/BAŞARISIZSA → KDE kglobalaccel "Show Desktop"
+        # final35 zinciri (yalnız eylem katmanı; mesaj katmanı dokunulmaz):
+        # 2) ydotool YOKSA/BAŞARISIZSA → KDE kglobalaccel dbus yedeği.
+        #    win_d: final33'te kanıtlanmış "Show Desktop" yolu;
+        #    diğer pencere kısayolları: _KGLOBALACCEL haritası.
         if key == "win_d":
             ok2, err2 = _show_desktop_dbus()
+            if ok2:
+                return f"{label} tuşuna basıldı." + (f" ({times}×)" if times > 1 else "")
+            err = f"{err} | {err2}"
+        elif key in _KGLOBALACCEL:
+            ok2, err2 = _kglobalaccel_invoke(*_KGLOBALACCEL[key])
             if ok2:
                 return f"{label} tuşuna basıldı." + (f" ({times}×)" if times > 1 else "")
             err = f"{err} | {err2}"
