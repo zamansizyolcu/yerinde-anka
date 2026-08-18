@@ -1,0 +1,193 @@
+# Maintainer: Yerinde Project
+
+pkgname=yerinde-branding
+pkgver=1.2.0
+pkgrel=17
+pkgdesc="Yerinde branding package"
+arch=('any')
+url="https://yerinde.example.com"
+license=('GPL')
+backup=('etc/os-release')
+
+conflicts=(
+  'cachyos-wallpapers'
+  'cachyos-settings'
+  'cachyos-artwork'
+)
+
+replaces=(
+  'cachyos-wallpapers'
+  'cachyos-settings'
+  'cachyos-artwork'
+)
+
+source=(
+  'os-release'
+  'default.png'
+  'yerinde-anka-lockup-720.png'
+  'yerinde-icon-256.png'
+  'yerinde-icon-512.png'
+  'yerinde-icon-cream.svg'
+  'yerinde-anka-lockup-cream.svg'
+  'yerinde.svg'
+  'yerinde-light.svg'
+  'destek-hologram-mavi.png'
+  'destek-krem.png'
+  'destek-dalga-mavi.png'
+  'destek-yesil.png'
+  'destek-mor.png'
+  'grub-background.png'
+  'grub-logo.png'
+  'grub-theme.txt'
+  'DejaVuSans-32.pf2'
+  'DejaVuSans-44.pf2'
+  'select_c.png'
+  'select_n.png'
+  'select_s.png'
+  'select_e.png'
+  'select_w.png'
+  'select_nw.png'
+  'select_ne.png'
+  'select_sw.png'
+  'select_se.png'
+  'yerinde-first-run.sh'
+  'yerinde-first-run.desktop'
+  'sddm-yerinde.conf'
+  'yerinde-reboot.desktop'
+  'yerinde-poweroff.desktop'
+)
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+package() {
+  install -Dm644 "$srcdir/os-release" "$pkgdir/etc/os-release"
+  install -Dm644 "$srcdir/default.png" "$pkgdir/usr/share/backgrounds/yerinde/default.png"
+  install -Dm644 "$srcdir/yerinde-anka-lockup-720.png" "$pkgdir/usr/share/yerinde/yerinde-anka-lockup-720.png"
+  install -Dm644 "$srcdir/yerinde-icon-256.png" "$pkgdir/usr/share/yerinde/yerinde-icon-256.png"
+  install -Dm644 "$srcdir/yerinde-icon-512.png" "$pkgdir/usr/share/yerinde/yerinde-icon-512.png"
+  install -Dm644 "$srcdir/yerinde-icon-cream.svg" "$pkgdir/usr/share/yerinde/yerinde-icon-cream.svg"
+  install -Dm644 "$srcdir/yerinde-anka-lockup-cream.svg" "$pkgdir/usr/share/yerinde/yerinde-anka-lockup-cream.svg"
+  install -Dm644 "$srcdir/yerinde.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/yerinde.svg"
+  install -Dm644 "$srcdir/yerinde-light.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/yerinde-light.svg"
+  install -Dm644 "$srcdir/yerinde-first-run.sh" "$pkgdir/usr/share/yerinde/kde/yerinde-first-run.sh"
+  install -Dm644 "$srcdir/yerinde-first-run.desktop" "$pkgdir/etc/xdg/autostart/yerinde-first-run.desktop"
+  chmod 755 "$pkgdir/usr/share/yerinde/kde/yerinde-first-run.sh"
+
+  # SDDM yapılandırması (H1): tema + Wayland seçici açık (final19: X11 kapatıldı)
+  install -Dm644 "$srcdir/sddm-yerinde.conf" "$pkgdir/etc/sddm.conf.d/yerinde.conf"
+
+  # final18.md §2c: KDE menüsüne güvenli güç kısayolları (branding paketi).
+  # Exec=systemctl reboot/poweroff — Plasma ayrılma menüsü D-Bus yolu başarısız
+  # olursa bile yeniden başlat/kapat çalışır. OnlyShowIn=KDE.
+  install -Dm644 "$srcdir/yerinde-reboot.desktop" \
+    "$pkgdir/usr/share/applications/yerinde-reboot.desktop"
+  install -Dm644 "$srcdir/yerinde-poweroff.desktop" \
+    "$pkgdir/usr/share/applications/yerinde-poweroff.desktop"
+
+  _install_wallpaper() {
+    local ton="$1" src="$2"
+    install -Dm644 "$srcdir/$src" "$pkgdir/usr/share/wallpapers/Yerinde-Destek-$ton/contents/images/wallpaper.png"
+    cat > "$pkgdir/usr/share/wallpapers/Yerinde-Destek-$ton/metadata.desktop" <<EOF
+[Desktop Entry]
+Name=Yerinde Destek $ton
+Comment=Yerinde ANKA destek duvar kağıdı
+X-KDE-PluginInfo-Author=Yerinde Project
+X-KDE-PluginInfo-Email=info@yerinde.example.com
+X-KDE-PluginInfo-Name=Yerinde-Destek-$ton
+X-KDE-PluginInfo-Version=1.0
+X-KDE-PluginInfo-Category=Wallpapers
+X-KDE-PluginInfo-License=GPL
+X-KDE-PluginInfo-EnabledByDefault=true
+EOF
+  }
+
+  _install_wallpaper "Hologram-Mavi" "destek-hologram-mavi.png"
+  _install_wallpaper "Krem" "destek-krem.png"
+  _install_wallpaper "Dalga-Mavi" "destek-dalga-mavi.png"
+  _install_wallpaper "Yesil" "destek-yesil.png"
+  _install_wallpaper "Mor" "destek-mor.png"
+
+  # GRUB teması (final13.md §3 + final15.md §1): /usr/share/grub/themes/yerinde/
+  install -dm755 "$pkgdir/usr/share/grub/themes/yerinde"
+  install -Dm644 "$srcdir/grub-background.png" "$pkgdir/usr/share/grub/themes/yerinde/background.png"
+  install -Dm644 "$srcdir/grub-logo.png" "$pkgdir/usr/share/grub/themes/yerinde/logo.png"
+  install -Dm644 "$srcdir/grub-theme.txt" "$pkgdir/usr/share/grub/themes/yerinde/theme.txt"
+  # final15.md §1: 32/44px DejaVu Sans .pf2'ler + select_*.png şerit dilimleri.
+  # Fontlar tema kökünde durmalı: /etc/grub.d/00_header bunları otomatik yükler.
+  install -Dm644 "$srcdir/DejaVuSans-32.pf2" "$pkgdir/usr/share/grub/themes/yerinde/DejaVuSans-32.pf2"
+  install -Dm644 "$srcdir/DejaVuSans-44.pf2" "$pkgdir/usr/share/grub/themes/yerinde/DejaVuSans-44.pf2"
+  for s in c n s e w nw ne sw se; do
+    install -Dm644 "$srcdir/select_$s.png" "$pkgdir/usr/share/grub/themes/yerinde/select_$s.png"
+  done
+
+  # Doğrulama (final13.md §4): 5 duvar kağıdı metadata.desktop'ı eksikse FAIL
+  for t in Hologram-Mavi Krem Dalga-Mavi Yesil Mor; do
+    [ -f "$pkgdir/usr/share/wallpapers/Yerinde-Destek-$t/metadata.desktop" ] \
+      || { echo "WALLPAPER FAIL: Yerinde-Destek-$t metadata.desktop yok -> build FAIL" >&2; exit 1; }
+  done
+  echo "WALLPAPER OK: 5 ton (Hologram-Mavi, Krem, Dalga-Mavi, Yesil, Mor) dogrulandi"
+
+  # Doğrulama (final13.md §3): grub teması dosyaları eksikse FAIL
+  for f in background.png logo.png theme.txt DejaVuSans-32.pf2 DejaVuSans-44.pf2 \
+           select_c.png select_n.png select_s.png select_e.png select_w.png \
+           select_nw.png select_ne.png select_sw.png select_se.png; do
+    [ -f "$pkgdir/usr/share/grub/themes/yerinde/$f" ] \
+      || { echo "GRUB THEME FAIL: $f yok -> build FAIL" >&2; exit 1; }
+  done
+  echo "GRUB THEME OK: /usr/share/grub/themes/yerinde/ dogrulandi (tema + fontlar + select dilimleri)"
+
+  # Doğrulama (final15.md §1 + final24.md §1): tema içeriği
+  # final24: title-text YOK olmalı (3'lü yazı → tek lockup); TEK image
+  # referansı = desktop-image (logo.png resmi kaldırıldı).
+  if grep -Eq '^[[:space:]]*title-text[[:space:]]*:' "$pkgdir/usr/share/grub/themes/yerinde/theme.txt"; then
+    echo "GRUB THEME FAIL: title-text var (final24: silinmeliydi) -> build FAIL" >&2
+    exit 1
+  fi
+  [ "$(grep -c 'desktop-image:' "$pkgdir/usr/share/grub/themes/yerinde/theme.txt")" -eq 1 ] \
+    || { echo "GRUB THEME FAIL: desktop-image tam 1 olmalı -> build FAIL" >&2; exit 1; }
+  if grep -q '^+ image' "$pkgdir/usr/share/grub/themes/yerinde/theme.txt"; then
+    echo "GRUB THEME FAIL: + image bloğu var (final24: logo.png resmi kaldırıldı) -> build FAIL" >&2
+    exit 1
+  fi
+  grep -q 'selected_item_color = "#C74A1F"' "$pkgdir/usr/share/grub/themes/yerinde/theme.txt" \
+    || { echo "GRUB THEME FAIL: selected_item_color turuncu yok -> build FAIL" >&2; exit 1; }
+  grep -q 'selected_item_pixmap_style = "select_\*.png"' "$pkgdir/usr/share/grub/themes/yerinde/theme.txt" \
+    || { echo "GRUB THEME FAIL: selected_item_pixmap_style yok -> build FAIL" >&2; exit 1; }
+  grep -q 'DejaVu Sans Regular 32' "$pkgdir/usr/share/grub/themes/yerinde/theme.txt" \
+    || { echo "GRUB THEME FAIL: item_font 32px yok -> build FAIL" >&2; exit 1; }
+  echo "GRUB THEME OK: baslik/renk/serit/font icerigi dogrulandi"
+
+  # Doğrulama (final19.md §2): xsessions/plasma.desktop YOK olmalı (X11 kapatıldı)
+  if [ -f "$pkgdir/usr/share/xsessions/plasma.desktop" ]; then
+    echo "XSESSION FAIL: /usr/share/xsessions/plasma.desktop var (X11 kapatıldı) -> build FAIL" >&2
+    exit 1
+  fi
+  echo "XSESSION OK: /usr/share/xsessions/plasma.desktop YOK (X11 oturumu kaldırıldı)"
+
+  # Doğrulama (final14.md §1 + final19.md §2): sddm.conf.d/yerinde.conf
+  [ -f "$pkgdir/etc/sddm.conf.d/yerinde.conf" ] \
+    || { echo "SDDM CONF FAIL: /etc/sddm.conf.d/yerinde.conf yok -> build FAIL" >&2; exit 1; }
+  grep -q 'Current=yerinde' "$pkgdir/etc/sddm.conf.d/yerinde.conf" \
+    || { echo "SDDM CONF FAIL: Current=yerinde eksik -> build FAIL" >&2; exit 1; }
+  grep -q 'Enable=true' "$pkgdir/etc/sddm.conf.d/yerinde.conf" \
+    || { echo "SDDM CONF FAIL: [Wayland] Enable=true eksik -> build FAIL" >&2; exit 1; }
+  grep -q '\[X11\]' "$pkgdir/etc/sddm.conf.d/yerinde.conf" \
+    || { echo "SDDM CONF FAIL: [X11] bölümü yok -> build FAIL" >&2; exit 1; }
+  grep -A1 '^\[X11\]' "$pkgdir/etc/sddm.conf.d/yerinde.conf" | grep -q 'Enable=false' \
+    || { echo "SDDM CONF FAIL: [X11] Enable=false eksik -> build FAIL" >&2; exit 1; }
+  echo "SDDM CONF OK: /etc/sddm.conf.d/yerinde.conf (tema + Wayland=true + X11=false)"
+
+  # Doğrulama (final18.md §2c): güç kısayolları eksikse FAIL
+  for _d in yerinde-reboot yerinde-poweroff; do
+    [ -f "$pkgdir/usr/share/applications/$_d.desktop" ] \
+      || { echo "POWER DESKTOP FAIL: /usr/share/applications/$_d.desktop yok -> build FAIL" >&2; exit 1; }
+  done
+  grep -q 'Exec=systemctl reboot' "$pkgdir/usr/share/applications/yerinde-reboot.desktop" \
+    || { echo "POWER DESKTOP FAIL: Exec=systemctl reboot yok -> build FAIL" >&2; exit 1; }
+  grep -q 'Exec=systemctl poweroff' "$pkgdir/usr/share/applications/yerinde-poweroff.desktop" \
+    || { echo "POWER DESKTOP FAIL: Exec=systemctl poweroff yok -> build FAIL" >&2; exit 1; }
+  grep -q 'OnlyShowIn=KDE' "$pkgdir/usr/share/applications/yerinde-reboot.desktop" \
+    || { echo "POWER DESKTOP FAIL: OnlyShowIn=KDE yok -> build FAIL" >&2; exit 1; }
+  grep -q 'OnlyShowIn=KDE' "$pkgdir/usr/share/applications/yerinde-poweroff.desktop" \
+    || { echo "POWER DESKTOP FAIL: OnlyShowIn=KDE yok -> build FAIL" >&2; exit 1; }
+  echo "POWER DESKTOP OK: yerinde-reboot.desktop + yerinde-poweroff.desktop (systemctl + OnlyShowIn=KDE)"
+}

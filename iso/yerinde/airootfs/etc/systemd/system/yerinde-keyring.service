@@ -1,0 +1,12 @@
+[Unit]
+Description=Yerinde ANKA pacman keyring hazirligi
+Documentation=https://yerinde.example.com
+After=etc-pacman.d-gnupg.mount time-sync.target
+ConditionPathExists=!/var/lib/yerinde-keyring-done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/yerinde-keyring-init
+
+[Install]
+WantedBy=multi-user.target

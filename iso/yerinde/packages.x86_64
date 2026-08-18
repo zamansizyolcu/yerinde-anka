@@ -1,0 +1,189 @@
+alsa-utils
+amd-ucode
+arch-install-scripts
+archinstall
+b43-fwcutter
+base
+bcachefs-tools
+bind
+bolt
+brltty
+broadcom-wl
+btrfs-progs
+clonezilla
+cloud-init
+cryptsetup
+darkhttpd
+ddrescue
+dhcpcd
+diffutils
+dmidecode
+dmraid
+dnsmasq
+dosfstools
+e2fsprogs
+edk2-shell
+efibootmgr
+espeakup
+ethtool
+exfatprogs
+f2fs-tools
+fatresize
+foot-terminfo
+fsarchiver
+ghostty-terminfo
+gpart
+gpm
+gptfdisk
+grml-zsh-config
+grub
+hdparm
+hyperv
+intel-ucode
+irssi
+iw
+iwd
+jfsutils
+kitty-terminfo
+kmscon-terminfo
+ldns
+less
+lftp
+libfido2
+libusb-compat
+linux
+linux-atm
+linux-firmware
+linux-firmware-marvell
+livecd-sounds
+lsscsi
+lvm2
+lynx
+man-db
+man-pages
+mc
+mdadm
+memtest86+
+memtest86+-efi
+mkinitcpio
+mkinitcpio-archiso
+mkinitcpio-nfs-utils
+mmc-utils
+modemmanager
+mtools
+nano
+nbd
+ndisc6
+nfs-utils
+nilfs-utils
+nmap
+ntfsprogs
+nvme-cli
+open-iscsi
+open-vm-tools
+openconnect
+openpgp-card-tools
+openssh
+openvpn
+partclone
+parted
+partimage
+pcsclite
+ppp
+pptpclient
+pv
+qemu-guest-agent
+refind
+reflector
+rsync
+rxvt-unicode-terminfo
+screen
+sdparm
+sequoia-sq
+sg3_utils
+smartmontools
+sof-firmware
+squashfs-tools
+sudo
+syslinux
+systemd-resolvconf
+tcpdump
+terminus-font
+testdisk
+tmux
+tpm2-tools
+tpm2-tss
+udftools
+usb_modeswitch
+usbmuxd
+usbutils
+vim
+virtualbox-guest-utils
+vpnc
+wireless-regdb
+wireless_tools
+wpa_supplicant
+wvdial
+xdg-utils
+xfsprogs
+xl2tpd
+zsh
+yerinde-branding
+# final21.md §4: ZIP/arsiv araçları ISO'da (sağ tık Ayıkla/Arşivle kutudan çıkar)
+# Not: p7zip/p7zip-rar depolarda YOK (kaldırıldı) → resmi "7zip" paketi
+# /usr/bin/7z sağlar; RAR için unrar.
+ark
+zip
+unzip
+7zip
+unrar
+# final24.md §3: asistanın çevrimdışı kurulumu için python kütüphaneleri
+# (~20-30 MB sıkıştırılmış). NOT: opencv EKLENMEDİ — Arch "opencv" 5.0.0
+# paketi cv2 python bağlaması İÇERMİYOR (site-packages yok); python-opencv
+# depolarda yok → best-effort kapsamında raporlandı, build düşürülmedi.
+python-numpy
+python-pillow
+dolphin
+firefox
+inetutils
+konsole
+mesa
+networkmanager
+noto-fonts
+pipewire
+pipewire-pulse
+plasma-meta
+qt5-wayland
+qt6-wayland
+sddm
+wireplumber
+xdg-user-dirs
+# final19.md §1: X11 oturumu tamamen kaldırıldı (xorg-server/xinit/xrandr/xrdb/
+# xsetroot/xmessage/sessreg SİLİNDİ). xorg-xwayland KALDI — Wayland üstünde X11
+# uygulamaları (Tkinter asistan) için şart. xorg-xhost/xprop/xwininfo + xdotool/
+# wmctrl/xclip de xwayland üstünde X11 uygulama yönetimi için kalır.
+# Not: xorg-server paketi sddm hard-dep olarak yine kurulur, ama SDDM
+# [X11] Enable=false + xsessions BOŞ → X11 oturumu seçilemez, kullanılamaz.
+xorg-xwayland
+xdotool
+xorg-xhost
+xorg-xprop
+xorg-xwininfo
+wmctrl
+xclip
+calamares
+os-prober
+plymouth
+# final18.md §1 (İNCELTME): asistan + çevrimdışı AI zinciri ISO'dan çıkarıldı.
+# yerinde-ai-assistant REPO'da kalır (makepkg -si ile kurulur); GGUF ve
+# ollama store yükü de gitti. python-pyaudio/requests de yalnızca asistan
+# içindi -> onlar da kaldırıldı.
+# final25ek.md: python-pyaudio geri eklendi (final18'de çıkarılmıştı) —
+# çevrimdışı kurulumda venv --system-site-packages bunları sistemden bulur.
+python-pyaudio
+portaudio
+# final27.md §2 (cacyhos PARİTESİ): asistan çalışma zamanları — sesli fare/
+# klavye denetimi Wayland'de ydotool ile; git tıkla-kur'un git clone yoluna
+# şart. NOT: yalnızca ARAÇLAR; asistan PAKETİ ISO'da YOK (final18 §1 sürer).
+ydotool
+git

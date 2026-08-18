@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Robotik ve Devre Simülatörü — YERİNDE</title>
+<style>
+  :root {
+    --bg: #071a13; --panel: #0e241b; --pri: #8ff0cc; --text: #eaf5ee; --dim: #4d6b57;
+    --org: #df6b32; --board: #234; --wire-power: #d9432f; --wire-gnd: #222;
+    --wire-signal: #3aa0d9; --sens-ok: #4ad991; --sens-bad: #d94a4a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", "Noto Sans", sans-serif; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; padding: 16px;
+  }
+  h1 { font-size: 24px; margin: 4px 0 4px; color: var(--pri); }
+  .subtitle { font-size: 14px; opacity: 0.75; margin-bottom: 14px; text-align: center; max-width: 640px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 10px; }
+  .group { display: flex; gap: 6px; background: #0e241b; padding: 6px; border-radius: 10px; }
+  button, select {
+    background: #102420; color: var(--text); border: 1px solid var(--dim);
+    border-radius: 8px; padding: 8px 12px; font-size: 14px; cursor: pointer;
+  }
+  button.active { background: var(--pri); color: #06140f; font-weight: bold; border-color: var(--pri); }
+  button:hover { border-color: var(--pri); }
+  .layout { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; align-items: flex-start; max-width: 1300px; }
+  #canvasWrap { border: 3px solid var(--dim); border-radius: 10px; overflow: hidden; background: #0c1f16; }
+  canvas { display: block; }
+  .side { width: 420px; display: flex; flex-direction: column; gap: 10px; }
+  .card { background: #0e241b; border-radius: 10px; padding: 12px 14px; }
+  .card h3 { margin: 0 0 8px; font-size: 15px; color: var(--pri); }
+  #circuitSvg { width: 100%; height: auto; }
+  pre#codeBox {
+    background: #071410; border-radius: 8px; padding: 10px; font-size: 12.5px;
+    max-height: 260px; overflow: auto; margin: 0; line-height: 1.5;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  #explainBox { font-size: 13.5px; line-height: 1.55; }
+  .legend { display: flex; gap: 14px; font-size: 12px; margin-top: 6px; flex-wrap: wrap; }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend i { width: 16px; height: 3px; display: inline-block; border-radius: 2px; }
+  .hint { font-size: 12.5px; opacity: 0.7; margin-top: 6px; }
+  .blk { border-radius: 7px; padding: 6px 10px; margin: 3px 0; font-size: 12px; color: #fff;
+         display: block; box-shadow: 0 1.5px 0 rgba(0,0,0,0.25); }
+  .blk-loop   { background: #c77e1f; }
+  .blk-if     { background: #b8952e; }
+  .blk-action { background: #2f7fb0; }
+  .blk-sensor { background: #2f9e6e; }
+  .blk-nest   { padding-left: 14px; border-left: 3px solid rgba(255,255,255,0.25); margin-left: 6px; }
+</style>
+</head>
+<body>
+<h1>🤖 Robotik ve Devre Simülatörü — YERİNDE</h1>
+<div class="subtitle">Gerçek bir devre kartı almadan, mikrodenetleyicili robotların nasıl "düşündüğünü" gör!
+Bir kart ve bir robot türü seç, devre şemasını ve kodunu incele, simülasyonu izle.</div>
+
+<div class="toolbar">
+  <div class="group" id="boardGroup"></div>
+  <div class="group" id="scenarioGroup"></div>
+  <div class="group">
+    <button id="playBtn">▶️ Başlat</button>
+    <button id="resetBtn">⟲ Sıfırla</button>
+  </div>
+  <div class="group" id="extraGroup"></div>
+</div>
+
+<div class="layout">
+  <div id="canvasWrap"><canvas id="cv" width="700" height="460"></canvas></div>
+  <div class="side">
+    <div class="card">
+      <h3>🔌 Devre Şeması</h3>
+      <svg id="circuitSvg" viewBox="0 0 400 260"></svg>
+      <div class="legend">
+        <span><i style="background:var(--wire-power)"></i> Güç (+)</span>
+        <span><i style="background:var(--wire-gnd)"></i> Toprak (GND)</span>
+        <span><i style="background:var(--wire-signal)"></i> Sinyal</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>💻 Örnek Kod</h3>
+      <pre id="codeBox"></pre>
+      <div id="blockBox" style="display:none"></div>
+    </div>
+    <div class="card">
+      <h3>🧠 Nasıl Çalışır?</h3>
+      <div id="explainBox"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ===================== SİMÜLASYON ÇEKİRDEĞİ (ayrı test edildi) ===================== */
+function deg2rad(d) { return (d * Math.PI) / 180; }
+function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
+function normalizeAngle(a) { while (a > Math.PI) a -= 2*Math.PI; while (a < -Math.PI) a += 2*Math.PI; return a; }
+
+function obstacleSensor(robot, obstacles, sensorAngleOffsetDeg, rangePx, coneDeg) {
+  const sensorAngle = robot.heading + deg2rad(sensorAngleOffsetDeg);
+  const cone = deg2rad(coneDeg);
+  for (const o of obstacles) {
+    const d = dist(robot.x, robot.y, o.x, o.y) - o.r;
+    if (d > rangePx) continue;
+    const angleToObs = Math.atan2(o.y - robot.y, o.x - robot.x);
+    const diff = Math.abs(normalizeAngle(angleToObs - sensorAngle));
+    if (diff <= cone / 2) return { hit: true, distance: Math.max(0, d) };
+  }
+  return { hit: false, distance: Infinity };
+}
+function obstacleSensors(robot, obstacles, rangePx=90, coneDeg=30) {
+  return {
+    front: obstacleSensor(robot, obstacles, 0, rangePx, coneDeg),
+    left: obstacleSensor(robot, obstacles, -35, rangePx, coneDeg),
+    right: obstacleSensor(robot, obstacles, 35, rangePx, coneDeg),
+  };
+}
+function obstacleDecision(sensors, state) {
+  if (state.turnTimer > 0) {
+    return { left: state.turning>0?-1:1, right: state.turning>0?1:-1, avoiding:true };
+  }
+  if (sensors.front.hit) {
+    return { left:0, right:0, startTurn: (sensors.left.hit && !sensors.right.hit) ? 1 : -1 };
+  }
+  if (sensors.left.hit && !sensors.right.hit) return { left:0.6, right:1, avoiding:true };
+  if (sensors.right.hit && !sensors.left.hit) return { left:1, right:0.6, avoiding:true };
+  return { left:1, right:1 };
+}
+function lightIntensityAt(px,py,light){ const d=dist(px,py,light.x,light.y); return 1/(1+0.0025*d*d); }
+function lightSensors(robot, light, offsetPx=14, aheadPx=12) {
+  const ah=robot.heading;
+  const fx=robot.x+Math.cos(ah)*aheadPx, fy=robot.y+Math.sin(ah)*aheadPx;
+  const perp=ah+Math.PI/2;
+  const lx=fx-Math.cos(perp)*offsetPx, ly=fy-Math.sin(perp)*offsetPx;
+  const rx=fx+Math.cos(perp)*offsetPx, ry=fy+Math.sin(perp)*offsetPx;
+  return { left: lightIntensityAt(lx,ly,light), right: lightIntensityAt(rx,ry,light), leftPos:[lx,ly], rightPos:[rx,ry] };
+}
+function lightDecision(sensors) {
+  const diff = sensors.left - sensors.right;
+  const k = Math.max(-1, Math.min(1, diff*8));
+  return { left: 1 - Math.max(0,k), right: 1 - Math.max(0,-k) };
+}
+function distToPolyline(px,py,points) {
+  let best=Infinity;
+  for (let i=0;i<points.length-1;i++) {
+    const [ax,ay]=points[i], [bx,by]=points[i+1];
+    const dx=bx-ax, dy=by-ay, len2=dx*dx+dy*dy||1e-6;
+    let t=((px-ax)*dx+(py-ay)*dy)/len2; t=Math.max(0,Math.min(1,t));
+    const cx=ax+t*dx, cy=ay+t*dy;
+    const d=dist(px,py,cx,cy);
+    if (d<best) best=d;
+  }
+  return best;
+}
+function lineSensors(robot, path, offsetPx=10, aheadPx=16, threshold=7) {
+  const ah=robot.heading;
+  const fx=robot.x+Math.cos(ah)*aheadPx, fy=robot.y+Math.sin(ah)*aheadPx;
+  const perp=ah+Math.PI/2;
+  const pts = {
+    left: [fx-Math.cos(perp)*offsetPx, fy-Math.sin(perp)*offsetPx],
+    center: [fx, fy],
+    right: [fx+Math.cos(perp)*offsetPx, fy+Math.sin(perp)*offsetPx],
+  };
+  return {
+    left: distToPolyline(pts.left[0],pts.left[1],path) < threshold,
+    center: distToPolyline(pts.center[0],pts.center[1],path) < threshold,
+    right: distToPolyline(pts.right[0],pts.right[1],path) < threshold,
+    pts,
+  };
+}
+function lineDecision(sensors, state) {
+  if (sensors.center) return { left:1, right:1, lost:false };
+  if (sensors.left && !sensors.right) return { left:0.2, right:1, lost:false };
+  if (sensors.right && !sensors.left) return { left:1, right:0.2, lost:false };
+  if (sensors.left && sensors.right) return { left:1, right:1, lost:false };
+  const dir = state.lastTurn || 1;
+  return { left: dir>0?-0.4:0.4, right: dir>0?0.4:-0.4, lost:true };
+}
+function stepKinematics(robot, left, right, dt, maxSpeed=60, wheelBase=20) {
+  const v = ((left+right)/2)*maxSpeed;
+  const w = ((left-right)*maxSpeed)/wheelBase;
+  const heading = normalizeAngle(robot.heading + w*dt);
+  const x = robot.x + Math.cos(heading)*v*dt;
+  const y = robot.y + Math.sin(heading)*v*dt;
+  return { x, y, heading };
+}
+function clampToBounds(robot, width, height, margin=12) {
+  return { x: Math.max(margin, Math.min(width-margin, robot.x)),
+           y: Math.max(margin, Math.min(height-margin, robot.y)), heading: robot.heading };
+}
+
+/* ===================== YENİ ROBOT TÜRLERİ (ayrı test edildi) ===================== */
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp01(t) { return Math.max(0, Math.min(1, t)); }
+
+const ARM_CYCLE = 6.0;
+const ARM_KEYFRAMES = [
+  { t: 0.0, shoulder: -60, elbow: 40, grip: 0 },
+  { t: 0.5, shoulder: -60, elbow: 40, grip: 0 },
+  { t: 1.5, shoulder: -10, elbow: 95, grip: 0 },
+  { t: 2.0, shoulder: -10, elbow: 95, grip: 1 },
+  { t: 2.8, shoulder: -60, elbow: 40, grip: 1 },
+  { t: 4.0, shoulder: -120, elbow: 30, grip: 1 },
+  { t: 4.5, shoulder: -120, elbow: 30, grip: 0 },
+  { t: 5.5, shoulder: -60, elbow: 40, grip: 0 },
+  { t: 6.0, shoulder: -60, elbow: 40, grip: 0 },
+];
+function armPoseAt(elapsedSec) {
+  const t = elapsedSec % ARM_CYCLE;
+  let a = ARM_KEYFRAMES[0], b = ARM_KEYFRAMES[ARM_KEYFRAMES.length - 1];
+  for (let i = 0; i < ARM_KEYFRAMES.length - 1; i++) {
+    if (t >= ARM_KEYFRAMES[i].t && t <= ARM_KEYFRAMES[i + 1].t) { a = ARM_KEYFRAMES[i]; b = ARM_KEYFRAMES[i + 1]; break; }
+  }
+  const span = (b.t - a.t) || 1e-6;
+  const localT = clamp01((t - a.t) / span);
+  return { shoulder: lerp(a.shoulder, b.shoulder, localT), elbow: lerp(a.elbow, b.elbow, localT), grip: lerp(a.grip, b.grip, localT), tInCycle: t };
+}
+function armForwardKinematics(baseX, baseY, shoulderDeg, elbowDeg, len1, len2) {
+  const a1 = (shoulderDeg * Math.PI) / 180;
+  const elbowX = baseX + Math.cos(a1) * len1, elbowY = baseY + Math.sin(a1) * len1;
+  const a2 = a1 + (elbowDeg * Math.PI) / 180;
+  const gripX = elbowX + Math.cos(a2) * len2, gripY = elbowY + Math.sin(a2) * len2;
+  return { elbowX, elbowY, gripX, gripY };
+}
+
+const SPIDER_LEGS = [
+  { name: "on-sol", side: -1, row: 0, group: "A" },
+  { name: "orta-sol", side: -1, row: 1, group: "B" },
+  { name: "arka-sol", side: -1, row: 2, group: "A" },
+  { name: "on-sag", side: 1, row: 0, group: "B" },
+  { name: "orta-sag", side: 1, row: 1, group: "A" },
+  { name: "arka-sag", side: 1, row: 2, group: "B" },
+];
+function spiderLegOffset(phase01) {
+  const p = phase01 % 1;
+  if (p < 0.5) { const s = p / 0.5; return { forward: lerp(-1, 1, s), lift: Math.sin(s * Math.PI) }; }
+  const s = (p - 0.5) / 0.5; return { forward: lerp(1, -1, s), lift: 0 };
+}
+function spiderPoseAt(elapsedSec, gaitSpeed = 1.2) {
+  const basePhase = (elapsedSec * gaitSpeed) % 1;
+  return SPIDER_LEGS.map((leg) => {
+    const phase = leg.group === "A" ? basePhase : (basePhase + 0.5) % 1;
+    const off = spiderLegOffset(phase);
+    return { ...leg, phase, forwardOffset: off.forward, lift: off.lift };
+  });
+}
+
+function humanoidPoseAt(elapsedSec, stepFreq = 1.4) {
+  const phase = (elapsedSec * stepFreq) % 1;
+  const leftAngleDeg = Math.sin(phase * Math.PI * 2) * 28;
+  const rightAngleDeg = Math.sin(phase * Math.PI * 2 + Math.PI) * 28;
+  const leftKnee = Math.max(0, Math.sin(phase * Math.PI * 2)) * 22;
+  const rightKnee = Math.max(0, Math.sin(phase * Math.PI * 2 + Math.PI)) * 22;
+  return { leftAngleDeg, rightAngleDeg, leftKnee, rightKnee, phase };
+}
+
+/* ===================== KARTLAR VE SENARYOLAR ===================== */
+const BOARDS = {
+  uno: { name: "Arduino Uno", lang: "arduino",
+    power: "5V", gnd: "GND", d: ["D2","D3","D4","D5","D6","D7"], a: ["A0","A1","A2"],
+    color: "#2f6b5e", icon: (s) => `<rect x="2" y="2" width="${s-4}" height="${s*0.6}" rx="4" fill="#2f6b5e" stroke="#8ff0cc" stroke-width="1.5"/>
+      <rect x="${s*0.15}" y="${s*0.62}" width="${s*0.7}" height="${s*0.14}" fill="#1a4038"/>
+      <circle cx="${s*0.2}" cy="${s*0.32}" r="${s*0.05}" fill="#8ff0cc"/>
+      <circle cx="${s*0.8}" cy="${s*0.32}" r="${s*0.05}" fill="#8ff0cc"/>
+      <text x="${s/2}" y="${s*0.4}" text-anchor="middle" fill="#eafff5" font-size="${s*0.16}" font-weight="bold">UNO</text>` },
+  esp32: { name: "ESP32", lang: "arduino",
+    power: "3V3", gnd: "GND", d: ["G2","G4","G5","G18","G19","G21"], a: ["G34","G35","G32"],
+    color: "#20242b", icon: (s) => `<rect x="2" y="2" width="${s-4}" height="${s*0.6}" rx="4" fill="#20242b" stroke="#3aa0d9" stroke-width="1.5"/>
+      <path d="M ${s*0.3} ${s*0.15} Q ${s*0.5} ${s*0.02} ${s*0.7} ${s*0.15}" stroke="#3aa0d9" stroke-width="1.5" fill="none"/>
+      <path d="M ${s*0.38} ${s*0.22} Q ${s*0.5} ${s*0.12} ${s*0.62} ${s*0.22}" stroke="#3aa0d9" stroke-width="1.2" fill="none"/>
+      <text x="${s/2}" y="${s*0.45}" text-anchor="middle" fill="#cdeaff" font-size="${s*0.14}" font-weight="bold">ESP32</text>` },
+  pico: { name: "Raspberry Pi Pico", lang: "micropython",
+    power: "3V3", gnd: "GND", d: ["GP2","GP3","GP4","GP5","GP6","GP7"], a: ["GP26","GP27","GP28"],
+    color: "#e8e8e0", icon: (s) => `<rect x="2" y="2" width="${s-4}" height="${s*0.6}" rx="4" fill="#e8e8e0" stroke="#d9432f" stroke-width="1.5"/>
+      <circle cx="${s*0.22}" cy="${s*0.18}" r="${s*0.06}" fill="#d9432f"/>
+      <text x="${s/2}" y="${s*0.42}" text-anchor="middle" fill="#333" font-size="${s*0.15}" font-weight="bold">Pico</text>` },
+  picow: { name: "Raspberry Pi Pico W", lang: "micropython",
+    power: "3V3", gnd: "GND", d: ["GP2","GP3","GP4","GP5","GP6","GP7"], a: ["GP26","GP27","GP28"],
+    color: "#e8e8e0", icon: (s) => `<rect x="2" y="2" width="${s-4}" height="${s*0.6}" rx="4" fill="#e8e8e0" stroke="#d9432f" stroke-width="1.5"/>
+      <circle cx="${s*0.22}" cy="${s*0.18}" r="${s*0.06}" fill="#d9432f"/>
+      <path d="M ${s*0.62} ${s*0.15} Q ${s*0.78} ${s*0.03} ${s*0.9} ${s*0.15}" stroke="#3aa0d9" stroke-width="1.3" fill="none"/>
+      <text x="${s*0.45}" y="${s*0.42}" text-anchor="middle" fill="#333" font-size="${s*0.13}" font-weight="bold">Pico W</text>` },
+};
+const BOARD_ORDER = ["uno","esp32","pico","picow"];
+
+const SCENARIO_ORDER = ["obstacle","light","line","arm","spider","humanoid"];
+const SCENARIOS = {
+  obstacle: {
+    name: "🚧 Engelden Kaçan Robot", category: "wheeled",
+    sensorLabel: "Ultrasonik Mesafe Sensörü (HC-SR04)",
+    sensorPins: 2,
+    explain: "Robot ultrasonik sensörle önündeki mesafeyi ölçer — tıpkı yarasaların " +
+      "sesle etrafı 'görmesi' gibi! Bir engel <b>20 cm'den</b> yakınsa robot durur, " +
+      "biraz geri gider ve dönüp yoluna devam eder. Bu, gerçek robot süpürgelerin de " +
+      "kullandığı basit bir yöntemdir.",
+  },
+  light: {
+    name: "💡 Işık Takip Eden Robot", category: "wheeled",
+    sensorLabel: "2 Adet LDR (Işığa Duyarlı Direnç)",
+    sensorPins: 2,
+    explain: "Robotun sol ve sağ tarafında birer ışık sensörü (LDR) vardır. Hangi " +
+      "sensör <b>daha fazla ışık</b> algılarsa, robot o yöne döner — böylece güneşe " +
+      "dönen bir ayçiçeği gibi ışığa doğru ilerler. Bu robotlara <i>fototrop</i> " +
+      "(ışığa yönelen) robot da denir.",
+  },
+  line: {
+    name: "➰ Çizgi İzleyen Robot", category: "wheeled",
+    sensorLabel: "3 Adet Kızılötesi (IR) Çizgi Sensörü",
+    sensorPins: 3,
+    explain: "Zemine bakan 3 kızılötesi sensör, koyu çizgiyi açık renkli zeminden " +
+      "ayırt eder. Orta sensör çizgideyse robot düz gider; sadece sol ya da sadece " +
+      "sağ sensör çizgideyse, teker hızlarını değiştirerek çizgiye geri döner. " +
+      "Fabrika robotları ve otomatik forkliftler de benzer mantıkla çalışır!",
+  },
+  arm: {
+    name: "🦾 Robot Kol", category: "servo",
+    sensorLabel: "3 Adet Servo Motor (Omuz, Dirsek, Tutucu)",
+    explain: "Robot kol, <b>servo motor</b> denen özel motorlarla çalışır — her servoya " +
+      "\"şu açıya dön\" denir ve o açıya gider. Bu kol sırasıyla: nesnenin üzerine " +
+      "iner, tutucusunu kapatır, kaldırır, yeni bir yere taşır ve bırakır — tıpkı " +
+      "fabrikalardaki paketleme robotları gibi!",
+  },
+  spider: {
+    name: "🕷️ Örümcek Robot", category: "servo",
+    sensorLabel: "6 Servo Motor (Bacaklar) + Servo Sürücü Kartı",
+    explain: "6 bacaklı bu robot, bacaklarını <b>üçlü gruplar halinde</b> hareket " +
+      "ettirir (buna <i>tripod yürüyüş</i> denir): bir üçgen bacak grubu havada öne " +
+      "sallanırken, diğer üçgen grup yerde durup gövdeyi ileri iter. Gruplar sürekli " +
+      "yer değiştirir, böylece robot hep dengede kalarak yürür. Çok sayıda servo " +
+      "olduğu için, mikrodenetleyicinin pinleri yetmez — araya bir <b>servo sürücü " +
+      "kartı (PCA9685)</b> eklenir.",
+  },
+  humanoid: {
+    name: "🚶 İnsan Gibi Yürüyen Robot", category: "servo",
+    sensorLabel: "2 Servo Motor (Sol ve Sağ Kalça)",
+    explain: "İki bacaklı bu robotta her kalçaya bir servo bağlıdır. Servolar " +
+      "sırayla ileri-geri açılıp kapanarak bacakları öne ve arkaya sallar — sol " +
+      "bacak öndeyken sağ bacak geride olur, sonra tam tersi. Bu <b>zıt fazlı</b> " +
+      "hareket, gerçek insansı robotların (humanoid) yürüyüşünün basitleştirilmiş " +
+      "halidir; gerçeklerinde denge için çok daha fazla sensör kullanılır.",
+  },
+};
+
+/* ===================== KOD ÜRETİCİ ===================== */
+function buildCode(boardKey, scenarioKey) {
+  const b = BOARDS[boardKey];
+  if (b.lang === "arduino") return buildArduinoCode(b, scenarioKey);
+  return buildMicroPythonCode(b, scenarioKey);
+}
+
+function buildArduinoCode(b, scenario) {
+  const [d0,d1,d2,d3,d4,d5] = b.d;
+  const [a0,a1] = b.a;
+  if (scenario === "obstacle") {
+    return `// Engelden Kaçan Robot — ${b.name}
+#define TRIG ${d0}
+#define ECHO ${d1}
+#define IN1 ${d2}
+#define IN2 ${d3}
+#define IN3 ${d4}
+#define IN4 ${d5}
+
+long mesafeOlc() {
+  digitalWrite(TRIG, LOW); delayMicroseconds(2);
+  digitalWrite(TRIG, HIGH); delayMicroseconds(10);
+  digitalWrite(TRIG, LOW);
+  long sure = pulseIn(ECHO, HIGH);
+  return sure / 58;  // santimetre
+}
+void ileriGit() { digitalWrite(IN1,HIGH); digitalWrite(IN2,LOW); digitalWrite(IN3,HIGH); digitalWrite(IN4,LOW); }
+void dur()      { digitalWrite(IN1,LOW);  digitalWrite(IN2,LOW); digitalWrite(IN3,LOW);  digitalWrite(IN4,LOW); }
+void sagaDon()  { digitalWrite(IN1,HIGH); digitalWrite(IN2,LOW); digitalWrite(IN3,LOW);  digitalWrite(IN4,HIGH); }
+
+void setup() {
+  pinMode(TRIG, OUTPUT); pinMode(ECHO, INPUT);
+  pinMode(IN1, OUTPUT); pinMode(IN2, OUTPUT); pinMode(IN3, OUTPUT); pinMode(IN4, OUTPUT);
+}
+void loop() {
+  long mesafe = mesafeOlc();
+  if (mesafe < 20) {
+    dur(); delay(200);
+    sagaDon(); delay(400);
+  } else {
+    ileriGit();
+  }
+}`;
+  }
+  if (scenario === "light") {
+    return `// Işık Takip Eden Robot — ${b.name}
+#define LDR_SOL ${a0}
+#define LDR_SAG ${a1}
+#define IN1 ${d0}
+#define IN2 ${d1}
+#define IN3 ${d2}
+#define IN4 ${d3}
+
+void ileriGit() { digitalWrite(IN1,HIGH); digitalWrite(IN2,LOW); digitalWrite(IN3,HIGH); digitalWrite(IN4,LOW); }
+void solaDon()  { digitalWrite(IN1,LOW);  digitalWrite(IN2,HIGH);digitalWrite(IN3,HIGH); digitalWrite(IN4,LOW); }
+void sagaDon()  { digitalWrite(IN1,HIGH); digitalWrite(IN2,LOW); digitalWrite(IN3,LOW);  digitalWrite(IN4,HIGH); }
+
+void setup() {
+  pinMode(IN1,OUTPUT); pinMode(IN2,OUTPUT); pinMode(IN3,OUTPUT); pinMode(IN4,OUTPUT);
+}
+void loop() {
+  int sol = analogRead(LDR_SOL);
+  int sag = analogRead(LDR_SAG);
+  if (sol > sag + 50)      solaDon();
+  else if (sag > sol + 50) sagaDon();
+  else                     ileriGit();
+}`;
+  }
+  if (scenario === "arm") {
+    return `// Robot Kol — ${b.name}
+#include <Servo.h>
+Servo omuz, dirsek, tutucu;
+
+void setup() {
+  omuz.attach(${d0});
+  dirsek.attach(${d1});
+  tutucu.attach(${d2});
+}
+
+void kolaGit(int omuzAci, int dirsekAci, int tutucuAci, int bekleMs) {
+  omuz.write(omuzAci);
+  dirsek.write(dirsekAci);
+  tutucu.write(tutucuAci);
+  delay(bekleMs);
+}
+
+void loop() {
+  kolaGit(30, 130, 90, 800);   // eve/bekleme pozisyonu (tutucu açık)
+  kolaGit(80, 175, 90, 1000);  // nesnenin üzerine in
+  kolaGit(80, 175, 20, 500);   // tutucuyu kapat (kavra)
+  kolaGit(30, 130, 20, 800);   // kaldır
+  kolaGit(150, 120, 20, 1200); // yeni konuma taşı
+  kolaGit(150, 120, 90, 500);  // bırak
+}`;
+  }
+  if (scenario === "spider") {
+    return `// Örümcek Robot (6 Bacak) — ${b.name}
+// Not: 6 servo, boarddeki pinlerden fazla PWM gerektirebilir — bu yüzden
+// bir "PCA9685" servo sürücü kartı I2C ile (SDA/SCL) bağlanır.
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+Adafruit_PWMServoDriver servoKart = Adafruit_PWMServoDriver();
+
+// Bacak numaraları: 0=ön-sol 1=orta-sol 2=arka-sol 3=ön-sağ 4=orta-sağ 5=arka-sağ
+int grupA[] = {0, 2, 4};  // ön-sol, arka-sol, orta-sağ
+int grupB[] = {1, 3, 5};  // orta-sol, ön-sağ, arka-sağ
+
+void setup() {
+  servoKart.begin();
+  servoKart.setPWMFreq(50);
+}
+
+void bacaklariHareketEttir(int* grup, bool ileriMi) {
+  for (int i = 0; i < 3; i++) {
+    int aci = ileriMi ? 120 : 60;  // basitleştirilmiş: ileri/geri sallanma
+    servoKart.setPWM(grup[i], 0, aci);
+  }
+}
+
+void loop() {
+  bacaklariHareketEttir(grupA, true);   // A grubu ileri sallanır (havada)
+  bacaklariHareketEttir(grupB, false);  // B grubu geri iter (yerde, gövdeyi öne iter)
+  delay(300);
+  bacaklariHareketEttir(grupA, false);
+  bacaklariHareketEttir(grupB, true);
+  delay(300);
+}`;
+  }
+  if (scenario === "humanoid") {
+    return `// İnsan Gibi Yürüyen Robot — ${b.name}
+#include <Servo.h>
+Servo solKalca, sagKalca;
+
+void setup() {
+  solKalca.attach(${d0});
+  sagKalca.attach(${d1});
+}
+
+void loop() {
+  // Sol bacak öne, sağ bacak arkaya (zıt fazlı yürüyüş)
+  solKalca.write(110);
+  sagKalca.write(70);
+  delay(400);
+  // Sağ bacak öne, sol bacak arkaya
+  solKalca.write(70);
+  sagKalca.write(110);
+  delay(400);
+}`;
+  }
+  return `// Çizgi İzleyen Robot — ${b.name}
+#define IR_SOL  ${d0}
+#define IR_ORTA ${d1}
+#define IR_SAG  ${d2}
+#define IN1 ${d3}
+#define IN2 ${d4}
+#define IN3 ${d5}
+#define IN4 ${a0}
+
+void ileriGit() { digitalWrite(IN1,HIGH); digitalWrite(IN2,LOW); digitalWrite(IN3,HIGH); digitalWrite(IN4,LOW); }
+void solaDon()  { digitalWrite(IN1,LOW);  digitalWrite(IN2,LOW); digitalWrite(IN3,HIGH); digitalWrite(IN4,LOW); }
+void sagaDon()  { digitalWrite(IN1,HIGH); digitalWrite(IN2,LOW); digitalWrite(IN3,LOW);  digitalWrite(IN4,LOW); }
+
+void setup() {
+  pinMode(IR_SOL,INPUT); pinMode(IR_ORTA,INPUT); pinMode(IR_SAG,INPUT);
+  pinMode(IN1,OUTPUT); pinMode(IN2,OUTPUT); pinMode(IN3,OUTPUT); pinMode(IN4,OUTPUT);
+}
+void loop() {
+  bool sol = digitalRead(IR_SOL);
+  bool orta = digitalRead(IR_ORTA);
+  bool sag = digitalRead(IR_SAG);
+  if (orta)             ileriGit();
+  else if (sol && !sag) solaDon();
+  else if (sag && !sol) sagaDon();
+}`;
+}
+
+function buildMicroPythonCode(b, scenario) {
+  const [d0,d1,d2,d3,d4,d5] = b.d;
+  const [a0,a1] = b.a;
+  if (scenario === "obstacle") {
+    return `# Engelden Kaçan Robot — ${b.name}
+from machine import Pin
+import time
+
+trig = Pin(${d0.replace("GP","")}, Pin.OUT)
+echo = Pin(${d1.replace("GP","")}, Pin.IN)
+in1 = Pin(${d2.replace("GP","")}, Pin.OUT); in2 = Pin(${d3.replace("GP","")}, Pin.OUT)
+in3 = Pin(${d4.replace("GP","")}, Pin.OUT); in4 = Pin(${d5.replace("GP","")}, Pin.OUT)
+
+def mesafe_olc():
+    trig.low(); time.sleep_us(2)
+    trig.high(); time.sleep_us(10)
+    trig.low()
+    while echo.value() == 0: pass
+    baslangic = time.ticks_us()
+    while echo.value() == 1: pass
+    return time.ticks_diff(time.ticks_us(), baslangic) / 58  # santimetre
+
+def ileri_git():
+    in1.high(); in2.low(); in3.high(); in4.low()
+def dur():
+    in1.low(); in2.low(); in3.low(); in4.low()
+def saga_don():
+    in1.high(); in2.low(); in3.low(); in4.high()
+
+while True:
+    mesafe = mesafe_olc()
+    if mesafe < 20:
+        dur(); time.sleep(0.2)
+        saga_don(); time.sleep(0.4)
+    else:
+        ileri_git()`;
+  }
+  if (scenario === "light") {
+    return `# Işık Takip Eden Robot — ${b.name}
+from machine import Pin, ADC
+import time
+
+ldr_sol = ADC(Pin(${a0.replace("GP","")}))
+ldr_sag = ADC(Pin(${a1.replace("GP","")}))
+in1 = Pin(${d0.replace("GP","")}, Pin.OUT); in2 = Pin(${d1.replace("GP","")}, Pin.OUT)
+in3 = Pin(${d2.replace("GP","")}, Pin.OUT); in4 = Pin(${d3.replace("GP","")}, Pin.OUT)
+
+def ileri_git():
+    in1.high(); in2.low(); in3.high(); in4.low()
+def sola_don():
+    in1.low(); in2.high(); in3.high(); in4.low()
+def saga_don():
+    in1.high(); in2.low(); in3.low(); in4.high()
+
+while True:
+    sol = ldr_sol.read_u16()
+    sag = ldr_sag.read_u16()
+    if sol > sag + 800:
+        sola_don()
+    elif sag > sol + 800:
+        saga_don()
+    else:
+        ileri_git()
+    time.sleep(0.05)`;
+  }
+  if (scenario === "arm") {
+    return `# Robot Kol — ${b.name}
+from machine import Pin, PWM
+import time
+
+def servo_ac(pin_no):
+    return PWM(Pin(pin_no), freq=50)
+
+def servo_yaz(servo, aci):
+    # 0-180 dereceyi PWM darbe genişliğine çevir (basitleştirilmiş)
+    us = 500 + (aci / 180) * 2000
+    servo.duty_ns(int(us * 1000))
+
+omuz = servo_ac(${d0.replace("GP","")})
+dirsek = servo_ac(${d1.replace("GP","")})
+tutucu = servo_ac(${d2.replace("GP","")})
+
+def kola_git(omuz_aci, dirsek_aci, tutucu_aci, bekle_sn):
+    servo_yaz(omuz, omuz_aci)
+    servo_yaz(dirsek, dirsek_aci)
+    servo_yaz(tutucu, tutucu_aci)
+    time.sleep(bekle_sn)
+
+while True:
+    kola_git(30, 130, 90, 0.8)    # bekleme pozisyonu
+    kola_git(80, 175, 90, 1.0)    # nesnenin üzerine in
+    kola_git(80, 175, 20, 0.5)    # kavra
+    kola_git(30, 130, 20, 0.8)    # kaldır
+    kola_git(150, 120, 20, 1.2)   # taşı
+    kola_git(150, 120, 90, 0.5)   # bırak`;
+  }
+  if (scenario === "spider") {
+    return `# Örümcek Robot (6 Bacak) — ${b.name}
+# 6 servo icin PCA9685 servo surucu kartina I2C (SDA/SCL) ile baglanilir.
+from machine import Pin, I2C
+import time
+# from pca9685 import PCA9685  (topluluk kütüphanesi)
+
+i2c = I2C(0, scl=Pin(${a1.replace("GP","")}), sda=Pin(${a0.replace("GP","")}))
+# servoKart = PCA9685(i2c)
+
+grup_a = [0, 2, 4]  # on-sol, arka-sol, orta-sag
+grup_b = [1, 3, 5]  # orta-sol, on-sag, arka-sag
+
+def bacaklari_hareket_ettir(grup, ileri_mi):
+    aci = 120 if ileri_mi else 60
+    for bacak in grup:
+        pass  # servoKart.set_pwm(bacak, 0, aci)
+
+while True:
+    bacaklari_hareket_ettir(grup_a, True)
+    bacaklari_hareket_ettir(grup_b, False)
+    time.sleep(0.3)
+    bacaklari_hareket_ettir(grup_a, False)
+    bacaklari_hareket_ettir(grup_b, True)
+    time.sleep(0.3)`;
+  }
+  if (scenario === "humanoid") {
+    return `# İnsan Gibi Yürüyen Robot — ${b.name}
+from machine import Pin, PWM
+import time
+
+def servo_ac(pin_no):
+    return PWM(Pin(pin_no), freq=50)
+
+def servo_yaz(servo, aci):
+    us = 500 + (aci / 180) * 2000
+    servo.duty_ns(int(us * 1000))
+
+sol_kalca = servo_ac(${d0.replace("GP","")})
+sag_kalca = servo_ac(${d1.replace("GP","")})
+
+while True:
+    servo_yaz(sol_kalca, 110); servo_yaz(sag_kalca, 70)
+    time.sleep(0.4)
+    servo_yaz(sol_kalca, 70); servo_yaz(sag_kalca, 110)
+    time.sleep(0.4)`;
+  }
+  return `# Çizgi İzleyen Robot — ${b.name}
+from machine import Pin
+import time
+
+ir_sol  = Pin(${d0.replace("GP","")}, Pin.IN)
+ir_orta = Pin(${d1.replace("GP","")}, Pin.IN)
+ir_sag  = Pin(${d2.replace("GP","")}, Pin.IN)
+in1 = Pin(${d3.replace("GP","")}, Pin.OUT); in2 = Pin(${d4.replace("GP","")}, Pin.OUT)
+in3 = Pin(${d5.replace("GP","")}, Pin.OUT); in4 = Pin(${a0.replace("GP","")}, Pin.OUT)
+
+def ileri_git():
+    in1.high(); in2.low(); in3.high(); in4.low()
+def sola_don():
+    in1.low(); in2.low(); in3.high(); in4.low()
+def saga_don():
+    in1.high(); in2.low(); in3.low(); in4.low()
+
+while True:
+    sol, orta, sag = ir_sol.value(), ir_orta.value(), ir_sag.value()
+    if orta:
+        ileri_git()
+    elif sol and not sag:
+        sola_don()
+    elif sag and not sol:
+        saga_don()
+    time.sleep(0.02)`;
+}
+
+/* ===================== DEVRE ŞEMASI (SVG) ===================== */
+function buildCircuitSvg(boardKey, scenarioKey) {
+  const sc = SCENARIOS[scenarioKey];
+  if (sc.category === "servo") return buildServoCircuitSvg(boardKey, scenarioKey);
+  const b = BOARDS[boardKey];
+  const pins = [b.power, b.gnd, ...b.d.slice(0, sc.sensorPins), ...b.d.slice(sc.sensorPins, sc.sensorPins+4 <= 6 ? sc.sensorPins+4 : 6), b.a[0]].slice(0, 8);
+  let svg = "";
+  const boardX = 20, boardY = 90, boardW = 130, boardH = 60;
+  svg += `<rect x="${boardX}" y="${boardY}" width="${boardW}" height="${boardH}" rx="6" fill="var(--board,#234)" stroke="#456" stroke-width="1.5"/>`;
+  svg += `<text x="${boardX+boardW/2}" y="${boardY+boardH/2+4}" text-anchor="middle" fill="#dfe" font-size="11" font-weight="bold">${b.name}</text>`;
+
+  const usedD = b.d.slice(0, sc.sensorPins);
+  const usedMotor = b.d.slice(sc.sensorPins, sc.sensorPins+4);
+  const pinList = [
+    {label: b.power, color: "var(--wire-power)"},
+    {label: b.gnd, color: "var(--wire-gnd)"},
+    ...usedD.map(p => ({label:p, color:"var(--wire-signal)"})),
+  ];
+  const pinY0 = boardY + boardH + 14;
+  pinList.forEach((p, i) => {
+    const px = boardX + 14 + i*20;
+    svg += `<line x1="${px}" y1="${boardY+boardH}" x2="${px}" y2="${pinY0}" stroke="${p.color}" stroke-width="2.5"/>`;
+    svg += `<circle cx="${px}" cy="${boardY+boardH}" r="3" fill="${p.color}"/>`;
+    svg += `<text x="${px}" y="${pinY0+12}" text-anchor="middle" fill="#bcd" font-size="8">${p.label}</text>`;
+  });
+
+  // Sensör kutusu
+  const sensX = 20, sensY = 15, sensW = 150, sensH = 40;
+  svg += `<rect x="${sensX}" y="${sensY}" width="${sensW}" height="${sensH}" rx="6" fill="#173" stroke="#4a7" stroke-width="1.5"/>`;
+  svg += `<text x="${sensX+sensW/2}" y="${sensY+18}" text-anchor="middle" fill="#dfe" font-size="9" font-weight="bold">${sc.sensorLabel}</text>`;
+  svg += `<text x="${sensX+sensW/2}" y="${sensY+31}" text-anchor="middle" fill="#9c9" font-size="8">Pinler: ${usedD.join(", ")}</text>`;
+  pinList.slice(2).forEach((p, i) => {
+    const px = boardX + 14 + (i+2)*20;
+    svg += `<line x1="${px}" y1="${boardY+boardH}" x2="${sensX+20+i*20}" y2="${sensY+sensH}" stroke="${p.color}" stroke-width="1.5" stroke-dasharray="3 2"/>`;
+  });
+
+  // Motor sürücü + motorlar
+  const drvX = 220, drvY = 90, drvW = 90, drvH = 60;
+  svg += `<rect x="${drvX}" y="${drvY}" width="${drvW}" height="${drvH}" rx="6" fill="#412" stroke="#a74" stroke-width="1.5"/>`;
+  svg += `<text x="${drvX+drvW/2}" y="${drvY+22}" text-anchor="middle" fill="#fda" font-size="9" font-weight="bold">Motor Sürücü</text>`;
+  svg += `<text x="${drvX+drvW/2}" y="${drvY+34}" text-anchor="middle" fill="#eb9" font-size="8">(L298N)</text>`;
+  svg += `<text x="${drvX+drvW/2}" y="${drvY+46}" text-anchor="middle" fill="#9c9" font-size="7.5">${usedMotor.join(", ")}</text>`;
+  usedMotor.forEach((p, i) => {
+    const px = boardX + 14 + (i+2+usedD.length-usedD.length)*20; // basitleştirilmiş
+  });
+  usedMotor.forEach((p, i) => {
+    const idx = 2 + usedD.length + i;
+    const px = boardX + 14 + idx*20;
+    if (px < boardX + boardW) {
+      svg += `<line x1="${px}" y1="${boardY+boardH}" x2="${drvX}" y2="${drvY+15+i*10}" stroke="var(--wire-signal)" stroke-width="1.5" stroke-dasharray="3 2"/>`;
+    }
+  });
+
+  svg += `<circle cx="${drvX+drvW+35}" cy="${drvY+15}" r="14" fill="#333" stroke="#888" stroke-width="2"/>`;
+  svg += `<circle cx="${drvX+drvW+35}" cy="${drvY+50}" r="14" fill="#333" stroke="#888" stroke-width="2"/>`;
+  svg += `<text x="${drvX+drvW+35}" y="${drvY+19}" text-anchor="middle" fill="#ccc" font-size="8">Sol M.</text>`;
+  svg += `<text x="${drvX+drvW+35}" y="${drvY+54}" text-anchor="middle" fill="#ccc" font-size="8">Sağ M.</text>`;
+  svg += `<line x1="${drvX+drvW}" y1="${drvY+15}" x2="${drvX+drvW+21}" y2="${drvY+15}" stroke="#999" stroke-width="2"/>`;
+  svg += `<line x1="${drvX+drvW}" y1="${drvY+50}" x2="${drvX+drvW+21}" y2="${drvY+50}" stroke="#999" stroke-width="2"/>`;
+
+  return svg;
+}
+
+function buildServoCircuitSvg(boardKey, scenarioKey) {
+  const b = BOARDS[boardKey];
+  const boardX = 20, boardY = 100, boardW = 120, boardH = 55;
+  let svg = `<rect x="${boardX}" y="${boardY}" width="${boardW}" height="${boardH}" rx="6" fill="#234" stroke="#456" stroke-width="1.5"/>`;
+  svg += `<text x="${boardX+boardW/2}" y="${boardY+boardH/2+4}" text-anchor="middle" fill="#dfe" font-size="10" font-weight="bold">${b.name}</text>`;
+  const pinY0 = boardY + boardH + 14;
+
+  if (scenarioKey === "arm") {
+    const labels = [b.gnd, b.d[0], b.d[1], b.d[2]];
+    const names = ["GND", "Omuz", "Dirsek", "Tutucu"];
+    labels.forEach((lab, i) => {
+      const px = boardX + 16 + i*28;
+      const col = i===0 ? "var(--wire-gnd)" : "var(--wire-signal)";
+      svg += `<line x1="${px}" y1="${boardY+boardH}" x2="${px}" y2="${pinY0}" stroke="${col}" stroke-width="2.5"/>`;
+      svg += `<circle cx="${px}" cy="${boardY+boardH}" r="3" fill="${col}"/>`;
+      svg += `<text x="${px}" y="${pinY0+11}" text-anchor="middle" fill="#bcd" font-size="7.5">${lab}</text>`;
+      const sy = 20 + i*38;
+      svg += `<rect x="200" y="${sy}" width="120" height="26" rx="5" fill="#412" stroke="#a74" stroke-width="1.3"/>`;
+      svg += `<text x="260" y="${sy+17}" text-anchor="middle" fill="#fda" font-size="9">Servo — ${names[i]}</text>`;
+      svg += `<line x1="${px}" y1="${boardY+boardH}" x2="200" y2="${sy+13}" stroke="${col}" stroke-width="1.3" stroke-dasharray="3 2"/>`;
+    });
+  } else if (scenarioKey === "humanoid") {
+    const labels = [b.gnd, b.d[0], b.d[1]];
+    const names = ["GND", "Sol Kalça", "Sağ Kalça"];
+    labels.forEach((lab, i) => {
+      const px = boardX + 20 + i*32;
+      const col = i===0 ? "var(--wire-gnd)" : "var(--wire-signal)";
+      svg += `<line x1="${px}" y1="${boardY+boardH}" x2="${px}" y2="${pinY0}" stroke="${col}" stroke-width="2.5"/>`;
+      svg += `<circle cx="${px}" cy="${boardY+boardH}" r="3" fill="${col}"/>`;
+      svg += `<text x="${px}" y="${pinY0+11}" text-anchor="middle" fill="#bcd" font-size="7.5">${lab}</text>`;
+      const sy = 30 + i*45;
+      svg += `<rect x="200" y="${sy}" width="130" height="28" rx="5" fill="#412" stroke="#a74" stroke-width="1.3"/>`;
+      svg += `<text x="265" y="${sy+18}" text-anchor="middle" fill="#fda" font-size="9">Servo — ${names[i]}</text>`;
+      svg += `<line x1="${px}" y1="${boardY+boardH}" x2="200" y2="${sy+14}" stroke="${col}" stroke-width="1.3" stroke-dasharray="3 2"/>`;
+    });
+  } else {
+    // spider: I2C (SDA/SCL) ile servo sürücü kartına, oradan 6 servoya
+    const i2cPins = [b.gnd, b.a[0], b.a[1]];
+    const i2cNames = ["GND", "SDA", "SCL"];
+    i2cPins.forEach((lab, i) => {
+      const px = boardX + 20 + i*32;
+      const col = i===0 ? "var(--wire-gnd)" : "var(--wire-signal)";
+      svg += `<line x1="${px}" y1="${boardY+boardH}" x2="${px}" y2="${pinY0}" stroke="${col}" stroke-width="2.5"/>`;
+      svg += `<circle cx="${px}" cy="${boardY+boardH}" r="3" fill="${col}"/>`;
+      svg += `<text x="${px}" y="${pinY0+11}" text-anchor="middle" fill="#bcd" font-size="7.5">${lab}</text>`;
+      svg += `<line x1="${px}" y1="${boardY+boardH}" x2="185" y2="${boardY+18+i*10}" stroke="${col}" stroke-width="1.3" stroke-dasharray="3 2"/>`;
+    });
+    svg += `<rect x="185" y="${boardY}" width="95" height="55" rx="6" fill="#173" stroke="#4a7" stroke-width="1.5"/>`;
+    svg += `<text x="232" y="${boardY+20}" text-anchor="middle" fill="#dfe" font-size="8.5" font-weight="bold">Servo Sürücü</text>`;
+    svg += `<text x="232" y="${boardY+32}" text-anchor="middle" fill="#9c9" font-size="8">(PCA9685)</text>`;
+    svg += `<text x="232" y="${boardY+45}" text-anchor="middle" fill="#9c9" font-size="7">I2C: SDA/SCL</text>`;
+    const legNames = ["Ön-Sol","Orta-Sol","Arka-Sol","Ön-Sağ","Orta-Sağ","Arka-Sağ"];
+    legNames.forEach((nm, i) => {
+      const col = i % 2 === 0 ? 0 : 95;
+      const row = Math.floor(i/2);
+      const bx = 290 + col, by = 12 + row*30;
+      svg += `<rect x="${bx}" y="${by}" width="85" height="22" rx="5" fill="#412" stroke="#a74" stroke-width="1.2"/>`;
+      svg += `<text x="${bx+42}" y="${by+15}" text-anchor="middle" fill="#fda" font-size="7.5">${nm}</text>`;
+      svg += `<line x1="280" y1="${boardY+27}" x2="${bx}" y2="${by+11}" stroke="var(--wire-signal)" stroke-width="1.1" stroke-dasharray="2 2"/>`;
+    });
+  }
+  return svg;
+}
+
+/* ===================== BLOK TABANLI KOD (Scratch/Blockly tarzı) ===================== */
+function blk(cls, text) { return `<div class="blk ${cls}">${text}</div>`; }
+function nest(inner) { return `<div class="blk-nest">${inner}</div>`; }
+
+function buildBlockCode(scenario) {
+  if (scenario === "obstacle") {
+    return blk("blk-loop", "🔁 SONSUZA KADAR TEKRARLA") + nest(
+      blk("blk-sensor", "📡 mesafe = ÖNDEKİ MESAFEYİ ÖLÇ") +
+      blk("blk-if", "❓ EĞER mesafe &lt; 20 cm İSE") + nest(
+        blk("blk-action", "⏹ DUR") +
+        blk("blk-action", "⬇️ GERİ GİT") +
+        blk("blk-action", "↪️ DÖN")
+      ) +
+      blk("blk-if", "❓ DEĞİLSE") + nest(
+        blk("blk-action", "⬆️ İLERİ GİT")
+      )
+    );
+  }
+  if (scenario === "light") {
+    return blk("blk-loop", "🔁 SONSUZA KADAR TEKRARLA") + nest(
+      blk("blk-sensor", "💡 sol = SOL IŞIK SENSÖRÜNÜ OKU") +
+      blk("blk-sensor", "💡 sağ = SAĞ IŞIK SENSÖRÜNÜ OKU") +
+      blk("blk-if", "❓ EĞER sol &gt; sağ İSE") + nest(blk("blk-action", "↩️ SOLA DÖN")) +
+      blk("blk-if", "❓ DEĞİLSE EĞER sağ &gt; sol İSE") + nest(blk("blk-action", "↪️ SAĞA DÖN")) +
+      blk("blk-if", "❓ DEĞİLSE") + nest(blk("blk-action", "⬆️ İLERİ GİT"))
+    );
+  }
+  if (scenario === "line") {
+    return blk("blk-loop", "🔁 SONSUZA KADAR TEKRARLA") + nest(
+      blk("blk-sensor", "⚫ orta, sol, sağ = ÇİZGİ SENSÖRLERİNİ OKU") +
+      blk("blk-if", "❓ EĞER orta ÇİZGİDE İSE") + nest(blk("blk-action", "⬆️ İLERİ GİT")) +
+      blk("blk-if", "❓ DEĞİLSE EĞER sol ÇİZGİDE İSE") + nest(blk("blk-action", "↩️ SOLA DÖN")) +
+      blk("blk-if", "❓ DEĞİLSE EĞER sağ ÇİZGİDE İSE") + nest(blk("blk-action", "↪️ SAĞA DÖN"))
+    );
+  }
+  if (scenario === "arm") {
+    return blk("blk-loop", "🔁 SONSUZA KADAR TEKRARLA") + nest(
+      blk("blk-action", "🦾 KOLU BEKLEME POZİSYONUNA GÖTÜR") +
+      blk("blk-action", "⏱ 0.8 SANİYE BEKLE") +
+      blk("blk-action", "🦾 KOLU NESNENİN ÜZERİNE İNDİR") +
+      blk("blk-action", "⏱ 1 SANİYE BEKLE") +
+      blk("blk-action", "🤏 TUTUCUYU KAPAT") +
+      blk("blk-action", "⏱ 0.5 SANİYE BEKLE") +
+      blk("blk-action", "🦾 KOLU KALDIR") +
+      blk("blk-action", "⏱ 0.8 SANİYE BEKLE") +
+      blk("blk-action", "🦾 KOLU YENİ KONUMA TAŞI") +
+      blk("blk-action", "⏱ 1.2 SANİYE BEKLE") +
+      blk("blk-action", "🤏 TUTUCUYU AÇ") +
+      blk("blk-action", "⏱ 0.5 SANİYE BEKLE")
+    );
+  }
+  if (scenario === "spider") {
+    return blk("blk-loop", "🔁 SONSUZA KADAR TEKRARLA") + nest(
+      blk("blk-action", "🕷️ A GRUBU BACAKLARI HAVADA İLERİ SALLA") +
+      blk("blk-action", "🕷️ B GRUBU BACAKLARI YERDE GERİ İT") +
+      blk("blk-action", "⏱ 0.3 SANİYE BEKLE") +
+      blk("blk-action", "🕷️ A GRUBU BACAKLARI YERDE GERİ İT") +
+      blk("blk-action", "🕷️ B GRUBU BACAKLARI HAVADA İLERİ SALLA") +
+      blk("blk-action", "⏱ 0.3 SANİYE BEKLE")
+    );
+  }
+  // humanoid
+  return blk("blk-loop", "🔁 SONSUZA KADAR TEKRARLA") + nest(
+    blk("blk-action", "🚶 SOL BACAK İLERİ, SAĞ BACAK GERİ") +
+    blk("blk-action", "⏱ 0.4 SANİYE BEKLE") +
+    blk("blk-action", "🚶 SOL BACAK GERİ, SAĞ BACAK İLERİ") +
+    blk("blk-action", "⏱ 0.4 SANİYE BEKLE")
+  );
+}
+
+/* ===================== ORTAM ÜRETİMİ ===================== */
+const W = 700, H = 460;
+function makeObstacles() {
+  return [
+    { x: 260, y: 150, r: 22 }, { x: 460, y: 280, r: 26 },
+    { x: 380, y: 90, r: 16 }, { x: 560, y: 130, r: 20 },
+  ];
+}
+const LINE_PATHS = {
+  s: () => { const p=[]; for (let t=0;t<=1;t+=0.015){ p.push([40+t*620, 230+Math.sin(t*Math.PI*2)*130]); } return p; },
+  daire: () => { const p=[]; for (let a=0;a<=Math.PI*2+0.01;a+=0.02){ p.push([350+Math.cos(a)*220, 230+Math.sin(a)*160]); } return p; },
+  zigzag: () => { const pts=[[40,380],[200,100],[360,380],[520,100],[660,300]]; const p=[]; for (let i=0;i<pts.length-1;i++){ for(let t=0;t<=1;t+=0.05){ p.push([pts[i][0]+(pts[i+1][0]-pts[i][0])*t, pts[i][1]+(pts[i+1][1]-pts[i][1])*t]); } } return p; },
+};
+
+let state = {
+  board: "uno", scenario: "obstacle", running: false,
+  robot: { x: 60, y: 60, heading: 0.3 },
+  obstacles: makeObstacles(),
+  light: { x: 560, y: 360 },
+  linePathKey: "s",
+  linePath: LINE_PATHS.s(),
+  avoidState: { turning: 0, turnTimer: 0 },
+  lineState: { lastTurn: 1 },
+  animTime: 0,
+  walkerX: 60,
+  codeView: "text",
+};
+
+function resetRobot() {
+  if (state.scenario === "line") {
+    const p = state.linePath[0];
+    state.robot = { x: p[0], y: p[1], heading: Math.atan2(state.linePath[1][1]-p[1], state.linePath[1][0]-p[0]) };
+  } else {
+    state.robot = { x: 60, y: 60, heading: 0.3 };
+  }
+  state.avoidState = { turning: 0, turnTimer: 0 };
+  state.lineState = { lastTurn: 1 };
+  state.animTime = 0;
+  state.walkerX = 70;
+}
+
+/* ===================== ÇİZİM ===================== */
+const canvas = document.getElementById("cv");
+const ctx = canvas.getContext("2d");
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#0c1f16";
+  ctx.fillRect(0, 0, W, H);
+
+  if (state.scenario === "obstacle") {
+    for (const o of state.obstacles) {
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI*2);
+      ctx.fillStyle = "#5a3a2a"; ctx.fill();
+      ctx.strokeStyle = "#a86a45"; ctx.lineWidth = 2; ctx.stroke();
+    }
+  } else if (state.scenario === "light") {
+    const grad = ctx.createRadialGradient(state.light.x, state.light.y, 2, state.light.x, state.light.y, 140);
+    grad.addColorStop(0, "rgba(255,230,120,0.55)");
+    grad.addColorStop(1, "rgba(255,230,120,0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(state.light.x, state.light.y, 140, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(state.light.x, state.light.y, 10, 0, Math.PI*2);
+    ctx.fillStyle = "#ffe680"; ctx.fill();
+    ctx.strokeStyle = "#fff2b0"; ctx.lineWidth = 2; ctx.stroke();
+  } else if (state.scenario === "line") {
+    ctx.beginPath();
+    state.linePath.forEach(([x,y], i) => i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+    ctx.strokeStyle = "#222"; ctx.lineWidth = 8; ctx.lineCap = "round"; ctx.stroke();
+    ctx.strokeStyle = "#444"; ctx.lineWidth = 2; ctx.stroke();
+  } else if (state.scenario === "arm") {
+    drawArmScene();
+    return;
+  } else if (state.scenario === "spider") {
+    drawSpiderScene();
+    return;
+  } else if (state.scenario === "humanoid") {
+    drawHumanoidScene();
+    return;
+  }
+
+  // Robot çizimi (tekerlekli robotlar)
+  const r = state.robot;
+  ctx.save();
+  ctx.translate(r.x, r.y);
+  ctx.rotate(r.heading);
+  drawWheeledRobotIcon();
+  ctx.restore();
+
+  updateSensorIndicator();
+}
+
+function drawWheeledRobotIcon() {
+  // Tekerlekler (gövdenin altında kalacak şekilde önce çizilir)
+  ctx.fillStyle = "#111a16";
+  [[-3, -11], [-3, 7], [3.5, -11], [3.5, 7]].forEach(([tx, ty]) => {
+    ctx.beginPath();
+    ctx.moveTo(tx-4, ty); ctx.lineTo(tx+5, ty);
+    ctx.arc(tx+5, ty+2, 2, -Math.PI/2, Math.PI/2);
+    ctx.lineTo(tx-4, ty+4);
+    ctx.arc(tx-4, ty+2, 2, Math.PI/2, -Math.PI/2);
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  // Gövde (yuvarlatılmış dikdörtgen, hafif parlaklık gradyanıyla)
+  const gw = 22, gh = 15, gx = -9, gy = -7.5, rr = 4.5;
+  ctx.beginPath();
+  ctx.moveTo(gx+rr, gy);
+  ctx.lineTo(gx+gw-rr, gy);
+  ctx.quadraticCurveTo(gx+gw, gy, gx+gw, gy+rr);
+  ctx.lineTo(gx+gw, gy+gh-rr);
+  ctx.quadraticCurveTo(gx+gw, gy+gh, gx+gw-rr, gy+gh);
+  ctx.lineTo(gx+rr, gy+gh);
+  ctx.quadraticCurveTo(gx, gy+gh, gx, gy+gh-rr);
+  ctx.lineTo(gx, gy+rr);
+  ctx.quadraticCurveTo(gx, gy, gx+rr, gy);
+  ctx.closePath();
+  const bodyGrad = ctx.createLinearGradient(gx, gy, gx, gy+gh);
+  bodyGrad.addColorStop(0, "#c9fbe6");
+  bodyGrad.addColorStop(1, "#5fd6ac");
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+  ctx.strokeStyle = "#06140f"; ctx.lineWidth = 1.3; ctx.stroke();
+
+  // Ön sensör "gözü" (yön göstergesi)
+  ctx.beginPath(); ctx.arc(10, 0, 2.8, 0, Math.PI*2);
+  ctx.fillStyle = "#ffcf5c"; ctx.fill();
+  ctx.strokeStyle = "#06140f"; ctx.lineWidth = 1; ctx.stroke();
+
+  // Küçük anten (karakter için)
+  ctx.strokeStyle = "#2f6b5e"; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(-3, -7.5); ctx.lineTo(-5.5, -13); ctx.stroke();
+  ctx.beginPath(); ctx.arc(-5.5, -13, 1.4, 0, Math.PI*2);
+  ctx.fillStyle = "#5fd6ac"; ctx.fill();
+}
+
+const ARM_BASE = { x: 130, y: 380 };
+const ARM_LEN1 = 110, ARM_LEN2 = 95;
+const ARM_PICKUP = { x: 260, y: 400 };
+const ARM_DROP = { x: 430, y: 400 };
+
+// Bir uçtan diğerine "hap/kapsül" şeklinde dolu bir segment çizer — ince tek
+// çizgi yerine gerçek bir mekanik parça gibi görünmesi için.
+function drawCapsule(x1, y1, x2, y2, width, colorA, colorB) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1e-6;
+  const ang = Math.atan2(dy, dx);
+  ctx.save();
+  ctx.translate(x1, y1);
+  ctx.rotate(ang);
+  const grad = ctx.createLinearGradient(0, -width/2, 0, width/2);
+  grad.addColorStop(0, colorA);
+  grad.addColorStop(1, colorB);
+  ctx.beginPath();
+  ctx.moveTo(0, -width/2);
+  ctx.lineTo(len, -width/2);
+  ctx.arc(len, 0, width/2, -Math.PI/2, Math.PI/2);
+  ctx.lineTo(0, width/2);
+  ctx.arc(0, 0, width/2, Math.PI/2, -Math.PI/2, false);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = "#06140f"; ctx.lineWidth = 1; ctx.stroke();
+  ctx.restore();
+}
+
+// Parlak, hafif metalik görünümlü eklem/dişli noktası.
+function drawJoint(x, y, r, baseColor) {
+  const grad = ctx.createRadialGradient(x - r*0.35, y - r*0.35, r*0.15, x, y, r);
+  grad.addColorStop(0, "#eafff5");
+  grad.addColorStop(1, baseColor);
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.fillStyle = grad; ctx.fill();
+  ctx.strokeStyle = "#06140f"; ctx.lineWidth = 1; ctx.stroke();
+}
+
+function drawArmScene() {
+  // Zemin
+  ctx.fillStyle = "#173"; ctx.fillRect(0, 410, W, 6);
+  // Taban (yuvarlatılmış, cıvata detaylı)
+  ctx.fillStyle = "#2a3f4a";
+  ctx.beginPath(); ctx.moveTo(ARM_BASE.x-30, ARM_BASE.y+20);
+  ctx.lineTo(ARM_BASE.x+30, ARM_BASE.y+20);
+  ctx.lineTo(ARM_BASE.x+20, ARM_BASE.y);
+  ctx.lineTo(ARM_BASE.x-20, ARM_BASE.y);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#0a1218"; ctx.lineWidth = 1.3; ctx.stroke();
+  [-14,-4,4,14].forEach(dx => {
+    ctx.beginPath(); ctx.arc(ARM_BASE.x+dx, ARM_BASE.y+12, 2, 0, Math.PI*2);
+    ctx.fillStyle = "#111a20"; ctx.fill();
+  });
+
+  const pose = armPoseAt(state.animTime);
+  const fk = armForwardKinematics(ARM_BASE.x, ARM_BASE.y, pose.shoulder, pose.elbow, ARM_LEN1, ARM_LEN2);
+
+  let objX, objY;
+  if (pose.grip > 0.5) { objX = fk.gripX; objY = fk.gripY; }
+  else if (pose.tInCycle < 2.0) { objX = ARM_PICKUP.x; objY = ARM_PICKUP.y; }
+  else { objX = ARM_DROP.x; objY = ARM_DROP.y; }
+
+  // Pickup/drop işaretleri (zemin halkaları)
+  ctx.strokeStyle = "#4ad99180"; ctx.lineWidth = 2; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.arc(ARM_PICKUP.x, ARM_PICKUP.y+2, 17, 0, Math.PI*2); ctx.stroke();
+  ctx.strokeStyle = "#3aa0d980";
+  ctx.beginPath(); ctx.arc(ARM_DROP.x, ARM_DROP.y+2, 17, 0, Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = "10px sans-serif"; ctx.fillStyle = "#7fae9c"; ctx.textAlign = "center";
+  ctx.fillText("AL", ARM_PICKUP.x, ARM_PICKUP.y+24);
+  ctx.fillText("BIRAK", ARM_DROP.x, ARM_DROP.y+24);
+
+  // Kol segmentleri (kapsül, üstten omuza doğru koyulaşan gradyan)
+  drawCapsule(ARM_BASE.x, ARM_BASE.y, fk.elbowX, fk.elbowY, 15, "#c9fbe6", "#2f6b5e");
+  drawCapsule(fk.elbowX, fk.elbowY, fk.gripX, fk.gripY, 11, "#c9fbe6", "#3d8a6b");
+
+  drawJoint(ARM_BASE.x, ARM_BASE.y, 9, "#1c3a30");
+  drawJoint(fk.elbowX, fk.elbowY, 7, "#1c3a30");
+
+  // Nesne
+  ctx.fillStyle = "#ffd166";
+  ctx.beginPath(); ctx.arc(objX, objY, 12, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = "#c99a3a"; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Tutucu (iki parmaklı kıskaç, açık/kapalı)
+  const gripAngle = (1 - pose.grip) * 0.5 + 0.12;
+  const segAng = Math.atan2(fk.gripY - fk.elbowY, fk.gripX - fk.elbowX);
+  [1, -1].forEach((side) => {
+    const fx = fk.gripX + Math.cos(segAng + side*gripAngle) * 14;
+    const fy = fk.gripY + Math.sin(segAng + side*gripAngle) * 14;
+    drawCapsule(fk.gripX, fk.gripY, fx, fy, 4, "#eef7f2", "#9fb8ae");
+  });
+  drawJoint(fk.gripX, fk.gripY, 5, "#1c3a30");
+}
+
+function drawSpiderScene() {
+  ctx.fillStyle = "#173"; ctx.fillRect(0, 400, W, 6);
+  const legs = spiderPoseAt(state.animTime);
+  const bodyX = state.walkerX, bodyY = 370;
+  const rowOffsets = [-26, 0, 26];
+
+  legs.forEach((leg) => {
+    const hipX = bodyX + rowOffsets[leg.row];
+    const hipY = bodyY + leg.side * 14;
+    const footX = hipX + leg.forwardOffset * 18;
+    const footY = hipY + leg.side * 26 - leg.lift * 14;
+    // Diz noktası: gövdeden dışa doğru itilmiş orta nokta -> gerçek eklemli bacak görünümü
+    const kneeX = (hipX + footX) / 2 + leg.forwardOffset * 3;
+    const kneeY = (hipY + footY) / 2 + leg.side * 10 - leg.lift * 6;
+    const legColor = leg.lift > 0.05 ? ["#ffe9b8", "#c98f2a"] : ["#c9fbe6", "#2f6b5e"];
+    drawCapsule(hipX, hipY, kneeX, kneeY, 4.5, legColor[0], legColor[1]);
+    drawCapsule(kneeX, kneeY, footX, footY, 3, legColor[0], legColor[1]);
+    drawJoint(kneeX, kneeY, 2.6, legColor[1]);
+    ctx.beginPath(); ctx.ellipse(footX, footY, 3, 2, 0, 0, Math.PI*2);
+    ctx.fillStyle = "#06140f"; ctx.fill();
+  });
+
+  // Gövde: göğüs (thorax) + küçük baş, hafif gradyanla
+  const bodyGrad = ctx.createLinearGradient(bodyX, bodyY-16, bodyX, bodyY+16);
+  bodyGrad.addColorStop(0, "#c9fbe6"); bodyGrad.addColorStop(1, "#2f6b5e");
+  ctx.beginPath(); ctx.ellipse(bodyX, bodyY, 32, 15, 0, 0, Math.PI*2);
+  ctx.fillStyle = bodyGrad; ctx.fill();
+  ctx.strokeStyle = "#06140f"; ctx.lineWidth = 1.3; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(bodyX-38, bodyY, 12, 9, 0, 0, Math.PI*2);
+  ctx.fillStyle = bodyGrad; ctx.fill();
+  ctx.strokeStyle = "#06140f"; ctx.lineWidth = 1.1; ctx.stroke();
+  // Gözler
+  ctx.fillStyle = "#ffcf5c";
+  ctx.beginPath(); ctx.arc(bodyX-43, bodyY-4, 2, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(bodyX-43, bodyY+4, 2, 0, Math.PI*2); ctx.fill();
+}
+
+function drawHumanoidScene() {
+  ctx.fillStyle = "#173"; ctx.fillRect(0, 400, W, 6);
+  const pose = humanoidPoseAt(state.animTime);
+  const bodyX = state.walkerX, hipY = 350, legLen = 40;
+
+  function legPoints(angleDeg, kneeDeg, xOff) {
+    const hipX = bodyX + xOff;
+    const a = (angleDeg * Math.PI) / 180;
+    const kneeX = hipX + Math.sin(a) * legLen * 0.55;
+    const kneeY = hipY + Math.cos(a) * legLen * 0.55;
+    const a2 = a + (kneeDeg * Math.PI) / 180 * 0.4;
+    const footX = kneeX + Math.sin(a2) * legLen * 0.55;
+    const footY = kneeY + Math.cos(a2) * legLen * 0.55;
+    return { hipX, hipY, kneeX, kneeY, footX, footY };
+  }
+  const legL = legPoints(pose.leftAngleDeg, pose.leftKnee, -6);
+  const legR = legPoints(pose.rightAngleDeg, pose.rightKnee, 6);
+
+  [legL, legR].forEach((L) => {
+    drawCapsule(L.hipX, L.hipY, L.kneeX, L.kneeY, 7, "#c9fbe6", "#2f6b5e");
+    drawCapsule(L.kneeX, L.kneeY, L.footX, L.footY, 5.5, "#c9fbe6", "#3d8a6b");
+    drawJoint(L.kneeX, L.kneeY, 3.5, "#1c3a30");
+    // Ayak
+    ctx.fillStyle = "#173a2c";
+    ctx.beginPath(); ctx.ellipse(L.footX + Math.sign(L.footX-L.kneeX||1)*4, L.footY, 8, 3.5, 0, 0, Math.PI*2);
+    ctx.fill(); ctx.strokeStyle = "#06140f"; ctx.lineWidth = 1; ctx.stroke();
+  });
+
+  // Kollar (bacaklarla zıt fazlı, basit sallanma)
+  const armSwing = -pose.leftAngleDeg * 0.5;
+  [[-1, armSwing], [1, -armSwing]].forEach(([side, swing]) => {
+    const shX = bodyX + side*11, shY = hipY - 40;
+    const handX = shX + Math.sin((swing*Math.PI)/180) * 26;
+    const handY = shY + Math.cos((swing*Math.PI)/180) * 26;
+    drawCapsule(shX, shY, handX, handY, 5, "#c9fbe6", "#2f6b5e");
+    drawJoint(shX, shY, 3, "#1c3a30");
+  });
+
+  // Gövde (yuvarlatılmış, göğüs paneli detaylı)
+  const gx = bodyX-11, gy = hipY-45, gw = 22, gh = 46, rr = 6;
+  ctx.beginPath();
+  ctx.moveTo(gx+rr, gy);
+  ctx.lineTo(gx+gw-rr, gy);
+  ctx.quadraticCurveTo(gx+gw, gy, gx+gw, gy+rr);
+  ctx.lineTo(gx+gw, gy+gh-rr);
+  ctx.quadraticCurveTo(gx+gw, gy+gh, gx+gw-rr, gy+gh);
+  ctx.lineTo(gx+rr, gy+gh);
+  ctx.quadraticCurveTo(gx, gy+gh, gx, gy+gh-rr);
+  ctx.lineTo(gx, gy+rr);
+  ctx.quadraticCurveTo(gx, gy, gx+rr, gy);
+  ctx.closePath();
+  const torsoGrad = ctx.createLinearGradient(gx, gy, gx+gw, gy);
+  torsoGrad.addColorStop(0, "#c9fbe6"); torsoGrad.addColorStop(1, "#2f6b5e");
+  ctx.fillStyle = torsoGrad; ctx.fill();
+  ctx.strokeStyle = "#06140f"; ctx.lineWidth = 1.3; ctx.stroke();
+  // Göğüs paneli
+  ctx.strokeStyle = "#1c3a30"; ctx.lineWidth = 1;
+  ctx.strokeRect(bodyX-5, gy+10, 10, 12);
+  ctx.beginPath(); ctx.arc(bodyX, gy+16, 2, 0, Math.PI*2); ctx.fillStyle = "#ffcf5c"; ctx.fill();
+
+  // Kafa (basit yüzlü)
+  ctx.beginPath(); ctx.arc(bodyX, hipY-56, 11, 0, Math.PI*2);
+  ctx.fillStyle = "#dffef0"; ctx.fill(); ctx.strokeStyle = "#06140f"; ctx.lineWidth = 1.3; ctx.stroke();
+  ctx.fillStyle = "#173a2c";
+  ctx.beginPath(); ctx.arc(bodyX-4, hipY-57, 1.6, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(bodyX+4, hipY-57, 1.6, 0, Math.PI*2); ctx.fill();
+}
+
+let lastSensorInfo = null;
+function updateSensorIndicator() {
+  ctx.save();
+  ctx.font = "10px sans-serif";
+  if (!lastSensorInfo) { ctx.restore(); return; }
+  if (state.scenario === "obstacle") {
+    const s = lastSensorInfo;
+    ["front","left","right"].forEach((k, i) => {
+      ctx.fillStyle = s[k].hit ? "#d94a4a" : "#4ad991";
+      ctx.beginPath(); ctx.arc(20 + i*16, 20, 5, 0, Math.PI*2); ctx.fill();
+    });
+  } else if (state.scenario === "light") {
+    const [lx,ly] = lastSensorInfo.leftPos, [rx,ry] = lastSensorInfo.rightPos;
+    ctx.fillStyle = "#ffd166";
+    ctx.beginPath(); ctx.arc(lx,ly,3,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(rx,ry,3,0,Math.PI*2); ctx.fill();
+  } else if (state.scenario === "line") {
+    const p = lastSensorInfo.pts;
+    ["left","center","right"].forEach((k) => {
+      ctx.fillStyle = lastSensorInfo[k] ? "#4ad991" : "#d94a4a";
+      ctx.beginPath(); ctx.arc(p[k][0], p[k][1], 3, 0, Math.PI*2); ctx.fill();
+    });
+  }
+  ctx.restore();
+}
+
+/* ===================== SİMÜLASYON ADIMI ===================== */
+const DT = 1/30;
+function tick() {
+  if (state.scenario === "obstacle") {
+    const sensors = obstacleSensors(state.robot, state.obstacles, 70, 40);
+    lastSensorInfo = sensors;
+    if (state.avoidState.turnTimer > 0) state.avoidState.turnTimer -= DT;
+    const d = obstacleDecision(sensors, state.avoidState);
+    if (d.startTurn) { state.avoidState.turning = d.startTurn; state.avoidState.turnTimer = 0.6; }
+    state.robot = stepKinematics(state.robot, d.left, d.right, DT, 70, 20);
+    state.robot = clampToBounds(state.robot, W, H);
+  } else if (state.scenario === "light") {
+    const sensors = lightSensors(state.robot, state.light);
+    lastSensorInfo = sensors;
+    const d = lightDecision(sensors);
+    state.robot = stepKinematics(state.robot, d.left, d.right, DT, 55, 20);
+    state.robot = clampToBounds(state.robot, W, H);
+  } else if (state.scenario === "line") {
+    const sensors = lineSensors(state.robot, state.linePath);
+    lastSensorInfo = sensors;
+    const d = lineDecision(sensors, state.lineState);
+    if (d.left < d.right) state.lineState.lastTurn = 1;
+    else if (d.right < d.left) state.lineState.lastTurn = -1;
+    state.robot = stepKinematics(state.robot, d.left, d.right, DT, 55, 18);
+  } else if (state.scenario === "arm") {
+    state.animTime += DT;
+  } else if (state.scenario === "spider") {
+    state.animTime += DT;
+    state.walkerX += 14 * DT;
+    if (state.walkerX > W - 40) state.walkerX = 40;
+  } else if (state.scenario === "humanoid") {
+    state.animTime += DT;
+    state.walkerX += 18 * DT;
+    if (state.walkerX > W - 40) state.walkerX = 40;
+  }
+}
+
+let rafId = null, lastT = 0, acc = 0;
+function loop(t) {
+  rafId = requestAnimationFrame(loop);
+  if (!state.running) { lastT = t; return; }
+  if (!lastT) lastT = t;
+  acc += Math.min(0.05, (t - lastT) / 1000);
+  lastT = t;
+  while (acc >= DT) { tick(); acc -= DT; }
+  draw();
+}
+
+/* ===================== ARAYÜZ ===================== */
+const boardGroup = document.getElementById("boardGroup");
+const scenarioGroup = document.getElementById("scenarioGroup");
+const extraGroup = document.getElementById("extraGroup");
+const playBtn = document.getElementById("playBtn");
+const resetBtn = document.getElementById("resetBtn");
+const circuitSvg = document.getElementById("circuitSvg");
+const codeBox = document.getElementById("codeBox");
+const blockBox = document.getElementById("blockBox");
+const explainBox = document.getElementById("explainBox");
+
+function renderToolbar() {
+  boardGroup.innerHTML = "";
+  BOARD_ORDER.forEach(key => {
+    const btn = document.createElement("button");
+    btn.dataset.board = key;
+    btn.style.display = "flex"; btn.style.alignItems = "center"; btn.style.gap = "6px";
+    const b = BOARDS[key];
+    btn.innerHTML = `<svg width="26" height="18" viewBox="0 0 26 18">${b.icon(26)}</svg><span>${b.name}</span>`;
+    if (key === state.board) btn.classList.add("active");
+    btn.onclick = () => { state.board = key; refreshInfoPanels(); renderToolbar(); };
+    boardGroup.appendChild(btn);
+  });
+  scenarioGroup.innerHTML = "";
+  SCENARIO_ORDER.forEach(key => {
+    const btn = document.createElement("button");
+    btn.textContent = SCENARIOS[key].name;
+    btn.dataset.scenario = key;
+    if (key === state.scenario) btn.classList.add("active");
+    btn.onclick = () => { state.scenario = key; onScenarioChange(); renderToolbar(); };
+    scenarioGroup.appendChild(btn);
+  });
+  extraGroup.innerHTML = "";
+  if (state.scenario === "line") {
+    const sel = document.createElement("select");
+    [["s","S Eğrisi"],["daire","Daire"],["zigzag","Zikzak"]].forEach(([val,label]) => {
+      const opt = document.createElement("option");
+      opt.value = val; opt.textContent = label;
+      if (val === state.linePathKey) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = (e) => {
+      state.linePathKey = e.target.value;
+      state.linePath = LINE_PATHS[state.linePathKey]();
+      resetRobot();
+    };
+    extraGroup.appendChild(sel);
+    const hint = document.createElement("div");
+    hint.className = "hint"; hint.style.alignSelf = "center";
+    hint.textContent = "Farklı yol şekilleri deneyebilirsin";
+    extraGroup.appendChild(hint);
+  } else if (state.scenario === "obstacle") {
+    const hint = document.createElement("div");
+    hint.className = "hint"; hint.style.alignSelf = "center";
+    hint.textContent = "Canvas'a tıkla: yeni engel ekle / var olanı sil";
+    extraGroup.appendChild(hint);
+  } else if (state.scenario === "light") {
+    const hint = document.createElement("div");
+    hint.className = "hint"; hint.style.alignSelf = "center";
+    hint.textContent = "Canvas'a tıklayarak ışığı taşı";
+    extraGroup.appendChild(hint);
+  }
+
+  const codeToggleWrap = document.createElement("div");
+  codeToggleWrap.style.display = "flex"; codeToggleWrap.style.gap = "4px";
+  const textBtn = document.createElement("button");
+  textBtn.textContent = "📝 Metin Kod";
+  const blockBtn = document.createElement("button");
+  blockBtn.textContent = "🧩 Blok Kod";
+  (state.codeView === "block" ? blockBtn : textBtn).classList.add("active");
+  textBtn.onclick = () => { state.codeView = "text"; refreshInfoPanels(); renderToolbar(); };
+  blockBtn.onclick = () => { state.codeView = "block"; refreshInfoPanels(); renderToolbar(); };
+  codeToggleWrap.appendChild(textBtn); codeToggleWrap.appendChild(blockBtn);
+  extraGroup.appendChild(codeToggleWrap);
+}
+
+function onScenarioChange() {
+  lastSensorInfo = null;  // eski senaryonun sensör şekli yeni senaryoda çökmeye yol açmasın
+  resetRobot();
+  refreshInfoPanels();
+}
+
+function refreshInfoPanels() {
+  const wide = state.scenario === "spider";
+  circuitSvg.setAttribute("viewBox", wide ? "0 0 480 260" : "0 0 400 260");
+  circuitSvg.innerHTML = buildCircuitSvg(state.board, state.scenario);
+  if (state.codeView === "block") {
+    codeBox.style.display = "none";
+    blockBox.style.display = "block";
+    blockBox.innerHTML = buildBlockCode(state.scenario);
+  } else {
+    codeBox.style.display = "block";
+    blockBox.style.display = "none";
+    codeBox.textContent = buildCode(state.board, state.scenario);
+  }
+  explainBox.innerHTML = SCENARIOS[state.scenario].explain;
+  draw();
+}
+
+playBtn.onclick = () => {
+  state.running = !state.running;
+  playBtn.textContent = state.running ? "⏸ Duraklat" : "▶️ Başlat";
+};
+resetBtn.onclick = () => {
+  if (state.scenario === "obstacle") state.obstacles = makeObstacles();
+  resetRobot();
+  draw();
+};
+
+canvas.addEventListener("click", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+  if (state.scenario === "light") {
+    state.light = { x, y };
+  } else if (state.scenario === "obstacle") {
+    const hitIdx = state.obstacles.findIndex(o => dist(x, y, o.x, o.y) < o.r + 5);
+    if (hitIdx >= 0) state.obstacles.splice(hitIdx, 1);
+    else state.obstacles.push({ x, y, r: 14 + Math.random()*14 });
+  }
+  draw();
+});
+
+window.__debug = {
+  getState: () => state, tick, draw, resetRobot,
+  buildCode, buildCircuitSvg, buildBlockCode, BOARDS, SCENARIOS, SCENARIO_ORDER, BOARD_ORDER,
+  armPoseAt, armForwardKinematics, spiderPoseAt, humanoidPoseAt,
+};
+
+renderToolbar();
+resetRobot();
+refreshInfoPanels();
+rafId = requestAnimationFrame(loop);
+
+/* ---------- YERİNDE sesli kapatma köprüsü ---------- */
+(function(){
+  function connect(){
+    try {
+      var ws = new WebSocket("ws://127.0.0.1:8765/");
+      ws.onmessage = function(ev){
+        try {
+          var cmd = JSON.parse(ev.data);
+          if (cmd && cmd.action === "close_tool") { window.close(); }
+        } catch(e) {}
+      };
+      ws.onclose = function(){ setTimeout(connect, 2500); };
+      ws.onerror = function(){ try{ ws.close(); }catch(e){} };
+    } catch(e) {
+      setTimeout(connect, 2500);
+    }
+  }
+  connect();
+})();
+
+</script>
+</body>
+</html>

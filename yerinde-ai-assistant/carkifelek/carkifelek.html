@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Çarkıfelek — Bilişim Bilgi Yarışması</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(160deg, #0d1f18, #123527 60%, #1a4a3a);
+    color: #e8f5ee; min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; padding: 20px; overflow-x: hidden;
+  }
+  h1 {
+    color: #f3c877; text-shadow: 0 2px 6px rgba(0,0,0,.4); margin: 4px 0 18px;
+    font-size: 28px; text-align: center;
+  }
+  #scoreBar {
+    display: flex; gap: 24px; margin-bottom: 18px; font-size: 16px; font-weight: 700;
+  }
+  #scoreBar span { color: #8ff0cc; }
+  #wheelArea { position: relative; width: 420px; height: 420px; margin-bottom: 20px; }
+  #pointer {
+    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    width: 0; height: 0; border-left: 18px solid transparent;
+    border-right: 18px solid transparent; border-top: 34px solid #e8a13f;
+    z-index: 5; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5));
+  }
+  #wheelSvg {
+    width: 420px; height: 420px; border-radius: 50%;
+    box-shadow: 0 0 0 8px #1f7a6f, 0 0 30px rgba(0,0,0,.5);
+    transition: transform 3.5s cubic-bezier(.17,.89,.32,1.1);
+  }
+  #hub {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 64px; height: 64px; border-radius: 50%; background: #e8a13f;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; box-shadow: 0 2px 8px rgba(0,0,0,.5); z-index: 4;
+  }
+  #spinBtn {
+    background: #e8a13f; color: #1a1a1a; border: none; border-radius: 10px;
+    padding: 14px 32px; font-size: 18px; font-weight: 800; cursor: pointer;
+    box-shadow: 0 4px 0 #a8730f; transition: transform .1s;
+  }
+  #spinBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a8730f; }
+  #spinBtn:disabled { opacity: .5; cursor: not-allowed; }
+
+  #modalOverlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none;
+    align-items: center; justify-content: center; z-index: 20;
+  }
+  #qBox {
+    background: #123527; border: 3px solid #1f7a6f; border-radius: 16px;
+    padding: 28px 32px; max-width: 520px; width: 90%; text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5);
+  }
+  #qPoints { color: #f3c877; font-weight: 800; font-size: 15px; margin-bottom: 6px; }
+  #qText { font-size: 19px; font-weight: 700; margin-bottom: 20px; line-height: 1.4; }
+  .optBtn {
+    display: block; width: 100%; text-align: left; background: #1a4a3a;
+    color: #e8f5ee; border: 2px solid #29a08f; border-radius: 10px;
+    padding: 12px 16px; margin-bottom: 10px; font-size: 15px; cursor: pointer;
+    transition: background .15s;
+  }
+  .optBtn:hover { background: #29a08f; }
+  .optBtn.correct { background: #2e8b57 !important; border-color: #8ff0cc; }
+  .optBtn.wrong { background: #b5443c !important; border-color: #e07a72; }
+  #feedback { font-size: 15px; font-weight: 700; margin: 12px 0; min-height: 22px; }
+  #nextBtn {
+    background: #3a6ea5; color: #fff; border: none; border-radius: 8px;
+    padding: 10px 22px; font-size: 15px; font-weight: 700; cursor: pointer; display: none;
+  }
+  #finishBox { display: none; }
+  #finishBox h2 { color: #8ff0cc; }
+  .hint { color: #9db8ac; font-size: 13px; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>🎡 Çarkıfelek — Bilişim Bilgi Yarışması</h1>
+<div id="scoreBar">
+  <div>Puan: <span id="scoreVal">0</span></div>
+  <div>Soru: <span id="qCountVal">0</span> / <span id="qTotalVal">0</span></div>
+</div>
+
+<div id="wheelArea">
+  <div id="pointer"></div>
+  <svg id="wheelSvg" viewBox="0 0 300 300"></svg>
+  <div id="hub">🎯</div>
+</div>
+
+<button id="spinBtn">🎡 ÇARKI ÇEVİR!</button>
+<p class="hint">Çarkı çevir, düştüğün dilimin sorusunu cevapla, puanı kap!</p>
+
+<div id="modalOverlay">
+  <div id="qBox">
+    <div id="qPoints"></div>
+    <div id="qText"></div>
+    <div id="optsWrap"></div>
+    <div id="feedback"></div>
+    <button id="nextBtn">Devam Et ▶</button>
+  </div>
+</div>
+
+<div id="modalOverlay2" style="position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:21;">
+  <div id="finishBox" style="background:#123527;border:3px solid #e8a13f;border-radius:16px;padding:32px 40px;text-align:center;display:block;">
+    <h2>🏆 Tüm sorular bitti!</h2>
+    <p style="font-size:20px;">Toplam puanın: <b id="finalScore" style="color:#f3c877;"></b></p>
+    <button id="restartBtn" style="background:#2e8b57;color:#fff;border:none;border-radius:8px;padding:12px 26px;font-size:16px;font-weight:700;cursor:pointer;">🔄 Yeniden Oyna</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ══ Soru bankası — bilgisayarinminikelleri.biz "Temel Kavramlar" sayfasından ══
+var QUESTIONS = [
+  { q: "BİLİŞİM nedir?", opts: ["Bilgi + İletişim", "Bilgi + Teknoloji", "İletişim + Teknoloji", "Sadece bilgi"], correct: 0 },
+  { q: "BİLGİ nedir?", opts: ["Konuşmaktır", "Öğrendiğimiz her şeydir", "Bir alettir", "Bir cihazdır"], correct: 1 },
+  { q: "İLETİŞİM nedir?", opts: ["Yazmaktır", "Dinlemektir", "Konuşmaktır", "Okumaktır"], correct: 2 },
+  { q: "TEKNOLOJİ nedir?", opts: ["Sadece bilgisayarlardır", "İnternettir", "İnsanlar tarafından üretilmiş hayatı kolaylaştıran araç gereçlerdir", "Bir yazılımdır"], correct: 2 },
+  { q: "Aşağıdakilerden hangisi Bilişim Teknolojisi ÖRNEĞİ DEĞİLDİR?", opts: ["Telefon", "Gazete", "Kitap", "Ağaç"], correct: 3 },
+  { q: "İlk bilgisayar kabul edilen alet hangisidir?", opts: ["Abaküs", "Radyo", "Telefon", "Televizyon"], correct: 0 },
+  { q: "Bilgisayar temel olarak ne yapar?", opts: ["Sadece müzik çalar", "Sadece oyun oynatır", "Bilgi alır, düzenler, işler, saklar ve çıktı verir", "Sadece resim çizer"], correct: 2 },
+  { q: "DONANIM nedir?", opts: ["Elle tutulan, gözle görülen fiziksel parçalardır", "Sadece programlardır", "İnternet bağlantısıdır", "Bir oyun türüdür"], correct: 0 },
+  { q: "YAZILIM nedir?", opts: ["Elle tutulan parçalardır", "Bir donanım türüdür", "Elle tutulamayan, sadece gözle görülen programlardır", "Bir kablo türüdür"], correct: 2 },
+  { q: "Aşağıdakilerden hangisi bir GİRİŞ birimidir?", opts: ["Yazıcı", "Ekran", "Kulaklık", "Klavye"], correct: 3 },
+  { q: "Aşağıdakilerden hangisi bir ÇIKIŞ birimidir?", opts: ["Fare", "Mikrofon", "Klavye", "Yazıcı"], correct: 3 },
+  { q: "Aşağıdakilerden hangisi bir DEPOLAMA birimidir?", opts: ["Fare", "Ekran", "Flash bellek", "Mikrofon"], correct: 2 },
+  { q: "Fare (mouse) hangi birim türüdür?", opts: ["Giriş birimi", "Çıkış birimi", "Depolama birimi", "Yazılım"], correct: 0 },
+  { q: "Ekran hangi birim türüdür?", opts: ["Giriş birimi", "Çıkış birimi", "Depolama birimi", "Donanım değildir"], correct: 1 },
+  { q: "RAM bellek hangi birim türüne girer?", opts: ["Giriş birimi", "Çıkış birimi", "Depolama birimi", "Yazılım"], correct: 2 },
+
+  // ── Algoritma / Akış Şeması ──────────────────────────────────────────────
+  { q: "Algoritma nedir?", opts: ["Bir problemi çözmek için izlenen adımlar bütünüdür", "Bir bilgisayar virüsüdür", "Bir dosya türüdür", "Bir internet tarayıcısıdır"], correct: 0 },
+  { q: "Akış şemasında BAŞLA/BİTİR hangi şekille gösterilir?", opts: ["Dikdörtgen", "Oval", "Eşkenar dörtgen", "Üçgen"], correct: 1 },
+  { q: "Akış şemasında İŞLEM (örneğin x = x + 1) hangi şekille gösterilir?", opts: ["Oval", "Daire", "Dikdörtgen", "Yıldız"], correct: 2 },
+  { q: "Akış şemasında KARAR (Evet/Hayır) hangi şekille gösterilir?", opts: ["Dikdörtgen", "Oval", "Eşkenar dörtgen (baklava dilimi)", "Altıgen"], correct: 2 },
+
+  // ── Değişkenler ──────────────────────────────────────────────────────────
+  { q: "DEĞİŞKEN nedir?", opts: ["Hiç değişmeyen sabit bir sayıdır", "Programın çalışması sırasında değeri değişebilen, bir isimle saklanan veridir", "Bir bilgisayar virüsüdür", "Bir dosya uzantısıdır"], correct: 1 },
+
+  // ── Dosya ────────────────────────────────────────────────────────────────
+  { q: "Aşağıdakilerden hangisi bir DOSYA UZANTISI DEĞİLDİR?", opts: [".docx", ".jpg", ".mp3", "Klavye"], correct: 3 },
+  { q: "Dosya uzantısı ne işe yarar?", opts: ["Dosyanın boyutunu gösterir", "Dosyanın türünü belirtir", "Dosyanın rengini belirler", "Hiçbir işe yaramaz"], correct: 1 },
+  { q: "KLASÖR (dizin) ne işe yarar?", opts: ["Dosyaları düzenli bir şekilde saklamaya yarar", "Bilgisayarı açıp kapatır", "İnternete bağlanmayı sağlar", "Bir oyun türüdür"], correct: 0 },
+
+  // ── İşletim Sistemleri (Masaüstü / Mobil) ──────────────────────────────
+  { q: "İŞLETİM SİSTEMİ nedir?", opts: ["Bilgisayar donanımını yöneten, kullanıcı ile bilgisayar arasında köprü kuran temel yazılımdır", "Bir oyun programıdır", "Bir dosya türüdür", "Bir internet sitesidir"], correct: 0 },
+  { q: "Aşağıdakilerden hangisi bir MASAÜSTÜ işletim sistemi DEĞİLDİR?", opts: ["Windows", "macOS", "Linux", "Android"], correct: 3 },
+  { q: "Aşağıdakilerden hangisi bir MOBİL işletim sistemidir?", opts: ["Windows", "Android", "Linux", "macOS"], correct: 1 },
+
+  // ── Güçlü Şifre Oluşturma ────────────────────────────────────────────────
+  { q: "Güçlü bir şifre nasıl olmalıdır?", opts: ["Sadece rakamlardan oluşmalı", "Doğum tarihimiz olmalı", "Büyük/küçük harf, rakam ve özel karakter içermeli", "Kısa ve basit olmalı"], correct: 2 },
+  { q: "Aşağıdakilerden hangisi ZAYIF bir şifre örneğidir?", opts: ["K7#mP9$vL2", "12345", "Xz9!qR7&wT", "aB3$kL8#pQ"], correct: 1 },
+
+  // ── Kapasite Ölçü Birimleri ──────────────────────────────────────────────
+  { q: "Bilgisayarın anladığı en küçük veri birimi hangisidir?", opts: ["Byte", "Bit", "Kilobyte", "Megabyte"], correct: 1 },
+  { q: "8 bit kaç Byte eder?", opts: ["1 Byte", "2 Byte", "4 Byte", "8 Byte"], correct: 0 },
+  { q: "Kapasite birimleri küçükten büyüğe doğru hangi sırayla gider?", opts: ["MB, KB, Byte, Bit", "Bit, Byte, KB, MB", "Byte, Bit, MB, KB", "KB, MB, Bit, Byte"], correct: 1 },
+
+  // ── Ağ ve IP Adresi ──────────────────────────────────────────────────────
+  { q: "IP ADRESİ nedir?", opts: ["İnternete bağlı her cihaza verilen benzersiz numaradır", "Bir bilgisayar virüsüdür", "Bir dosya türüdür", "Bir şifre türüdür"], correct: 0 },
+  { q: "İnternet nedir?", opts: ["Bilgisayarların birbirine bağlandığı küresel bir ağdır", "Bir bilgisayar virüsüdür", "Bir dosya uzantısıdır", "Bir yazılım türüdür"], correct: 0 },
+
+  // ── Antivirüsler ─────────────────────────────────────────────────────────
+  { q: "ANTİVİRÜS programı ne işe yarar?", opts: ["Bilgisayarı zararlı yazılımlardan korur", "Bilgisayarı hızlandırır", "Resim düzenler", "Müzik çalar"], correct: 0 },
+  { q: "Bilgisayar VİRÜSÜ nedir?", opts: ["Yararlı bir programdır", "Kendini çoğaltabilen, zarar veren kötü amaçlı bir yazılımdır", "Bir donanım parçasıdır", "Bir internet tarayıcısıdır"], correct: 1 },
+];
+
+var WHEEL_VALUES = [100, 200, 300, 500, 100, 400, 200, 600];
+var WHEEL_COLORS = ["#e8a13f", "#3a6ea5", "#b5443c", "#2e8b57", "#e8a13f", "#8a4fae", "#3a6ea5", "#2e8b57"];
+
+var score = 0;
+var questionPool = [];
+var currentValue = 0;
+var currentRotation = 0;
+var spinning = false;
+
+function shuffledPool() {
+  const arr = QUESTIONS.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function drawWheel() {
+  const svg = document.getElementById("wheelSvg");
+  const n = WHEEL_VALUES.length;
+  const cx = 150, cy = 150, r = 148;
+  let html = "";
+  for (let i = 0; i < n; i++) {
+    const a0 = (i / n) * 2 * Math.PI - Math.PI / 2;
+    const a1 = ((i + 1) / n) * 2 * Math.PI - Math.PI / 2;
+    const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const midA = (a0 + a1) / 2;
+    const tx = cx + (r * 0.65) * Math.cos(midA), ty = cy + (r * 0.65) * Math.sin(midA);
+    html += `<path d="M${cx},${cy} L${x0},${y0} A${r},${r} 0 0,1 ${x1},${y1} Z" fill="${WHEEL_COLORS[i]}" stroke="#0d1f18" stroke-width="2"/>`;
+    html += `<text x="${tx}" y="${ty}" fill="#fff" font-size="20" font-weight="800" text-anchor="middle" dominant-baseline="middle">${WHEEL_VALUES[i]}</text>`;
+  }
+  svg.innerHTML = html;
+}
+
+function updateScoreBar() {
+  document.getElementById("scoreVal").textContent = score;
+  document.getElementById("qCountVal").textContent = QUESTIONS.length - questionPool.length;
+  document.getElementById("qTotalVal").textContent = QUESTIONS.length;
+}
+
+function spinWheel() {
+  if (spinning) return;
+  if (questionPool.length === 0) { showFinish(); return; }
+  spinning = true;
+  document.getElementById("spinBtn").disabled = true;
+
+  const n = WHEEL_VALUES.length;
+  const targetIndex = Math.floor(Math.random() * n);
+  currentValue = WHEEL_VALUES[targetIndex];
+  const sliceAngle = 360 / n;
+  // Dilimin ORTASI, işaretçinin (üstte, 0 derece) tam altına gelsin
+  const targetMidAngle = targetIndex * sliceAngle + sliceAngle / 2;
+  const extraSpins = 4 + Math.floor(Math.random() * 3); // 4-6 tam tur
+  const finalRotation = currentRotation + extraSpins * 360 + (360 - targetMidAngle) - (currentRotation % 360);
+
+  currentRotation = finalRotation;
+  const svg = document.getElementById("wheelSvg");
+  svg.style.transform = `rotate(${finalRotation}deg)`;
+
+  setTimeout(() => {
+    spinning = false;
+    showQuestion();
+  }, 3600);
+}
+
+function showQuestion() {
+  const item = questionPool.pop();
+  updateScoreBar();
+  document.getElementById("qPoints").textContent = `Bu dilim: ${currentValue} puan`;
+  document.getElementById("qText").textContent = item.q;
+  const wrap = document.getElementById("optsWrap");
+  wrap.innerHTML = "";
+  document.getElementById("feedback").textContent = "";
+  document.getElementById("nextBtn").style.display = "none";
+
+  item.opts.forEach((opt, idx) => {
+    const btn = document.createElement("button");
+    btn.className = "optBtn";
+    btn.textContent = opt;
+    btn.addEventListener("click", () => answerQuestion(idx, item, btn, wrap));
+    wrap.appendChild(btn);
+  });
+
+  document.getElementById("modalOverlay").style.display = "flex";
+}
+
+function answerQuestion(idx, item, clickedBtn, wrap) {
+  const buttons = wrap.querySelectorAll(".optBtn");
+  buttons.forEach(b => b.style.pointerEvents = "none");
+  buttons[item.correct].classList.add("correct");
+
+  const feedback = document.getElementById("feedback");
+  if (idx === item.correct) {
+    score += currentValue;
+    feedback.textContent = `🎉 Doğru! +${currentValue} puan kazandın!`;
+    feedback.style.color = "#8ff0cc";
+  } else {
+    clickedBtn.classList.add("wrong");
+    feedback.textContent = "❌ Olmadı — doğru cevap yeşille işaretli!";
+    feedback.style.color = "#e8a13f";
+  }
+  updateScoreBar();
+  document.getElementById("nextBtn").style.display = "inline-block";
+}
+
+document.getElementById("nextBtn").addEventListener("click", () => {
+  document.getElementById("modalOverlay").style.display = "none";
+  document.getElementById("spinBtn").disabled = false;
+  if (questionPool.length === 0) showFinish();
+});
+
+function showFinish() {
+  document.getElementById("finalScore").textContent = score + " puan";
+  document.getElementById("modalOverlay2").style.display = "flex";
+}
+
+document.getElementById("restartBtn").addEventListener("click", () => {
+  score = 0;
+  questionPool = shuffledPool();
+  currentRotation = 0;
+  document.getElementById("wheelSvg").style.transition = "none";
+  document.getElementById("wheelSvg").style.transform = "rotate(0deg)";
+  void document.getElementById("wheelSvg").offsetWidth; // reflow — animasyonu sıfırla
+  document.getElementById("wheelSvg").style.transition = "transform 3.5s cubic-bezier(.17,.89,.32,1.1)";
+  document.getElementById("modalOverlay2").style.display = "none";
+  document.getElementById("spinBtn").disabled = false;
+  updateScoreBar();
+});
+
+document.getElementById("spinBtn").addEventListener("click", spinWheel);
+
+// ══ Başlangıç ══
+questionPool = shuffledPool();
+drawWheel();
+updateScoreBar();
+
+/* ---------- YERİNDE sesli kapatma köprüsü ---------- */
+(function(){
+  function connect(){
+    try {
+      var ws = new WebSocket("ws://127.0.0.1:8765/");
+      ws.onmessage = function(ev){
+        try {
+          var cmd = JSON.parse(ev.data);
+          if (cmd && cmd.action === "close_tool") { window.close(); }
+        } catch(e) {}
+      };
+      ws.onclose = function(){ setTimeout(connect, 2500); };
+      ws.onerror = function(){ try{ ws.close(); }catch(e){} };
+    } catch(e) {
+      setTimeout(connect, 2500);
+    }
+  }
+  connect();
+})();
+
+</script>
+</body>
+</html>

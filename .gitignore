@@ -1,0 +1,13 @@
+# final27.md §5B: üretim artefaktları + büyük dosyalar (find +90M temiz)
+work/
+out/
+*.iso
+repo/x86_64/*.pkg.tar.zst
+*.gguf
+.ollama-staging.*/
+# GİZLİ — API anahtarları ASLA repoya girmez
+key.txt
+# derleme/çalışma artıkları
+__pycache__/
+*.pyc
+venv/

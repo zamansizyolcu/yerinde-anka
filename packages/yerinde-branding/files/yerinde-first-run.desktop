@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Yerinde İlk Oturum
+Name[tr]=Yerinde İlk Oturum
+Comment=İlk oturumda Yerinde ikonunu ve duvar kağıdını ayarlar
+Comment[tr]=İlk oturumda Yerinde ikonunu ve duvar kağıdını ayarlar
+Exec=/usr/share/yerinde/kde/yerinde-first-run.sh
+OnlyShowIn=KDE
+Terminal=false
+X-KDE-autostart-after=panel

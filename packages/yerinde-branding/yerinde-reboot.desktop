@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Yeniden Başlat
+Name[tr]=Yeniden Başlat
+Comment=Sistemi yeniden başlatır
+Comment[tr]=Sistemi yeniden başlatır
+Exec=systemctl reboot
+Icon=system-reboot
+Terminal=false
+Categories=KDE;
+OnlyShowIn=KDE

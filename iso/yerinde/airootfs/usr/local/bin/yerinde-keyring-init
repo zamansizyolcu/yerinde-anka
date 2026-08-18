@@ -1,0 +1,13 @@
+#!/bin/bash
+# Yerinde ANKA — canlı ortamda pacman keyring'i garantiye alır (final21.md §3).
+# Bayrak dosyası: /var/lib/yerinde-keyring-done (idempotent).
+# Not: pacman-init.service de vardır; bu betik artık/özel durumlar için
+# keyring'i ikinci kez güvenceye alır (bayrak varsa hiçbir şey yapmaz).
+FLAG=/var/lib/yerinde-keyring-done
+LOG=/tmp/yerinde-keyring.log
+[ -e "$FLAG" ] && exit 0
+pacman-key --init >>"$LOG" 2>&1 || true
+pacman-key --populate archlinux >>"$LOG" 2>&1 || true
+mkdir -p "$(dirname "$FLAG")"
+touch "$FLAG"
+exit 0

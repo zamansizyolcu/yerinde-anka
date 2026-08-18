@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="blue">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YERİNDE Donanım Atölyesi</title>
+<style>
+  :root, [data-theme="blue"] {
+    --bg: #0d1420; --panel: #16213a; --pri: #5ec8e8; --text: #eef3fa; --dim: #33415c; --accent: #f2a154;
+    --danger: #e0604a; --ok: #6bc98a; --input-bg: #0c1420; --btn-bg: #102030; --btn-hover-bg: #16283c; --pri-text: #06202e;
+    --board-green: #2c6e4f;
+  }
+  [data-theme="green"] {
+    --bg: #071a13; --panel: #0e241b; --pri: #8ff0cc; --text: #eef8f2; --dim: #1c3a2c; --accent: #f2a154;
+    --danger: #e0604a; --ok: #6bc98a; --input-bg: #0a1f16; --btn-bg: #0f2a1e; --btn-hover-bg: #163828; --pri-text: #06231a;
+    --board-green: #2c6e4f;
+  }
+  [data-theme="cream"] {
+    --bg: #f3ecdc; --panel: #fffbf2; --pri: #9c6b30; --text: #2b2013; --dim: #d9c7a3; --accent: #b5651d;
+    --danger: #b23a2e; --ok: #3a7d4f; --input-bg: #fffdf8; --btn-bg: #f7f0e2; --btn-hover-bg: #efe4cd; --pri-text: #fffbf2;
+    --board-green: #3a7d55;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", "Noto Sans", sans-serif; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; padding: 8px 10px;
+    overflow-x: hidden; -webkit-tap-highlight-color: transparent;
+  }
+  h1 { font-size: 17px; margin: 2px 0 6px; color: var(--pri); }
+  h1 small { display:block; font-size:11px; font-weight:normal; opacity:.7; color: var(--text); }
+  .layout { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 1500px; flex: 1; min-height: 0; }
+  .card { background: var(--panel); border-radius: 10px; padding: 8px 10px; }
+  .card h3 { margin: 2px 0 6px; font-size: 12.5px; color: var(--pri); }
+
+  #topBar { display: flex; gap: 8px; width: 100%; align-items: center; flex-wrap: wrap; }
+  #topBar .grp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .themeDropdown { position: relative; display: inline-block; }
+  .themeDropdownBtn {
+    display: flex; align-items: center; gap: 7px; background: var(--btn-bg); color: var(--text);
+    border: 1px solid var(--dim); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; cursor: pointer;
+    appearance: none; -webkit-appearance: none; font-family: inherit;
+  }
+  .themeDropdownBtn:hover { border-color: var(--pri); background: var(--btn-hover-bg); }
+  .themeDropdownBtn .chev { opacity: .6; font-size: 9px; margin-left: 3px; }
+  /* Bu panel bilerek temadan bağımsız sabit renkler kullanır: hangi tema aktifse aktif olsun her zaman okunaklı kalsın diye */
+  .themeDropdownList {
+    display: none; position: absolute; top: calc(100% + 5px); left: 0; min-width: 132px; background: #1b2436;
+    border: 1px solid #3a4a66; border-radius: 8px; padding: 4px; z-index: 60; box-shadow: 0 6px 20px rgba(0,0,0,.45);
+  }
+  .themeDropdownList.open { display: block; }
+  .themeOption {
+    display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; background: transparent;
+    border: none; color: #eef3fa; padding: 8px 9px; border-radius: 6px; cursor: pointer; font-size: 12.5px;
+    appearance: none; -webkit-appearance: none; font-family: inherit;
+  }
+  .themeOption:hover { background: #29354d; }
+  .themeOption.active { font-weight: bold; }
+  .themeOption[data-theme="blue"].active  { background: #5ec8e8; color: #06202e; }
+  .themeOption[data-theme="green"].active { background: #8ff0cc; color: #06231a; }
+  .themeOption[data-theme="cream"].active { background: #b5651d; color: #fffbf2; }
+  .theme-swatch { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; display: inline-block; box-shadow: 0 0 0 1px rgba(0,0,0,.35); }
+  .toolbtn {
+    background: var(--btn-bg); color: var(--text); border: 1px solid var(--dim); border-radius: 8px;
+    padding: 7px 12px; cursor: pointer; font-size: 12.5px; white-space: nowrap;
+  }
+  .toolbtn:hover { border-color: var(--pri); background: var(--btn-hover-bg); }
+  .toolbtn.primary { background: var(--pri); color: var(--pri-text); font-weight: bold; border-color: var(--pri); }
+  .toolbtn.danger { border-color: var(--danger); color: var(--danger); }
+  #modeSwitch { display: flex; gap: 4px; background: var(--btn-bg); border-radius: 8px; padding: 3px; }
+  #modeSwitch button { border: none; background: transparent; color: var(--text); padding: 6px 13px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+  #modeSwitch button.active { background: var(--pri); color: var(--pri-text); font-weight: bold; }
+  .spacer { flex: 1; }
+
+  #workArea { display: flex; gap: 10px; flex: 1; min-height: 0; align-items: stretch; }
+  #boardCard { flex: 0 0 66%; min-width: 320px; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+  #sidePanel { flex: 1; min-width: 230px; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+
+  #boardViewport {
+    position: relative; flex: 1; min-height: 320px; border-radius: 10px; overflow: auto;
+    background: repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(128,128,128,0.06) 20px),
+                repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(128,128,128,0.06) 20px);
+    background-color: #05080d22;
+  }
+  #board { display: block; width: 100%; height: auto; min-height: 320px; touch-action: none; }
+
+  .slot-outline { fill: rgba(255,255,255,0.03); stroke: var(--pri); stroke-width: 2.2; stroke-dasharray: 6,4; opacity: .6; cursor: pointer; transition: opacity .15s, stroke .15s; }
+  .slot-outline:hover { opacity: .95; }
+  .slot-outline.filled { stroke: var(--ok); stroke-dasharray: none; opacity: .85; cursor: grab; }
+  .slot-outline.hint { stroke: var(--accent) !important; stroke-width: 3.4; opacity: 1 !important; animation: pulseSlot .7s ease-in-out 4; }
+  .hotspot-shape { fill: rgba(255,255,255,0.05); stroke: var(--dim); stroke-width: 1.4; cursor: help; }
+  .hotspot-shape:hover { stroke: var(--pri); fill: rgba(94,200,232,0.08); }
+  .board-label { fill: var(--text); font-size: 12.5px; opacity: .78; pointer-events: none; font-family: inherit; }
+  .board-label.hotspot-label { opacity: .55; font-style: italic; font-size: 11.5px; }
+  .quiz-mode .board-label { display: none; }
+  .placed-shape { cursor: grab; }
+  .placed-shape.picked { opacity: .2; }
+  .fan-spin { transform-box: fill-box; transform-origin: center; animation: spin 2.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulseSlot { 0%,100%{ opacity:.55; } 50%{ opacity:1; } }
+  @keyframes shakeCard { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-7px);} 40%{transform:translateX(7px);} 60%{transform:translateX(-5px);} 80%{transform:translateX(5px);} }
+  .shake { animation: shakeCard .35s; }
+
+  #trayGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px,1fr)); gap: 6px; overflow-y: auto; max-height: 220px; padding-right: 2px; }
+  #sidePanel #trayCard { flex: 0 0 auto; }
+  #sidePanel #placedCard { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #placedList { overflow-y: auto; display: flex; flex-direction: column; gap: 4px; flex: 1; min-height: 60px; }
+  .tray-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; border-radius: 8px;
+    border: 1px solid var(--dim); cursor: grab; background: var(--btn-bg); font-size: 9.5px; text-align: center;
+    user-select: none; touch-action: none;
+  }
+  .tray-item:hover { border-color: var(--pri); background: var(--btn-hover-bg); }
+  .tray-item svg { width: 32px; height: 32px; pointer-events: none; }
+  .tray-item span { pointer-events: none; line-height: 1.15; }
+  .tray-item.hidden-placed { display: none; }
+  .tray-item.hint-flash { animation: pulseSlot .7s ease-in-out 4; border-color: var(--accent); }
+
+  .placed-chip {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    background: var(--btn-bg); border: 1px solid var(--dim); border-radius: 7px; padding: 4px 7px; font-size: 11px;
+  }
+  .placed-chip button {
+    border: none; background: transparent; color: var(--danger); cursor: pointer; font-size: 13px; padding: 0 2px; line-height:1;
+  }
+
+  #statusBar { display: flex; gap: 16px; align-items: center; font-size: 11.5px; opacity: .9; padding: 4px 6px; flex-wrap: wrap; }
+  #statusBar b { color: var(--pri); }
+
+  .drag-ghost {
+    position: fixed; pointer-events: none; z-index: 500; opacity: .88; width: 46px; height: 46px;
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,.5)); display: none;
+  }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(10px); background: var(--panel);
+    border: 1px solid var(--pri); padding: 9px 18px; border-radius: 22px; font-size: 12.5px; max-width: 86vw; text-align:center;
+    box-shadow: 0 4px 18px rgba(0,0,0,.4); z-index: 400; opacity: 0; transition: opacity .2s, transform .2s; pointer-events:none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { border-color: var(--danger); color: var(--danger); }
+  .toast.ok { border-color: var(--ok); color: var(--ok); }
+
+  .modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: none; align-items: center; justify-content: center; z-index: 100; padding: 14px; }
+  .modalOverlay.show { display: flex; }
+  .modalBox { background: var(--panel); border-radius: 12px; padding: 16px 18px; max-width: 460px; width: 100%; max-height: 84vh; overflow: auto; }
+  .modalBox h2 { margin-top: 0; color: var(--pri); font-size: 15.5px; }
+  .modalBox p { font-size: 12.8px; line-height: 1.55; opacity: 0.92; }
+  .modalActions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
+  .quizOptBtn {
+    display: block; width: 100%; text-align: left; background: var(--btn-bg); color: var(--text); border: 1px solid var(--dim);
+    border-radius: 8px; padding: 9px 11px; margin-top: 7px; cursor: pointer; font-size: 12.5px;
+  }
+  .quizOptBtn:hover { border-color: var(--pri); background: var(--btn-hover-bg); }
+  .quizOptBtn.correct { border-color: var(--ok); color: var(--ok); }
+  .quizOptBtn.wrong { border-color: var(--danger); color: var(--danger); }
+
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  @media (max-width: 880px) {
+    #workArea { flex-direction: column; }
+    #boardCard { flex: 0 0 auto; }
+    #sidePanel { flex: 0 0 auto; }
+    #board { min-height: 260px; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+  <linearGradient id="gGold" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#f8e39a"/><stop offset=".5" stop-color="#d4a93a"/><stop offset="1" stop-color="#9a6f1c"/>
+  </linearGradient>
+  <linearGradient id="gMetal" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#e6eaee"/><stop offset=".45" stop-color="#9aa3ad"/><stop offset=".55" stop-color="#7d868f"/><stop offset="1" stop-color="#454c53"/>
+  </linearGradient>
+  <linearGradient id="gMetalV" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#e8ebef"/><stop offset=".5" stop-color="#8f97a1"/><stop offset="1" stop-color="#4f565c"/>
+  </linearGradient>
+  <linearGradient id="gDarkPlastic" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#3c4149"/><stop offset="1" stop-color="#131519"/>
+  </linearGradient>
+  <linearGradient id="gPcbCard" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#30363e"/><stop offset="1" stop-color="#14171b"/>
+  </linearGradient>
+  <linearGradient id="gPcbGreen" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/>
+  </linearGradient>
+  <radialGradient id="gDie" cx=".5" cy=".4" r=".75">
+    <stop offset="0" stop-color="#5c6873"/><stop offset="1" stop-color="#1e242a"/>
+  </radialGradient>
+  <pattern id="pcbTrace" width="46" height="46" patternUnits="userSpaceOnUse" patternTransform="rotate(21)">
+    <line x1="0" y1="8" x2="46" y2="8" stroke="#000" stroke-opacity=".12"/>
+    <line x1="0" y1="26" x2="30" y2="26" stroke="#000" stroke-opacity=".12"/>
+    <line x1="14" y1="0" x2="14" y2="46" stroke="#000" stroke-opacity=".08"/>
+    <circle cx="30" cy="8" r="1.6" fill="#000" opacity=".14"/>
+    <circle cx="14" cy="26" r="1.6" fill="#000" opacity=".14"/>
+  </pattern>
+  <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
+    <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity=".45"/>
+  </filter>
+</defs>
+</svg>
+
+<h1>🖥️ YERİNDE Donanım Atölyesi<small>Bileşenleri anakarta sürükleyip takın / sökün — her birinin ne işe yaradığını öğrenin</small></h1>
+
+<div class="layout">
+
+  <div id="topBar" class="card">
+    <div class="grp">
+      <label style="font-size:11px;opacity:.75">Tema:</label>
+      <div class="themeDropdown" id="themeDropdown">
+        <button type="button" class="themeDropdownBtn" id="themeDropdownBtn">
+          <span class="theme-swatch" id="themeCurrentSwatch" style="background:#5ec8e8"></span>
+          <span id="themeCurrentLabel">Mavi</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="themeDropdownList" id="themeDropdownList">
+          <button type="button" class="themeOption active" data-theme="blue"><span class="theme-swatch" style="background:#5ec8e8"></span>Mavi</button>
+          <button type="button" class="themeOption" data-theme="green"><span class="theme-swatch" style="background:#8ff0cc"></span>Yeşil</button>
+          <button type="button" class="themeOption" data-theme="cream"><span class="theme-swatch" style="background:#b5651d"></span>Krem</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modeSwitch">
+      <button id="modeInfoBtn" class="active">🧩 Bilgi &amp; Montaj</button>
+      <button id="modeQuizBtn">🧠 Sınav Modu</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="toolbtn" id="hintBtn">💡 İpucu</button>
+    <button class="toolbtn" id="helpBtn">❓ Yardım</button>
+    <button class="toolbtn danger" id="resetBtn">🔄 Sıfırla</button>
+  </div>
+
+  <div id="workArea">
+    <div id="boardCard" class="card">
+      <div id="boardViewport">
+        <svg id="board" viewBox="0 0 1000 800" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+    </div>
+    <div id="sidePanel">
+      <div id="trayCard" class="card">
+        <h3>📦 Bileşen Kutusu</h3>
+        <div id="trayGrid"></div>
+      </div>
+      <div id="placedCard" class="card">
+        <h3>🔧 Takılı Bileşenler</h3>
+        <div id="placedList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="statusBar" class="card">
+    <span>İlerleme: <b id="progressText">0 / 14</b></span>
+    <span id="quizStats" style="display:none">Puan: <b id="scoreText">0/0</b> · Süre: <b id="timerText">00:00</b></span>
+    <span style="opacity:.65">İpucu: bir bileşene dokunup bırakırsanız bilgi kartı açılır, sürüklerseniz yuvaya yerleşir.</span>
+  </div>
+</div>
+
+<img class="drag-ghost" id="dragGhost" alt="">
+<div class="toast" id="toast"></div>
+
+<div class="modalOverlay" id="infoModal">
+  <div class="modalBox">
+    <h2 id="infoTitle">Başlık</h2>
+    <p id="infoDesc"></p>
+    <p id="infoFact"></p>
+    <div class="modalActions"><button class="toolbtn primary" id="infoCloseBtn">Kapat</button></div>
+  </div>
+</div>
+
+<div class="modalOverlay" id="quizModal">
+  <div class="modalBox">
+    <h2>🧠 Hızlı Soru</h2>
+    <p id="quizQ" style="font-weight:600"></p>
+    <div id="quizOptions"></div>
+    <div class="modalActions"><button class="toolbtn" id="quizSkipBtn" style="display:none">Devam Et →</button></div>
+  </div>
+</div>
+
+<div class="modalOverlay" id="completeModal">
+  <div class="modalBox">
+    <h2 id="completeTitle">🎉 Tebrikler!</h2>
+    <p id="completeBody"></p>
+    <div class="modalActions">
+      <button class="toolbtn" id="completeResetBtn">🔄 Tekrar Dene</button>
+      <button class="toolbtn primary" id="completeCloseBtn">Kapat</button>
+    </div>
+  </div>
+</div>
+
+<div class="modalOverlay" id="helpModal">
+  <div class="modalBox">
+    <h2>❓ Nasıl Kullanılır?</h2>
+    <p>Sol/üstteki yeşil kart bir <b>anakart</b> (motherboard) çizimidir. Sağdaki/alttaki kutuda gerçek bir bilgisayarda
+    bulunan donanım bileşenleri ve kablolar var.</p>
+    <p>• Bir bileşeni <b>parmağınızla veya fare ile sürükleyip</b> anakart üzerindeki doğru (kesikli çizgili) yuvanın
+    üzerine bırakın: doğruysa yerine oturur ve kesikli çizgi yeşile döner.<br>
+    • Yanlış yuvaya bırakırsanız bileşen kutuya geri döner ve neden olmadığı açıklanır.<br>
+    • Bir bileşene <b>hafifçe dokunup hemen bırakırsanız</b> (sürüklemeden) o bileşen hakkında bilgi kartı açılır.<br>
+    • Takılı bir bileşeni <b>tekrar sürükleyerek</b> ya da "Takılı Bileşenler" listesindeki <b>✕</b> düğmesiyle sökebilirsiniz.<br>
+    • "🧠 Sınav Modu" etiketleri gizler ve doğru yerleştirdikçe küçük sorular sorar; süre ve puanınızı tutar.</p>
+    <div class="modalActions"><button class="toolbtn primary" id="helpCloseBtn">Anladım</button></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const SVGNS = "http://www.w3.org/2000/svg";
+
+/* ---------- VERİ: YUVALAR (draggable hedefler) ---------- */
+const SLOTS = [
+  {id:'cpu',        type:'cpu',        x:190,y:90, w:150,h:150, label:'CPU Yuvası',        lx:265, ly:258, anchor:'middle'},
+  {id:'cooler',     type:'cooler',     x:190,y:90, w:150,h:150, label:null},
+  {id:'eps',        type:'eps',        x:250,y:45, w:55, h:18,  label:'CPU Güç (EPS)',     lx:277, ly:34,  anchor:'middle'},
+  {id:'ram1',       type:'ram',        x:380,y:80, w:14, h:230, label:null},
+  {id:'ram2',       type:'ram',        x:404,y:80, w:14, h:230, label:null},
+  {id:'ram3',       type:'ram',        x:428,y:80, w:14, h:230, label:null},
+  {id:'ram4',       type:'ram',        x:452,y:80, w:14, h:230, label:null},
+  {id:'atx24',      type:'atx24',      x:770,y:90, w:25, h:110, label:'24-Pin Güç',        lx:825, ly:145, anchor:'start'},
+  {id:'m2',         type:'m2',         x:500,y:360,w:150,h:22,  label:'M.2 SSD Yuvası',    lx:575, ly:350, anchor:'middle'},
+  {id:'pcie16',     type:'pcie16',     x:140,y:500,w:380,h:26,  label:'PCIe x16 (Ekran Kartı)', lx:330, ly:542, anchor:'middle'},
+  {id:'sata',       type:'sata',       x:610,y:425,w:130,h:55,  label:'SATA Portları',     lx:675, ly:414, anchor:'middle'},
+  {id:'frontpanel', type:'frontpanel', x:70, y:630,w:90, h:22,  label:'Ön Panel Konektörü',lx:115, ly:668, anchor:'middle'},
+  {id:'fan1',       type:'fan1',       x:95, y:250,w:16, h:16,  label:'Fan Başlığı 1',     lx:103, ly:284, anchor:'middle'},
+  {id:'fan2',       type:'fan2',       x:95, y:550,w:16, h:16,  label:'Fan Başlığı 2',     lx:103, ly:584, anchor:'middle'},
+  {id:'bay',        type:'bay',        x:850,y:500,w:100,h:90,  label:'Sürücü Kafesi',     lx:900, ly:493, anchor:'middle'},
+  {id:'satapower',  type:'satapower',  x:855,y:598,w:20, h:14,  label:'SATA Güç Çıkışı',   lx:900, ly:594, anchor:'middle'},
+];
+const RAM_GROUP_LABEL = {x:423, y:72, text:'RAM Yuvaları (DIMM)'};
+
+/* ---------- VERİ: BİLGİ NOKTALARI (sadece tıklanabilir bilgi) ---------- */
+const HOTSPOTS = [
+  {id:'case',    x:830,y:478,w:150,h:232, label:'Bilgisayar Kasası (temsili)', lx:905, ly:470, dashed:true},
+  {id:'io',      x:50, y:40, w:55, h:190, label:'Arka Panel (I/O)',   lx:77,  ly:246},
+  {id:'vrm',     x:118,y:60, w:22, h:150, label:'VRM',                lx:129, ly:226},
+  {id:'chipset', x:380,y:340,w:90, h:90,  label:'Yonga Seti (Chipset)', lx:425, ly:446},
+  {id:'pcie1',   x:140,y:430,w:160,h:16,  label:'PCIe x1 Yuvası',     lx:220, ly:422},
+  {id:'pcie1b',  x:140,y:455,w:160,h:16,  label:null},
+  {id:'psu',     x:850,y:610,w:100,h:90,  label:'Güç Kaynağı (PSU)',  lx:900, ly:708},
+];
+
+/* ---------- VERİ: BİLEŞENLER (bileşen kutusu) ---------- */
+const COMPONENTS = [
+  {id:'cpu', name:'İşlemci (CPU)', targetType:'cpu', dependsOn:null,
+    info:{title:'İşlemci (CPU)', desc:'Bilgisayarın "beyni"dir. Programlardaki komutları saniyede milyarlarca kez işleyerek her şeyin hesaplanmasını sağlar.',
+      fact:'Bunu biliyor muydunuz? Modern bir CPU\'nun içinde milyarlarca minik transistör bulunur; her biri açık/kapalı (1/0) durumuyla çalışır.'},
+    quiz:{q:'İşlemci (CPU) bilgisayarda temel olarak ne işe yarar?', options:['Komutları işler ve hesaplama yapar','Sadece görüntüyü ekrana gönderir','Sadece elektriği depolar'], correct:0}},
+
+  {id:'cooler', name:'İşlemci Soğutucusu', targetType:'cooler', dependsOn:'cpu',
+    info:{title:'İşlemci Soğutucusu (CPU Cooler)', desc:'Çalışırken ısınan işlemcinin üzerine oturur; metal kanatları ve fanıyla ısıyı emip ortama dağıtarak CPU\'nun aşırı ısınıp yavaşlamasını (hatta zarar görmesini) engeller.',
+      fact:'Bunu biliyor muydunuz? Soğutucu ile CPU arasına, ısıyı daha iyi iletmesi için "termal macun" sürülür.'},
+    quiz:{q:'İşlemci soğutucusu neden gereklidir?', options:['CPU\'yu aşırı ısınmaktan korumak için','İnterneti hızlandırmak için','RAM kapasitesini artırmak için'], correct:0}},
+
+  {id:'ram1', name:'RAM Bellek 1', targetType:'ram', dependsOn:null,
+    info:{title:'RAM (Sistem Belleği)', desc:'Bilgisayar açıkken o an kullanılan program ve verileri geçici olarak tutar. CPU\'ya, sabit diske göre çok daha hızlı erişim sağlar.',
+      fact:'Bunu biliyor muydunuz? RAM\'in içeriği elektrik kesildiğinde silinir; bu yüzden dosyalarınızı kalıcı olarak SSD/HDD\'ye kaydetmeniz gerekir. Ayrıca iki RAM\'i aynı renkteki yuvalara takmak "çift kanal" modunu açarak performansı artırır.'},
+    quiz:{q:'Bilgisayar kapatıldığında RAM üzerindeki veriler ne olur?', options:['Silinir (geçicidir)','Kalıcı olarak saklanır','Otomatik olarak SSD\'ye kopyalanır'], correct:0}},
+
+  {id:'ram2', name:'RAM Bellek 2', targetType:'ram', dependsOn:null,
+    info:{title:'RAM (Sistem Belleği)', desc:'Bilgisayar açıkken o an kullanılan program ve verileri geçici olarak tutar. Genelde iki veya daha fazla RAM modülü birlikte (çift kanal) takılır.',
+      fact:'Bunu biliyor muydunuz? Daha fazla RAM, aynı anda daha fazla programı yavaşlamadan çalıştırabilmenizi sağlar.'},
+    quiz:{q:'Bir bilgisayara neden birden fazla RAM modülü takılır?', options:['Çift kanal ile daha iyi performans için','Zorunlu değildir, sadece dekoratiftir','Ekran kartını soğutmak için'], correct:0}},
+
+  {id:'gpu', name:'Ekran Kartı (GPU)', targetType:'pcie16', dependsOn:null,
+    info:{title:'Ekran Kartı (GPU)', desc:'Görüntüleri, oyunları ve videoları işleyip ekrana gönderen bileşendir. Anakartın en uzun yuvası olan PCIe x16\'ya takılır.',
+      fact:'Bunu biliyor muydunuz? Yüksek güçlü ekran kartları, 24-pin kablonun yanında ek bir PCIe güç kablosuna da ihtiyaç duyabilir.'},
+    quiz:{q:'Ekran kartı (GPU) hangi yuvaya takılır?', options:['PCIe x16 yuvasına','RAM (DIMM) yuvasına','SATA portuna'], correct:0}},
+
+  {id:'m2ssd', name:'M.2 SSD', targetType:'m2', dependsOn:null,
+    info:{title:'M.2 SSD', desc:'Kablosuz, doğrudan anakarta takılan küçük ve çok hızlı bir depolama birimidir. İşletim sistemi ve programlar genelde buraya kurulur.',
+      fact:'Bunu biliyor muydunuz? M.2 SSD, klasik SATA SSD\'den kat kat daha hızlı veri okuyup yazabilir çünkü CPU\'ya çok daha yakın bir yoldan (PCIe hattından) bağlanır.'},
+    quiz:{q:'M.2 SSD\'yi klasik SATA SSD\'den ayıran temel özellik nedir?', options:['Kablosuz ve çok daha hızlı olması','Sadece müzik dosyası tutabilmesi','Elektrik gerektirmemesi'], correct:0}},
+
+  {id:'satassd', name:'SATA SSD / HDD', targetType:'bay', dependsOn:null,
+    info:{title:'SATA SSD / HDD', desc:'Dosyalarınızın, programlarınızın ve işletim sisteminizin kalıcı olarak saklandığı depolama birimidir. Kasadaki sürücü kafesine yerleşir ve iki kabloyla (veri + güç) bağlanır.',
+      fact:'Bunu biliyor muydunuz? HDD içinde dönen manyetik bir disk kullanırken, SSD hareketli parça içermez; bu yüzden SSD çok daha sessiz ve hızlıdır.'},
+    quiz:{q:'SATA SSD/HDD bir bilgisayarda ne işe yarar?', options:['Verileri kalıcı olarak saklar','Elektriği depolar','Görüntüyü işler'], correct:0}},
+
+  {id:'satadata', name:'SATA Veri Kablosu', targetType:'sata', dependsOn:'satassd',
+    info:{title:'SATA Veri Kablosu', desc:'Sürücüdeki (SSD/HDD) verinin anakart üzerindeki SATA portuna, oradan da işlemciye ulaşmasını sağlayan ince veri kablosudur.',
+      fact:'Bunu biliyor muydunuz? Bu kablo sadece veri taşır; sürücüye elektrik vermez, bunun için ayrı bir güç kablosu gerekir.'},
+    quiz:{q:'SATA veri kablosu neyi taşır?', options:['Sürücü ile anakart arasındaki veriyi','Elektrik gücünü','Fan hızını'], correct:0}},
+
+  {id:'satapower', name:'SATA Güç Kablosu', targetType:'satapower', dependsOn:'satassd',
+    info:{title:'SATA Güç Kablosu', desc:'Güç kaynağından (PSU) çıkıp sürücüye elektrik veren kablodur. Veri kablosundan farklı olarak sadece güç taşır.',
+      fact:'Bunu biliyor muydunuz? Güç kablolarındaki farklı renkteki teller (kırmızı, sarı, siyah) farklı voltaj seviyelerini taşır.'},
+    quiz:{q:'SATA güç kablosu bağlantısı nereden gelir?', options:['Güç kaynağından (PSU)','Ekran kartından','CPU soğutucusundan'], correct:0}},
+
+  {id:'atx24cable', name:'24-Pin Güç Kablosu', targetType:'atx24', dependsOn:null,
+    info:{title:'24-Pin ATX Güç Kablosu', desc:'Güç kaynağından anakarta gelen ana elektrik kablosudur; anakartın ve üzerindeki tüm bileşenlerin çalışması için gereken temel gücü sağlar.',
+      fact:'Bunu biliyor muydunuz? Bu kablo takılmadan anakart hiç açılmaz; bilgisayar montajının en kritik bağlantılarından biridir.'},
+    quiz:{q:'24-Pin ATX kablosu takılmazsa ne olur?', options:['Anakart hiç çalışmaz/açılmaz','Sadece ses kesilir','Sadece USB portları çalışmaz'], correct:0}},
+
+  {id:'epscable', name:'CPU Güç Kablosu (EPS)', targetType:'eps', dependsOn:null,
+    info:{title:'CPU Güç Kablosu (EPS 4/8-Pin)', desc:'Güç kaynağından işlemciye özel olarak elektrik taşıyan kablodur; CPU\'nun yoğun çalışırken ihtiyaç duyduğu ekstra gücü sağlar.',
+      fact:'Bunu biliyor muydunuz? 24-pin kablo anakartın geneline güç verirken, bu kablo özellikle işlemciye ayrılmıştır.'},
+    quiz:{q:'CPU güç kablosu (EPS) özellikle hangi bileşene güç verir?', options:['İşlemciye (CPU)','Ekran kartına','Sabit diske'], correct:0}},
+
+  {id:'fan1comp', name:'Kasa Fanı 1', targetType:'fan1', dependsOn:null,
+    info:{title:'Kasa Fanı', desc:'Kasa içindeki sıcak havayı dışarı atıp serin hava girişini sağlayarak tüm bileşenlerin serin kalmasına yardımcı olur. Kasaya vidalanır, güç kablosu ise anakart üzerindeki fan başlığına takılır.',
+      fact:'Bunu biliyor muydunuz? İyi bir hava akışı (bir taraftan soğuk hava alıp diğer taraftan sıcak havayı atmak) bilgisayarın ömrünü uzatır.'},
+    quiz:{q:'Kasa fanlarının amacı nedir?', options:['Kasa içindeki hava akışını sağlayıp sıcaklığı düşürmek','İnternet hızını artırmak','Ekran çözünürlüğünü artırmak'], correct:0}},
+
+  {id:'fan2comp', name:'Kasa Fanı 2', targetType:'fan2', dependsOn:null,
+    info:{title:'Kasa Fanı', desc:'Genelde bir fan hava emerken diğeri sıcak havayı dışarı atacak şekilde yerleştirilir; böylece kasa içinde sürekli bir hava döngüsü oluşur.',
+      fact:'Bunu biliyor muydunuz? Fan başlıkları üzerindeki 4 pinden biri, anakartın fan hızını otomatik ayarlamasını sağlar.'},
+    quiz:{q:'Genelde bir kasada birden fazla fan neden kullanılır?', options:['Sürekli bir hava giriş/çıkış döngüsü oluşturmak için','Kasayı ağırlaştırmak için','Sesi tamamen kesmek için'], correct:0}},
+
+  {id:'frontpanelcable', name:'Ön Panel Kablo Demeti', targetType:'frontpanel', dependsOn:null,
+    info:{title:'Ön Panel Kabloları', desc:'Kasanın önündeki güç düğmesi, yeniden başlatma düğmesi ve ışıkları (LED) anakarta bağlayan küçük kablo demetidir.',
+      fact:'Bunu biliyor muydunuz? Bu kablolar çok küçük olduğu için gerçek montajda genelde en dikkat gerektiren adımdır; her pinin yeri anakart kılavuzunda yazar.'},
+    quiz:{q:'Ön panel kabloları neyi bağlar?', options:['Güç düğmesi, reset düğmesi ve LED\'leri','Ekran kartını','RAM belleği'], correct:0}},
+];
+
+/* ---------- BİLGİ NOKTALARININ AÇIKLAMALARI ---------- */
+const HOTSPOT_INFO = {
+  case:    {title:'Bilgisayar Kasası (temsili)', desc:'Anakart, güç kaynağı ve sürücüler gerçek bir bilgisayarda kasanın içine monte edilir. Burada sürücü kafesi ve güç kaynağını kasanın bir parçası olarak temsili gösteriyoruz.', fact:''},
+  io:      {title:'Arka Panel (I/O Kalkanı)', desc:'Anakartın kasadan dışarı bakan kenarıdır; USB, ağ (ethernet), ses ve görüntü çıkışı gibi dış dünyaya açılan portları barındırır.', fact:'Bunu biliyor muydunuz? Bu bölgedeki metal çerçeveye "I/O kalkanı" denir ve elektromanyetik girişimi de azaltır.'},
+  vrm:     {title:'VRM (Voltaj Regülatör Modülleri)', desc:'Güç kaynağından gelen elektriği işlemcinin ihtiyaç duyduğu düşük ve kararlı voltaja çevirir. Genelde üzerinde küçük bir soğutucu bulunur.', fact:'Bunu biliyor muydunuz? Kaliteli VRM\'ler, işlemcinin daha yüksek hızlarda kararlı çalışmasına yardımcı olur.'},
+  chipset: {title:'Yonga Seti (Chipset)', desc:'CPU, RAM, depolama ve USB gibi tüm bileşenler arasındaki veri trafiğini yöneten "trafik polisi" gibidir.', fact:'Bunu biliyor muydunuz? Anakartın hangi işlemci ile uyumlu olacağını ve hangi özellikleri destekleyeceğini büyük ölçüde yonga seti belirler.'},
+  pcie1:   {title:'PCIe x1 Yuvası', desc:'PCIe x16\'ya göre daha küçük ve daha az veri yolu olan genişletme yuvasıdır; ses kartı, ağ kartı gibi küçük eklenti kartları için kullanılır.', fact:''},
+  psu:     {title:'Güç Kaynağı (PSU)', desc:'Prizden gelen alternatif akımı (AC), bilgisayar bileşenlerinin kullanabileceği doğru akıma (DC) çevirir ve kablolarla anakart, sürücüler ile ekran kartına dağıtır.', fact:'Bunu biliyor muydunuz? PSU\'nun "Watt" değeri, aynı anda tüm bileşenlere ne kadar güç verebileceğini gösterir; güçlü ekran kartları daha yüksek Watt gerektirir.'},
+};
+
+/* ---------- DURUM ---------- */
+let mode = 'info'; // 'info' | 'quiz'
+let score = 0, quizTotal = 0;
+let timerHandle = null, startTime = 0;
+let placedCount = 0;
+let placedOrder = []; // sesle "son eklenen parçayı sök" icin ekleme sirasi
+const TOTAL = COMPONENTS.length;
+const compById = {}; COMPONENTS.forEach(c => compById[c.id] = c);
+const slotById = {}; SLOTS.forEach(s => { s.filled = null; slotById[s.id] = s; });
+
+const board = document.getElementById('board');
+const trayGrid = document.getElementById('trayGrid');
+const placedList = document.getElementById('placedList');
+const dragGhost = document.getElementById('dragGhost');
+const toastEl = document.getElementById('toast');
+let placedLayer;
+
+/* ---------- YARDIMCI: SVG öğesi oluşturma ---------- */
+function svgEl(tag, attrs){
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+/* ---------- ORTAK: FAN PERVANESİ ÇİZİMİ (her yerde tutarlı, gerçekçi görünüm için) ---------- */
+function fanBlades(cx,cy,r,color){
+  color = color || '#333';
+  const w = Math.max(1.4, r*0.16);
+  const pts = [];
+  for (let i=0;i<8;i++){
+    const a = i*Math.PI/4;
+    const x1 = cx + Math.cos(a)*r*0.3, y1 = cy + Math.sin(a)*r*0.3;
+    const x2 = cx + Math.cos(a)*r*0.82, y2 = cy + Math.sin(a)*r*0.82;
+    pts.push(`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`);
+  }
+  return `<g class="fan-spin" stroke="${color}" stroke-width="${w}" stroke-linecap="round">${pts.join('')}</g>`;
+}
+function fanHub(cx,cy,r){ return `<circle cx="${cx}" cy="${cy}" r="${(r*0.34).toFixed(1)}" fill="#20262c" stroke="#000" stroke-width="1"/>`; }
+
+/* ---------- SIMGE ÇİZİMLERİ (kutu içi küçük ikonlar, viewBox 0 0 40 40) ---------- */
+function iconInner(type){
+  switch(type){
+    case 'cpu': return '<rect x="7" y="7" width="26" height="26" rx="2.5" fill="url(#gGold)" stroke="#7a5a1f" stroke-width="1"/><rect x="11" y="11" width="18" height="18" rx="1.5" fill="url(#gMetal)"/><polygon points="9,9 15,9 9,15" fill="#2a2a2a" opacity=".55"/>';
+    case 'cooler': return `<circle cx="20" cy="20" r="15" fill="url(#gMetal)" stroke="#333" stroke-width="1.3"/>${fanBlades(20,20,13,'#2a2f36')}${fanHub(20,20,13)}`;
+    case 'ram': return '<rect x="12" y="3" width="16" height="30" rx="1.5" fill="#3f6f8c" stroke="#1d3c4d" stroke-width="1.2"/><rect x="14" y="6" width="12" height="6" fill="#1c2a33" opacity=".6"/><rect x="14" y="16" width="12" height="6" fill="#1c2a33" opacity=".6"/><rect x="12" y="29" width="16" height="4" fill="url(#gGold)"/>';
+    case 'gpu': return '<rect x="2" y="12" width="36" height="17" rx="2.5" fill="url(#gPcbCard)" stroke="#0a0c0f" stroke-width="1.2"/><rect x="2" y="12" width="36" height="4" fill="#0e1114"/>' + `<circle cx="12" cy="22" r="7" fill="#12151a" stroke="#333" stroke-width="1.3"/>${fanBlades(12,22,6,'#454c56')}` + `<circle cx="27" cy="22" r="7" fill="#12151a" stroke="#333" stroke-width="1.3"/>${fanBlades(27,22,6,'#454c56')}` + '<rect x="2" y="27" width="36" height="3" fill="url(#gGold)"/>';
+    case 'm2': return '<rect x="3" y="16" width="32" height="8" rx="1.5" fill="url(#gPcbCard)" stroke="#0a0c0f" stroke-width="1"/><rect x="3" y="16" width="6" height="8" fill="url(#gGold)"/><rect x="13" y="18" width="9" height="4" fill="#3a4550"/><rect x="25" y="18" width="6" height="4" fill="#3a4550"/>';
+    case 'bay': return '<rect x="5" y="8" width="30" height="24" rx="2.5" fill="url(#gMetal)" stroke="#333" stroke-width="1.2"/><rect x="8" y="13" width="24" height="3" fill="#1c2126" opacity=".55"/><rect x="8" y="19" width="24" height="3" fill="#1c2126" opacity=".55"/><circle cx="30" cy="27" r="1.7" fill="#7fe08a"/>';
+    case 'cable': return '<path d="M4 32 C4 18, 20 20, 24 9" fill="none" stroke="#c94040" stroke-width="1.6"/><path d="M6 32 C6 18, 22 20, 26 8" fill="none" stroke="#e0b23a" stroke-width="1.6"/><path d="M8 32 C8 18, 24 20, 28 7" fill="none" stroke="#222" stroke-width="1.6"/><rect x="24" y="3" width="11" height="9" rx="1.5" fill="url(#gDarkPlastic)" stroke="#000" stroke-width=".8"/>';
+    case 'satacable': return '<path d="M4 32 C4 16, 22 18, 26 9" fill="none" stroke="#c94f4f" stroke-width="2"/><path d="M6 32 C6 17, 24 19, 28 8" fill="none" stroke="#8a2f2f" stroke-width="1.4"/><rect x="25" y="3" width="10" height="8" rx="1.4" fill="url(#gDarkPlastic)" stroke="#000" stroke-width=".8"/>';
+    case 'fan': return `<rect x="3" y="3" width="34" height="34" rx="5" fill="none" stroke="#555" stroke-width="1.4"/><circle cx="20" cy="20" r="14" fill="#1b232c" stroke="#333" stroke-width="1"/>${fanBlades(20,20,12,'#8fd0f0')}${fanHub(20,20,12)}<circle cx="6" cy="6" r="1.5" fill="#777"/><circle cx="34" cy="6" r="1.5" fill="#777"/><circle cx="6" cy="34" r="1.5" fill="#777"/><circle cx="34" cy="34" r="1.5" fill="#777"/>`;
+    case 'frontpanel': return '<rect x="4" y="14" width="32" height="12" rx="2.5" fill="url(#gDarkPlastic)" stroke="#000" stroke-width="1"/><circle cx="11" cy="20" r="2.1" fill="#e05050"/><circle cx="20" cy="20" r="2.1" fill="#50c878"/><circle cx="29" cy="20" r="2.1" fill="#f2d24a"/>';
+    default: return '<rect x="8" y="8" width="24" height="24" fill="#666"/>';
+  }
+}
+function trayIconType(comp){
+  if (comp.id === 'cpu') return 'cpu';
+  if (comp.id === 'cooler') return 'cooler';
+  if (comp.targetType === 'ram') return 'ram';
+  if (comp.id === 'gpu') return 'gpu';
+  if (comp.id === 'm2ssd') return 'm2';
+  if (comp.id === 'satassd') return 'bay';
+  if (comp.id === 'satadata') return 'satacable';
+  if (comp.id === 'satapower') return 'satacable';
+  if (comp.id === 'atx24cable' || comp.id === 'epscable') return 'cable';
+  if (comp.targetType === 'fan1' || comp.targetType === 'fan2') return 'fan';
+  if (comp.id === 'frontpanelcable') return 'frontpanel';
+  return 'cpu';
+}
+
+/* ---------- GERÇEKÇİLİK: BOŞ YUVA ÇİZİMLERİ (pin gridleri, mandallar, altın kenarlar) ---------- */
+function pinGrid(g, x, y, w, h, cols, rows, pad){
+  pad = pad===undefined ? 4 : pad;
+  const gw = w-2*pad, gh = h-2*pad;
+  for (let r=0;r<rows;r++) for (let c=0;c<cols;c++){
+    const px = x+pad+(cols===1?gw/2:gw*c/(cols-1));
+    const py = y+pad+(rows===1?gh/2:gh*r/(rows-1));
+    g.appendChild(svgEl('circle',{cx:px,cy:py,r:1.3,fill:'url(#gGold)'}));
+  }
+}
+function staticSlotArt(s){
+  const g = svgEl('g',{});
+  const cx = s.x+s.w/2, cy = s.y+s.h/2;
+  switch(s.type){
+    case 'cpu': {
+      g.appendChild(svgEl('rect',{x:s.x+2,y:s.y+2,width:s.w-4,height:s.h-4,rx:5,fill:'#20262d'}));
+      pinGrid(g, s.x, s.y, s.w, s.h, 9, 9, 15);
+      g.appendChild(svgEl('rect',{x:s.x+5,y:s.y+5,width:s.w-10,height:s.h-10,rx:4,fill:'none',stroke:'#8b93a0',opacity:.5,'stroke-width':1.4}));
+      g.appendChild(svgEl('polygon',{points:`${s.x+11},${s.y+5} ${s.x+23},${s.y+5} ${s.x+11},${s.y+17}`, fill:'#cfd4da', opacity:.75}));
+      g.appendChild(svgEl('rect',{x:s.x+s.w-7,y:s.y+s.h*0.16,width:5,height:s.h*0.5,rx:2,fill:'url(#gMetal)'}));
+      break;
+    }
+    case 'ram': {
+      g.appendChild(svgEl('rect',{x:s.x-2,y:s.y-8,width:s.w+4,height:9,rx:2,fill:'#c7cdd4'}));
+      g.appendChild(svgEl('rect',{x:s.x-2,y:s.y+s.h-1,width:s.w+4,height:9,rx:2,fill:'#c7cdd4'}));
+      g.appendChild(svgEl('rect',{x:s.x+2,y:s.y+2,width:s.w-4,height:s.h-4,fill:'#12181f',opacity:.6}));
+      g.appendChild(svgEl('rect',{x:s.x+3,y:s.y+s.h-6,width:s.w-6,height:4,fill:'url(#gGold)',opacity:.6}));
+      break;
+    }
+    case 'eps': case 'atx24': case 'sata': case 'frontpanel': case 'fan1': case 'fan2': case 'satapower': {
+      g.appendChild(svgEl('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:2,fill:'url(#gDarkPlastic)'}));
+      const wide = s.w>=s.h;
+      const cols = wide ? Math.max(2,Math.round(s.w/14)) : Math.max(2,Math.round(s.w/8));
+      const rows = wide ? Math.max(1,Math.round(s.h/12)) : Math.max(2,Math.round(s.h/14));
+      pinGrid(g, s.x, s.y, s.w, s.h, cols, rows, 4);
+      break;
+    }
+    case 'm2': {
+      g.appendChild(svgEl('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:3,fill:'url(#gDarkPlastic)'}));
+      g.appendChild(svgEl('rect',{x:s.x+2,y:s.y+s.h*0.22,width:12,height:s.h*0.56,fill:'url(#gGold)'}));
+      g.appendChild(svgEl('circle',{cx:s.x+s.w-10,cy,r:3.4,fill:'url(#gMetal)'}));
+      g.appendChild(svgEl('circle',{cx:s.x+s.w-10,cy,r:1.1,fill:'#222'}));
+      break;
+    }
+    case 'pcie16': {
+      g.appendChild(svgEl('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:3,fill:'url(#gDarkPlastic)'}));
+      g.appendChild(svgEl('rect',{x:s.x,y:s.y,width:s.w,height:4,fill:'url(#gMetal)'}));
+      g.appendChild(svgEl('rect',{x:s.x+s.w-16,y:s.y-3,width:6,height:s.h+6,rx:2,fill:'#8a8f96'}));
+      break;
+    }
+    case 'bay': {
+      g.appendChild(svgEl('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:4,fill:'#232a33',stroke:'#111','stroke-width':1.5,'stroke-dasharray':'5,4'}));
+      for (let i=0;i<4;i++) g.appendChild(svgEl('line',{x1:s.x+8,y1:s.y+16+i*14,x2:s.x+s.w-8,y2:s.y+16+i*14,stroke:'#000',opacity:.22}));
+      [[s.x+9,s.y+9],[s.x+s.w-9,s.y+9],[s.x+9,s.y+s.h-9],[s.x+s.w-9,s.y+s.h-9]].forEach(([px,py])=>{
+        g.appendChild(svgEl('circle',{cx:px,cy:py,r:2.6,fill:'url(#gMetal)'}));
+      });
+      break;
+    }
+  }
+  return g;
+}
+function hotspotArt(h){
+  const g = svgEl('g',{});
+  const cx = h.x+h.w/2, cy = h.y+h.h/2;
+  switch(h.id){
+    case 'vrm': {
+      g.appendChild(svgEl('rect',{x:h.x,y:h.y,width:h.w,height:h.h,rx:3,fill:'url(#gMetalV)'}));
+      for (let i=0;i<6;i++) g.appendChild(svgEl('line',{x1:h.x+3,y1:h.y+8+i*(h.h-16)/5,x2:h.x+h.w-3,y2:h.y+8+i*(h.h-16)/5,stroke:'#333',opacity:.4}));
+      break;
+    }
+    case 'chipset': {
+      g.appendChild(svgEl('rect',{x:h.x,y:h.y,width:h.w,height:h.h,rx:4,fill:'url(#gMetal)'}));
+      for (let i=1;i<7;i++) g.appendChild(svgEl('line',{x1:h.x+4,y1:h.y+i*h.h/7,x2:h.x+h.w-4,y2:h.y+i*h.h/7,stroke:'#333',opacity:.35,'stroke-width':1.3}));
+      g.appendChild(svgEl('rect',{x:cx-15,y:cy-15,width:30,height:30,rx:3,fill:'url(#gDie)'}));
+      break;
+    }
+    case 'io': {
+      g.appendChild(svgEl('rect',{x:h.x,y:h.y,width:h.w,height:h.h,fill:'url(#gDarkPlastic)'}));
+      [{y:h.y+10,hh:8,c:'#5ec8e8'},{y:h.y+24,hh:8,c:'#5ec8e8'},{y:h.y+40,hh:10,c:'#e8d05e'},{y:h.y+58,hh:14,c:'#8a8f96'},{y:h.y+80,hh:8,c:'#7fe08a'}]
+        .forEach(p=> g.appendChild(svgEl('rect',{x:h.x+8,y:p.y,width:h.w-16,height:p.hh,rx:2,fill:p.c,opacity:.85})));
+      break;
+    }
+    case 'psu': {
+      g.appendChild(svgEl('rect',{x:h.x,y:h.y,width:h.w,height:h.h,rx:4,fill:'url(#gDarkPlastic)'}));
+      const fy = h.y+h.h*0.38;
+      g.appendChild(svgEl('circle',{cx,cy:fy,r:23,fill:'#111',stroke:'#444','stroke-width':2}));
+      g.appendChild(fanBladesEl(cx,fy,20,'#3a3f45'));
+      g.appendChild(svgEl('rect',{x:h.x+10,y:h.y+h.h-18,width:h.w-20,height:10,rx:2,fill:'#2a2a2a'}));
+      break;
+    }
+  }
+  return g;
+}
+function fanBladesEl(cx,cy,r,color){
+  const wrap = svgEl('g',{});
+  wrap.innerHTML = fanBlades(cx,cy,r,color);
+  return wrap;
+}
+
+/* ---------- PANO (BOARD) ÇİZİMİ ---------- */
+function renderBoardStatic(){
+  board.innerHTML = '';
+  // arka plan + PCB dokusu
+  board.appendChild(svgEl('rect',{x:50,y:40,width:760,height:680,rx:14,fill:'var(--board-green)',stroke:'var(--dim)','stroke-width':2}));
+  board.appendChild(svgEl('rect',{x:50,y:40,width:760,height:680,rx:14,fill:'url(#pcbTrace)'}));
+  board.appendChild(svgEl('rect',{x:50,y:40,width:760,height:680,rx:14,fill:'url(#gPcbGreen)'}));
+  [[66,56],[794,56],[66,704],[794,704]].forEach(([scx,scy])=>{
+    board.appendChild(svgEl('circle',{cx:scx,cy:scy,r:7,fill:'url(#gMetal)',stroke:'#2a2a2a','stroke-width':1}));
+    board.appendChild(svgEl('circle',{cx:scx,cy:scy,r:2.2,fill:'#1a1a1a'}));
+  });
+
+  // bilgi noktaları (hotspot'lar) + dekoratif çizimleri
+  const decoratedHotspots = {vrm:1, chipset:1, io:1, psu:1};
+  HOTSPOTS.forEach(h=>{
+    if (decoratedHotspots[h.id]) board.appendChild(hotspotArt(h));
+    const shape = svgEl('rect',{x:h.x,y:h.y,width:h.w,height:h.h,rx:6,class:'hotspot-shape', 'stroke-dasharray': h.dashed ? '4,4':'none'});
+    shape.addEventListener('click', (e)=>{ e.stopPropagation(); openInfo(h.id, true); });
+    board.appendChild(shape);
+    if (h.label){
+      const t = svgEl('text',{x:h.lx,y:h.ly,class:'board-label hotspot-label','text-anchor':'middle'});
+      t.textContent = h.label;
+      board.appendChild(t);
+    }
+  });
+
+  // RAM grup etiketi
+  const ramLbl = svgEl('text',{x:RAM_GROUP_LABEL.x,y:RAM_GROUP_LABEL.y,class:'board-label','text-anchor':'middle'});
+  ramLbl.textContent = RAM_GROUP_LABEL.text;
+  board.appendChild(ramLbl);
+
+  // yuvalar (slotlar): önce gerçekçi konnektör çizimi, üstüne etkileşimli kesikli çerçeve
+  const slotArtLayer = svgEl('g',{id:'slotArtLayer'});
+  board.appendChild(slotArtLayer);
+  SLOTS.forEach(s=>{
+    if (s.type !== 'cooler') slotArtLayer.appendChild(staticSlotArt(s));
+    const rect = svgEl('rect',{x:s.x,y:s.y,width:s.w,height:s.h,rx:4,class:'slot-outline','data-slot':s.id});
+    rect.addEventListener('pointerdown', (e)=>{ onSlotPickup(e, s); });
+    board.appendChild(rect);
+    s.el = rect;
+    if (s.label){
+      const t = svgEl('text',{x:s.lx,y:s.ly,class:'board-label','text-anchor':s.anchor||'middle'});
+      t.textContent = s.label;
+      board.appendChild(t);
+    }
+  });
+
+  placedLayer = svgEl('g',{id:'placedLayer'});
+  board.appendChild(placedLayer);
+}
+
+function placedShapeMarkupFull(comp, slot){
+  const t = comp.targetType;
+  switch(t){
+    case 'cpu':
+      return `<rect x="${slot.x}" y="${slot.y}" width="${slot.w}" height="${slot.h}" rx="4" fill="url(#gGold)" stroke="#7a5a1f" stroke-width="2"/>
+        <rect x="${slot.x+15}" y="${slot.y+15}" width="${slot.w-30}" height="${slot.h-30}" rx="3" fill="url(#gMetal)" filter="url(#dropShadow)"/>
+        <polygon points="${slot.x+11},${slot.y+11} ${slot.x+23},${slot.y+11} ${slot.x+11},${slot.y+23}" fill="#2a2a2a" opacity=".5"/>
+        <text x="${slot.x+slot.w/2}" y="${slot.y+slot.h/2+5}" text-anchor="middle" font-size="15" fill="#20242a" opacity=".85">CPU</text>`;
+    case 'cooler': {
+      const cx=slot.x+slot.w/2, cy=slot.y+slot.h/2, r=slot.w/2-2;
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#gMetal)" stroke="#333" stroke-width="2" filter="url(#dropShadow)"/>
+        <circle cx="${cx}" cy="${cy}" r="${r-6}" fill="#1b1e22" opacity=".5"/>
+        ${fanBlades(cx,cy,r-7,'#2a2f36')}
+        ${fanHub(cx,cy,r-7)}
+        <path d="M${cx+r-8} ${cy} q 20 4 28 24" fill="none" stroke="#222" stroke-width="2.4" opacity=".85"/>
+        <text x="${cx}" y="${cy+r+16}" text-anchor="middle" font-size="11" fill="var(--text)" opacity=".8">Soğutucu takıldı</text>`;
+    }
+    case 'ram': {
+      const iy = slot.y+6, ih = slot.h-12;
+      return `<rect x="${slot.x}" y="${iy}" width="${slot.w}" height="${ih}" rx="1.5" fill="#3f6f8c" stroke="#1d3c4d" stroke-width="1.2" filter="url(#dropShadow)"/>
+        <rect x="${slot.x+2}" y="${iy+8}" width="${slot.w-4}" height="10" fill="#1c2a33" opacity=".5"/>
+        <rect x="${slot.x+2}" y="${iy+ih-30}" width="${slot.w-4}" height="10" fill="#1c2a33" opacity=".5"/>
+        <rect x="${slot.x}" y="${iy+ih-6}" width="${slot.w}" height="6" fill="url(#gGold)"/>`;
+    }
+    case 'pcie16': {
+      const gy = slot.y - 62, gh = 62 + slot.h;
+      return `<rect x="${slot.x}" y="${gy}" width="${slot.w}" height="${gh-6}" rx="6" fill="url(#gPcbCard)" stroke="#0a0c0f" stroke-width="2" filter="url(#dropShadow)"/>
+        <rect x="${slot.x}" y="${gy}" width="${slot.w}" height="10" fill="#0e1114"/>
+        <rect x="${slot.x+10}" y="${gy+16}" width="${slot.w-20}" height="3" rx="1.5" fill="#5ec8e8" opacity=".65"/>
+        <circle cx="${slot.x+slot.w*0.28}" cy="${gy+gh*0.46}" r="21" fill="#12151a" stroke="#333" stroke-width="2"/>
+        ${fanBlades(slot.x+slot.w*0.28, gy+gh*0.46, 18, '#454c56')}
+        <circle cx="${slot.x+slot.w*0.62}" cy="${gy+gh*0.46}" r="21" fill="#12151a" stroke="#333" stroke-width="2"/>
+        ${fanBlades(slot.x+slot.w*0.62, gy+gh*0.46, 18, '#454c56')}
+        <rect x="${slot.x+8}" y="${slot.y+slot.h-6}" width="${slot.w-16}" height="6" fill="url(#gGold)"/>`;
+    }
+    case 'm2': {
+      return `<rect x="${slot.x}" y="${slot.y+3}" width="${slot.w-16}" height="${slot.h-6}" rx="2" fill="url(#gPcbCard)" stroke="#0a0c0f" stroke-width="1.2"/>
+        <rect x="${slot.x}" y="${slot.y+3}" width="9" height="${slot.h-6}" fill="url(#gGold)"/>
+        <rect x="${slot.x+17}" y="${slot.y+6}" width="15" height="${slot.h-12}" fill="#3a4550"/>
+        <rect x="${slot.x+40}" y="${slot.y+6}" width="9" height="${slot.h-12}" fill="#3a4550"/>`;
+    }
+    case 'bay':
+      return `<rect x="${slot.x+4}" y="${slot.y+4}" width="${slot.w-8}" height="${slot.h-8}" rx="3" fill="url(#gMetal)" stroke="#222" stroke-width="1.5" filter="url(#dropShadow)"/>
+        <rect x="${slot.x+12}" y="${slot.y+14}" width="${slot.w-24}" height="5" fill="#1c2126" opacity=".55"/>
+        <rect x="${slot.x+12}" y="${slot.y+26}" width="${slot.w-24}" height="5" fill="#1c2126" opacity=".55"/>
+        <circle cx="${slot.x+slot.w-16}" cy="${slot.y+slot.h-14}" r="2.6" fill="#7fe08a"/>`;
+    case 'sata': {
+      const psu = {x:900, y:655};
+      const midx = (slot.x+slot.w/2 + psu.x)/2, midy = Math.min(slot.y, psu.y) - 40;
+      const ex = slot.x+slot.w/2, ey = slot.y+slot.h/2;
+      return `<path d="M${psu.x} ${psu.y} Q ${midx} ${midy}, ${ex} ${ey}" fill="none" stroke="#c94f4f" stroke-width="3" stroke-linecap="round" opacity=".85"/>
+        <path d="M${psu.x} ${psu.y} Q ${midx} ${midy+6}, ${ex} ${ey+4}" fill="none" stroke="#8a2f2f" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>
+        <rect x="${ex-13}" y="${ey-9}" width="26" height="18" rx="2.5" fill="url(#gDarkPlastic)" stroke="#000" stroke-width="1"/>`;
+    }
+    case 'satapower': {
+      const bay = {x:900, y:545};
+      const midx = (slot.x+slot.w/2 + bay.x)/2, midy = (slot.y + bay.y)/2 + 20;
+      const ex = slot.x+slot.w/2, ey=slot.y+slot.h/2;
+      return `<path d="M${bay.x} ${bay.y} Q ${midx} ${midy}, ${ex} ${ey}" fill="none" stroke="#e0b23a" stroke-width="3" stroke-linecap="round" opacity=".85"/>
+        <path d="M${bay.x} ${bay.y} Q ${midx} ${midy-6}, ${ex} ${ey-3}" fill="none" stroke="#c94040" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>
+        <path d="M${bay.x} ${bay.y} Q ${midx} ${midy+6}, ${ex} ${ey+3}" fill="none" stroke="#222" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>
+        <rect x="${slot.x+1}" y="${slot.y+1}" width="${slot.w-2}" height="${slot.h-2}" rx="2" fill="url(#gDarkPlastic)" stroke="#000" stroke-width=".8"/>`;
+    }
+    case 'atx24': {
+      const psu = {x:900, y:655};
+      const ex=slot.x+slot.w/2, ey=slot.y+slot.h/2;
+      const colors=['#c94040','#e0b23a','#222','#f2d24a'];
+      const wires = colors.map((c,i)=>`<path d="M${psu.x} ${psu.y} Q 830 ${296+i*13}, ${ex} ${ey}" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round" opacity=".75"/>`).join('');
+      return `${wires}<rect x="${slot.x+2}" y="${slot.y+2}" width="${slot.w-4}" height="${slot.h-4}" rx="2" fill="url(#gDarkPlastic)" stroke="#000" stroke-width="1"/>`;
+    }
+    case 'eps': {
+      const psu = {x:900, y:655};
+      const ex=slot.x+slot.w/2, ey=slot.y+slot.h/2;
+      const colors=['#c94040','#222'];
+      const wires = colors.map((c,i)=>`<path d="M${psu.x} ${psu.y} Q 700 ${116+i*10}, ${ex} ${ey}" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" opacity=".7"/>`).join('');
+      return `${wires}<rect x="${slot.x+1}" y="${slot.y+1}" width="${slot.w-2}" height="${slot.h-2}" rx="2" fill="url(#gDarkPlastic)"/>`;
+    }
+    case 'fan1': case 'fan2': {
+      const cx = slot.x+slot.w/2, cy = slot.y+slot.h/2, r=32;
+      const bend = t==='fan1' ? 16 : -16;
+      return `<path d="M${cx} ${cy} q ${bend} 0 ${bend*1.3} 6" fill="none" stroke="#222" stroke-width="2"/>
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#555" stroke-width="2.5"/>
+        <circle cx="${cx}" cy="${cy}" r="${r-5}" fill="#1b232c"/>
+        ${fanBlades(cx,cy,r-6,'#8fd0f0')}
+        ${fanHub(cx,cy,r-6)}`;
+    }
+    case 'frontpanel':
+      return `<rect x="${slot.x-2}" y="${slot.y-2}" width="${slot.w+4}" height="${slot.h+4}" rx="3" fill="url(#gDarkPlastic)" stroke="#000" stroke-width="1"/>
+        <circle cx="${slot.x+14}" cy="${slot.y+slot.h/2}" r="3" fill="#e05050"/>
+        <circle cx="${slot.x+34}" cy="${slot.y+slot.h/2}" r="3" fill="#50c878"/>
+        <circle cx="${slot.x+54}" cy="${slot.y+slot.h/2}" r="3" fill="#f2d24a"/>
+        <circle cx="${slot.x+74}" cy="${slot.y+slot.h/2}" r="3" fill="#eee"/>`;
+    default:
+      return `<rect x="${slot.x}" y="${slot.y}" width="${slot.w}" height="${slot.h}" rx="3" fill="#888"/>`;
+  }
+}
+
+/* ---------- TEPSİ (TRAY) ---------- */
+function renderTray(){
+  trayGrid.innerHTML = '';
+  COMPONENTS.forEach(comp=>{
+    const div = document.createElement('div');
+    div.className = 'tray-item';
+    div.id = 'tray-' + comp.id;
+    div.innerHTML = `<svg viewBox="0 0 40 40">${iconInner(trayIconType(comp))}</svg><span>${comp.name}</span>`;
+    div.addEventListener('pointerdown', (e)=> onTrayPickup(e, comp));
+    trayGrid.appendChild(div);
+  });
+}
+
+/* ---------- BİLGİ VERİTABANI ---------- */
+function infoLookup(id){
+  if (compById[id]) return compById[id].info;
+  if (HOTSPOT_INFO[id]) return HOTSPOT_INFO[id];
+  return null;
+}
+function openInfo(id){
+  const info = infoLookup(id);
+  if (!info) return;
+  document.getElementById('infoTitle').textContent = info.title;
+  document.getElementById('infoDesc').textContent = info.desc;
+  document.getElementById('infoFact').textContent = info.fact || '';
+  document.getElementById('infoModal').classList.add('show');
+}
+document.getElementById('infoCloseBtn').addEventListener('click', ()=> document.getElementById('infoModal').classList.remove('show'));
+
+/* ---------- TOAST ---------- */
+let toastTimer = null;
+function showToast(msg, kind){
+  toastEl.textContent = msg;
+  toastEl.className = 'toast show' + (kind ? ' '+kind : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> toastEl.classList.remove('show'), 2400);
+}
+
+/* ---------- SÜRÜKLE-BIRAK MOTORU ---------- */
+const drag = { active:false, comp:null, moved:false, startX:0, startY:0, source:null, originSlotId:null, ghostShown:false };
+
+function ptClient(e){ return { x: e.clientX, y: e.clientY }; }
+
+function startDragCommon(e, comp, source, originSlotId){
+  drag.active = true; drag.comp = comp; drag.source = source; drag.originSlotId = originSlotId || null;
+  drag.moved = false; drag.ghostShown = false;
+  const p = ptClient(e);
+  drag.startX = p.x; drag.startY = p.y;
+  dragGhost.innerHTML = ''; // reset (we use background svg render instead)
+  const svgMarkup = `<svg xmlns="${SVGNS}" viewBox="0 0 40 40">${iconInner(trayIconType(comp))}</svg>`;
+  dragGhost.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svgMarkup);
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', onPointerUp, {once:true});
+}
+
+function onTrayPickup(e, comp){
+  if (comp.placed) return;
+  if (e.button !== undefined && e.button !== 0) return;
+  startDragCommon(e, comp, 'tray', null);
+}
+
+function onSlotPickup(e, slot){
+  if (!slot.filled) return; // yuva boşsa sürüklenecek bir şey yok
+  const comp = compById[slot.filled];
+  e.stopPropagation();
+  startDragCommon(e, comp, 'board', slot.id);
+}
+
+function onPointerMove(e){
+  if (!drag.active) return;
+  const p = ptClient(e);
+  const dx = p.x - drag.startX, dy = p.y - drag.startY;
+  if (!drag.moved && Math.hypot(dx,dy) > 6){
+    drag.moved = true;
+    dragGhost.style.display = 'block';
+    if (drag.source === 'board'){
+      const slot = slotById[drag.originSlotId];
+      slot.el.classList.add('picked');
+      const shapeG = document.getElementById('placed-'+drag.comp.id);
+      if (shapeG) shapeG.classList.add('picked');
+    } else {
+      const trayEl = document.getElementById('tray-'+drag.comp.id);
+      if (trayEl) trayEl.style.opacity = '0.25';
+    }
+  }
+  if (drag.moved){
+    dragGhost.style.left = (p.x - 23) + 'px';
+    dragGhost.style.top = (p.y - 23) + 'px';
+  }
+}
+
+function clientToSvg(x, y){
+  const pt = board.createSVGPoint ? board.createSVGPoint() : null;
+  if (pt){
+    pt.x = x; pt.y = y;
+    const m = board.getScreenCTM();
+    if (m) { const r = pt.matrixTransform(m.inverse()); return {x:r.x, y:r.y}; }
+  }
+  const rect = board.getBoundingClientRect();
+  const vb = board.viewBox.baseVal;
+  return { x: (x-rect.left)/rect.width*vb.width, y: (y-rect.top)/rect.height*vb.height };
+}
+
+function rectContains(s, x, y, pad){
+  pad = pad || 10;
+  return x >= s.x-pad && x <= s.x+s.w+pad && y >= s.y-pad && y <= s.y+s.h+pad;
+}
+
+function onPointerUp(e){
+  window.removeEventListener('pointermove', onPointerMove);
+  if (!drag.active) return;
+  const comp = drag.comp;
+  const wasMoved = drag.moved;
+  dragGhost.style.display = 'none';
+
+  if (!wasMoved){
+    // tıklama olarak say -> bilgi kartı
+    drag.active = false;
+    if (drag.source === 'board'){
+      const slot = slotById[drag.originSlotId];
+      slot.el.classList.remove('picked');
+    } else {
+      const trayEl = document.getElementById('tray-'+comp.id);
+      if (trayEl) trayEl.style.opacity = '';
+    }
+    openInfo(comp.id);
+    return;
+  }
+
+  const p = ptClient(e);
+  const trayRect = document.getElementById('trayCard').getBoundingClientRect();
+  const boardRect = board.getBoundingClientRect();
+  const overTray = (p.x>=trayRect.left && p.x<=trayRect.right && p.y>=trayRect.top && p.y<=trayRect.bottom);
+  const overBoard = (p.x>=boardRect.left && p.x<=boardRect.right && p.y>=boardRect.top && p.y<=boardRect.bottom);
+
+  // önce görsel durumu temizle
+  if (drag.source === 'board'){
+    const originSlot = slotById[drag.originSlotId];
+    originSlot.el.classList.remove('picked');
+  } else {
+    const trayEl = document.getElementById('tray-'+comp.id);
+    if (trayEl) trayEl.style.opacity = '';
+  }
+
+  if (overTray){
+    if (drag.source === 'board'){
+      removeComponent(comp);
+      showToast('🔧 ' + comp.name + ' söküldü.', null);
+    }
+    drag.active = false;
+    return;
+  }
+
+  if (overBoard){
+    const sp = clientToSvg(p.x, p.y);
+    let target = null;
+    const candidates = SLOTS.filter(s => rectContains(s, sp.x, sp.y, 14));
+    target = candidates.find(s => s.type === comp.targetType) || candidates[0] || null;
+
+    if (!target){
+      bounceBack(comp);
+      drag.active = false;
+      return;
+    }
+    if (target.type !== comp.targetType){
+      shakeBoard();
+      showToast('❌ Bu bileşen "'+ (target.label||target.type) +'" yuvasına uymuyor.', 'err');
+      bounceBack(comp);
+      drag.active = false;
+      return;
+    }
+    if (target.filled && target.filled !== comp.id){
+      shakeBoard();
+      showToast('❌ Bu yuva zaten dolu.', 'err');
+      bounceBack(comp);
+      drag.active = false;
+      return;
+    }
+    if (comp.dependsOn && !compById[comp.dependsOn].placed){
+      shakeBoard();
+      showToast('⏳ Önce "'+ compById[comp.dependsOn].name +'" bileşenini yerleştirin.', 'err');
+      bounceBack(comp);
+      drag.active = false;
+      return;
+    }
+    // geçerli: eğer başka bir yuvadan geldiyse önce oradan kaldır
+    if (drag.source === 'board' && drag.originSlotId !== target.id){
+      removeComponent(comp, true);
+    } else if (drag.source === 'board' && drag.originSlotId === target.id){
+      // aynı yere bırakıldı, değişiklik yok
+      const shapeG = document.getElementById('placed-'+comp.id);
+      if (shapeG) shapeG.classList.remove('picked');
+      drag.active = false;
+      return;
+    }
+    placeComponent(comp, target);
+    drag.active = false;
+    return;
+  }
+
+  // ne tepsi ne pano üzerinde bırakıldı
+  bounceBack(comp);
+  drag.active = false;
+}
+
+function bounceBack(comp){
+  if (drag.source === 'board'){
+    const shapeG = document.getElementById('placed-'+comp.id);
+    if (shapeG) shapeG.classList.remove('picked');
+  }
+}
+function shakeBoard(){
+  const bc = document.getElementById('boardCard');
+  bc.classList.remove('shake'); void bc.offsetWidth; bc.classList.add('shake');
+}
+
+/* ---------- YERLEŞTİRME / SÖKME ---------- */
+function placeComponent(comp, slot, silent){
+  slot.filled = comp.id;
+  comp.placed = true; comp.placedSlotId = slot.id;
+  slot.el.classList.add('filled');
+
+  const g = svgEl('g',{id:'placed-'+comp.id, class:'placed-shape'});
+  g.innerHTML = placedShapeMarkupFull(comp, slot);
+  g.addEventListener('pointerdown', (e)=>{ e.stopPropagation(); if(!comp.placed) return; onSlotPickup(e, slot); });
+  placedLayer.appendChild(g);
+
+  const trayEl = document.getElementById('tray-'+comp.id);
+  if (trayEl) trayEl.classList.add('hidden-placed');
+
+  const chip = document.createElement('div');
+  chip.className = 'placed-chip'; chip.id = 'chip-'+comp.id;
+  chip.innerHTML = `<span>✅ ${comp.name}</span>`;
+  const btn = document.createElement('button'); btn.textContent = '✕';
+  btn.title = 'Sök';
+  btn.addEventListener('click', ()=>{ removeComponent(comp); showToast('🔧 ' + comp.name + ' söküldü.', null); });
+  chip.appendChild(btn);
+  placedList.appendChild(chip);
+
+  placedCount++;
+  placedOrder.push(comp.id);
+  updateProgress();
+  if (!silent) showToast('✅ ' + comp.name + ' doğru yerine takıldı!', 'ok');
+
+  if (mode === 'quiz' && !silent){
+    quizTotal++;
+    setTimeout(()=> openQuiz(comp), 350);
+  } else {
+    checkCompletion();
+  }
+}
+
+function removeComponent(comp, silent){
+  if (!comp.placed) return;
+  const slot = slotById[comp.placedSlotId];
+  if (slot){ slot.filled = null; slot.el.classList.remove('filled'); }
+  comp.placed = false; comp.placedSlotId = null;
+  const g = document.getElementById('placed-'+comp.id); if (g) g.remove();
+  const trayEl = document.getElementById('tray-'+comp.id); if (trayEl) trayEl.classList.remove('hidden-placed');
+  const chip = document.getElementById('chip-'+comp.id); if (chip) chip.remove();
+  placedCount = Math.max(0, placedCount-1);
+  placedOrder = placedOrder.filter(id => id !== comp.id);
+  updateProgress();
+}
+
+function updateProgress(){
+  document.getElementById('progressText').textContent = placedCount + ' / ' + TOTAL;
+}
+function checkCompletion(){
+  if (placedCount === TOTAL) showCompletion();
+}
+
+/* ---------- SINAV MODU SORUSU ---------- */
+let quizLock = false;
+function openQuiz(comp){
+  if (!comp.quiz) { checkCompletion(); return; }
+  quizLock = true;
+  document.getElementById('quizQ').textContent = comp.quiz.q;
+  const opts = document.getElementById('quizOptions'); opts.innerHTML = '';
+  document.getElementById('quizSkipBtn').style.display = 'none';
+  comp.quiz.options.forEach((opt, idx)=>{
+    const b = document.createElement('button');
+    b.className = 'quizOptBtn'; b.textContent = opt;
+    b.addEventListener('click', ()=>{
+      Array.from(opts.children).forEach(c=>c.disabled=true);
+      if (idx === comp.quiz.correct){ b.classList.add('correct'); score++; }
+      else { b.classList.add('wrong'); opts.children[comp.quiz.correct].classList.add('correct'); }
+      updateQuizStats();
+      document.getElementById('quizSkipBtn').style.display = 'inline-block';
+    });
+    opts.appendChild(b);
+  });
+  document.getElementById('quizModal').classList.add('show');
+}
+document.getElementById('quizSkipBtn').addEventListener('click', ()=>{
+  document.getElementById('quizModal').classList.remove('show');
+  quizLock = false;
+  checkCompletion();
+});
+function updateQuizStats(){
+  document.getElementById('scoreText').textContent = score + '/' + quizTotal;
+}
+
+/* ---------- ZAMANLAYICI ---------- */
+function startTimer(){
+  stopTimer();
+  startTime = Date.now();
+  timerHandle = setInterval(()=>{
+    const s = Math.floor((Date.now()-startTime)/1000);
+    const mm = String(Math.floor(s/60)).padStart(2,'0');
+    const ss = String(s%60).padStart(2,'0');
+    document.getElementById('timerText').textContent = mm+':'+ss;
+  }, 1000);
+}
+function stopTimer(){ if (timerHandle){ clearInterval(timerHandle); timerHandle=null; } }
+
+/* ---------- TAMAMLANMA ---------- */
+function showCompletion(){
+  stopTimer();
+  const title = document.getElementById('completeTitle');
+  const body = document.getElementById('completeBody');
+  if (mode === 'quiz'){
+    title.textContent = '🎉 Montaj Tamamlandı!';
+    body.textContent = `Anakartı başarıyla monte ettiniz. Sınav puanınız: ${score} / ${quizTotal} doğru. Süre: ${document.getElementById('timerText').textContent}.`;
+  } else {
+    title.textContent = '🎉 Tebrikler!';
+    body.textContent = 'Anakartı tüm bileşenleriyle başarıyla monte ettiniz! Şimdi "🧠 Sınav Modu"na geçip bilgilerinizi test edebilirsiniz.';
+  }
+  document.getElementById('completeModal').classList.add('show');
+}
+document.getElementById('completeCloseBtn').addEventListener('click', ()=> document.getElementById('completeModal').classList.remove('show'));
+document.getElementById('completeResetBtn').addEventListener('click', ()=>{ document.getElementById('completeModal').classList.remove('show'); resetAll(); });
+
+/* ---------- SIFIRLA / MOD DEĞİŞTİR / İPUCU ---------- */
+function resetAll(){
+  COMPONENTS.slice().forEach(c=>{ if (c.placed) removeComponent(c, true); });
+  score = 0; quizTotal = 0; placedCount = 0;
+  updateProgress(); updateQuizStats();
+  document.getElementById('timerText').textContent = '00:00';
+  if (mode === 'quiz') startTimer();
+}
+
+function switchMode(newMode){
+  mode = newMode;
+  document.getElementById('modeInfoBtn').classList.toggle('active', mode==='info');
+  document.getElementById('modeQuizBtn').classList.toggle('active', mode==='quiz');
+  document.getElementById('quizStats').style.display = mode==='quiz' ? 'inline' : 'none';
+  board.classList.toggle('quiz-mode', mode==='quiz');
+  resetAll();
+  if (mode === 'quiz') showToast('🧠 Sınav modu: bileşenleri doğru yuvalara yerleştirin, küçük sorular sizi bekliyor!', null);
+}
+document.getElementById('modeInfoBtn').addEventListener('click', ()=> switchMode('info'));
+document.getElementById('modeQuizBtn').addEventListener('click', ()=> switchMode('quiz'));
+document.getElementById('resetBtn').addEventListener('click', resetAll);
+
+document.getElementById('hintBtn').addEventListener('click', ()=>{
+  const next = COMPONENTS.find(c => !c.placed && (!c.dependsOn || compById[c.dependsOn].placed));
+  if (!next){ showToast('Şu an yerleştirilebilecek bir bileşen yok. Önce bağımlı olduğu bileşeni takın.', null); return; }
+  const slot = SLOTS.find(s=> s.type===next.targetType && !s.filled);
+  if (slot){ slot.el.classList.add('hint'); setTimeout(()=> slot.el.classList.remove('hint'), 2900); }
+  const trayEl = document.getElementById('tray-'+next.id);
+  if (trayEl){ trayEl.classList.add('hint-flash'); setTimeout(()=> trayEl.classList.remove('hint-flash'), 2900); }
+  showToast('💡 Sırada: ' + next.name, null);
+});
+
+/* ---------- TEMA (Pico tarzı açılır liste) ---------- */
+const THEME_META = {
+  blue:  {label:'Mavi',  dot:'#5ec8e8'},
+  green: {label:'Yeşil', dot:'#8ff0cc'},
+  cream: {label:'Krem',  dot:'#b5651d'},
+};
+const themeDropdownBtn = document.getElementById('themeDropdownBtn');
+const themeDropdownList = document.getElementById('themeDropdownList');
+const themeCurrentSwatch = document.getElementById('themeCurrentSwatch');
+const themeCurrentLabel = document.getElementById('themeCurrentLabel');
+
+themeDropdownBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  themeDropdownList.classList.toggle('open');
+});
+document.addEventListener('click', ()=> themeDropdownList.classList.remove('open'));
+themeDropdownList.addEventListener('click', (e)=> e.stopPropagation());
+
+// Tıklama VE sesli komut (set_theme) tarafından paylaşılan, tek tema
+// uygulama fonksiyonu — data-theme'i, üst düğmeyi ve aktif işaretini günceller.
+function applyTheme(th) {
+  const meta = THEME_META[th];
+  if (!meta) return;
+  document.documentElement.setAttribute('data-theme', th);
+  document.querySelectorAll('.themeOption').forEach(o=> o.classList.toggle('active', o.dataset.theme === th));
+  themeCurrentSwatch.style.background = meta.dot;
+  themeCurrentLabel.textContent = meta.label;
+  themeDropdownList.classList.remove('open');
+}
+
+document.querySelectorAll('.themeOption').forEach(opt=>{
+  opt.addEventListener('click', ()=> applyTheme(opt.dataset.theme));
+});
+
+/* ---------- YARDIM MODALI ---------- */
+document.getElementById('helpBtn').addEventListener('click', ()=> document.getElementById('helpModal').classList.add('show'));
+document.getElementById('helpCloseBtn').addEventListener('click', ()=> document.getElementById('helpModal').classList.remove('show'));
+
+/* ---------- YERİNDE SESLİ KOMUT KÖPRÜSÜ ---------- */
+// Python tarafı (core/bridge_server.py) bu sayfaya JSON komutlar gönderir;
+// diğer YERİNDE araçlarıyla (3B Tasarım Stüdyosu, Robot Tasarım Atölyesi vb.)
+// AYNI köprü mekanizması ve desen kullanılır.
+
+function normalizeTr(s) {
+  return (s || '').toString()
+    // ÖNEMLİ: JavaScript'in yerleşik toLowerCase()'i büyük 'İ' harfini
+    // düz 'i' değil, görünmez bir noktayla birleşik "i̇" karakterine çevirir
+    // (Türkçe'ye özgü bir Unicode tuzağı). Bu da "İşlemci" gibi büyük İ ile
+    // başlayan parça adlarının hiçbir zaman eşleşmemesine yol açıyordu.
+    // Bu yüzden İ/I harflerini toLowerCase'den ÖNCE elle çeviriyoruz.
+    .replace(/İ/g, 'i').replace(/I/g, 'ı')
+    .toLowerCase()
+    .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+    .replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/[().]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// "RAM Bellek iki", "ikinci kasa fanı" gibi sayının rakam yerine kelimeyle
+// söylendiği durumlar da doğru parçayla eşleşsin diye basit bir çeviri.
+const _SAYI_KELIME = { bir: '1', birinci: '1', ilk: '1', iki: '2', ikinci: '2' };
+function normalizeNumbers(s) {
+  return s.split(' ').map((w) => _SAYI_KELIME[w] || w).join(' ');
+}
+
+// Bileşenin tam adıyla birebir örtüşmeyen ama kullanıcının doğal dilde
+// söyleyebileceği yaygın alternatif adları gerçek parça id'lerine eşler.
+const _PARCA_ESANLAM = {
+  'islemci': 'cpu', 'islemci guc kablosu': 'epscable', 'cpu guc kablosu': 'epscable',
+  'eps kablosu': 'epscable', 'eps': 'epscable',
+  'ana guc kablosu': 'atx24cable', 'anakart guc kablosu': 'atx24cable',
+  '24 pin': 'atx24cable', '24 pin kablosu': 'atx24cable', '24pin': 'atx24cable',
+  'grafik karti': 'gpu', 'ekran karti': 'gpu', 'video karti': 'gpu',
+  'islemci sogutucu': 'cooler', 'islemci fani': 'cooler', 'cpu fani': 'cooler', 'sogutucu': 'cooler',
+  'sabit disk': 'satassd', 'harddisk': 'satassd', 'hdd': 'satassd', 'ssd': 'satassd',
+  'veri kablosu': 'satadata', 'sata kablosu': 'satadata',
+  'guc kablosu': 'satapower',
+  'on panel': 'frontpanelcable', 'on panel kablolari': 'frontpanelcable', 'on panel kablosu': 'frontpanelcable',
+};
+
+function findComponentByNameOrId(query) {
+  const q = normalizeNumbers(normalizeTr(query));
+  if (!q) return null;
+
+  // 1) id ile birebir eşleşme (örn. "cpu", "gpu", "ram1")
+  let hit = COMPONENTS.find((c) => normalizeTr(c.id) === q);
+  if (hit) return hit;
+
+  // 2) bilinen eş anlamlı ifade sözlüğü
+  if (_PARCA_ESANLAM[q]) {
+    hit = COMPONENTS.find((c) => c.id === _PARCA_ESANLAM[q]);
+    if (hit) return hit;
+  }
+
+  // 3) tam ad / alt dize eşleşmesi
+  hit = COMPONENTS.find((c) => {
+    const name = normalizeTr(c.name);
+    return name === q || name.includes(q) || q.includes(name);
+  });
+  if (hit) return hit;
+
+  // 4) kelime bazlı en iyi eşleşme — kelime sırası ya da fazladan/eksik
+  //    kelimelere (örn. "ikinci ram", "ram modülü 2") toleranslıdır.
+  const qTokens = q.split(' ').filter(Boolean);
+  let best = null;
+  let bestScore = 0;
+  for (const c of COMPONENTS) {
+    const nameTokens = normalizeTr(c.name).split(' ').filter(Boolean);
+    const score = qTokens.filter((t) => nameTokens.includes(t)).length;
+    if (score > bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  return bestScore > 0 ? best : null;
+}
+
+// Sesle "parça ekle" / "işlemciyi ekle" vb. — isim verilmezse (hint ile aynı
+// mantık) sırada takılabilecek ilk bileşeni, verilirse adı geçen bileşeni
+// doğru yuvasına yerleştirir.
+function addPartByVoice(query) {
+  let comp = null;
+  if (query) {
+    comp = findComponentByNameOrId(query);
+    if (!comp) { showToast('⚠️ "' + query + '" adında bir parça bulamadım.', null); return; }
+    if (comp.placed) { showToast('ℹ️ ' + comp.name + ' zaten takılı.', null); return; }
+    if (comp.dependsOn && !compById[comp.dependsOn].placed) {
+      showToast('⚠️ Önce ' + compById[comp.dependsOn].name + ' takılmalı.', null);
+      return;
+    }
+  } else {
+    comp = COMPONENTS.find(c => !c.placed && (!c.dependsOn || compById[c.dependsOn].placed));
+    if (!comp) { showToast('✅ Eklenebilecek başka parça yok, tüm bileşenler tamam!', 'ok'); return; }
+  }
+  const slot = SLOTS.find(s => s.type === comp.targetType && !s.filled);
+  if (!slot) { showToast('⚠️ Bu parça için uygun boş yuva bulunamadı.', null); return; }
+  placeComponent(comp, slot, false);
+}
+
+// Sesle "parça sök" / "RAM'i sök" vb. — isim verilmezse en son eklenen
+// (takılan) parçayı söker.
+function removePartByVoice(query) {
+  let comp = null;
+  if (query) {
+    comp = findComponentByNameOrId(query);
+    if (!comp || !comp.placed) {
+      showToast('⚠️ "' + query + '" adında takılı bir parça bulamadım.', null);
+      return;
+    }
+  } else {
+    if (placedOrder.length === 0) { showToast('ℹ️ Şu an takılı bir parça yok.', null); return; }
+    comp = compById[placedOrder[placedOrder.length - 1]];
+  }
+  removeComponent(comp);
+  showToast('🔧 ' + comp.name + ' söküldü.', null);
+}
+
+// Sesle "anladım" — o an açık olan açıklama/yardım penceresini kapatır
+// (yardım penceresi > bileşen bilgisi penceresi > tamamlama penceresi
+// önceliğiyle; sınav sorusu bir cevap gerektirdiği için buna dahil değildir).
+function acknowledgeExplanation() {
+  const helpEl = document.getElementById('helpModal');
+  const infoEl = document.getElementById('infoModal');
+  const completeEl = document.getElementById('completeModal');
+  if (helpEl && helpEl.classList.contains('show')) { document.getElementById('helpCloseBtn').click(); return; }
+  if (infoEl && infoEl.classList.contains('show')) { document.getElementById('infoCloseBtn').click(); return; }
+  if (completeEl && completeEl.classList.contains('show')) { document.getElementById('completeCloseBtn').click(); return; }
+  showToast('ℹ️ Şu an açık bir açıklama penceresi yok.', null);
+}
+
+function handleYerindeCommand(cmd) {
+  const action = cmd && cmd.action;
+  if (!action) return;
+  if (action === 'acknowledge_explanation') { acknowledgeExplanation(); return; }
+  if (action === 'add_part') { addPartByVoice(cmd.parca || ''); return; }
+  if (action === 'remove_part') { removePartByVoice(cmd.parca || ''); return; }
+  if (action === 'set_theme') { applyTheme(cmd.theme); return; }
+}
+
+let yerindeSocket = null;
+function connectYerindeBridge() {
+  let socket;
+  try {
+    socket = new WebSocket('ws://127.0.0.1:8765/');
+  } catch (e) {
+    setTimeout(connectYerindeBridge, 2500);
+    return;
+  }
+  yerindeSocket = socket;
+  socket.onclose = () => {
+    if (yerindeSocket === socket) yerindeSocket = null;
+    setTimeout(connectYerindeBridge, 2500);
+  };
+  socket.onerror = () => {
+    try { socket.close(); } catch (e) { /* onclose zaten devreye girecek */ }
+  };
+  socket.onmessage = (ev) => {
+    try {
+      handleYerindeCommand(JSON.parse(ev.data));
+    } catch (e) {
+      console.warn('YERİNDE köprüsü: geçersiz komut', ev.data);
+    }
+  };
+}
+connectYerindeBridge();
+
+/* ---------- BAŞLAT ---------- */
+renderBoardStatic();
+renderTray();
+updateProgress();
+document.getElementById('helpModal').classList.add('show');
+})();
+</script>
+</body>
+</html>

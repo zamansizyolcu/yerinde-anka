@@ -1,0 +1,16 @@
+#%PAM-1.0
+# final18.md §2b: -session optional pam_systemd.so açıkça eklenir (güvenli
+# yedek) — oturum systemd-logind'ye kaydolmazsa güç istekleri (reboot/poweroff)
+# sessizce reddedilir. system-login zaten pam_systemd içerir; buradaki açık
+# satır X11/Wayland oturum kaydını belt-and-suspenders güvence altına alır.
+auth        include     system-login
+-auth       optional    pam_gnome_keyring.so
+-auth       optional    pam_kwallet5.so
+account     include     system-login
+password    include     system-login
+-password   optional    pam_gnome_keyring.so    use_authtok
+session     optional    pam_keyinit.so          force revoke
+session     include     system-login
+-session    optional    pam_systemd.so
+-session    optional    pam_gnome_keyring.so    auto_start
+-session    optional    pam_kwallet5.so         auto_start

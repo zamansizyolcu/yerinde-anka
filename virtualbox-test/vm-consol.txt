@@ -1,0 +1,22 @@
+Yerinde Linux 7.1.8-arch1-3 (tty1)
+
+yerinde login: root (automatic login)
+
+Welcome to Yerinde Linux
+root@yerinde ~ #
+root@yerinde ~ #
+root@yerinde ~ #
+root@yerinde ~ #         cat /etc/os-release
+NAME="Yerinde"
+ID=yerinde
+PRETTY_NAME="Yerinde Linux"
+ANSI_COLOR="38:2:100:149:237"
+HOME_URL="https://yerinde.example.com"
+DOCUMENTATION_URL="https://yerinde.example.com/docs"
+SUPPORT_URL="https://yerinde.example.com/support"
+BUG_REPORT_URL="https://yerinde.example.com/bugs"
+IMAGE_ID=yerinde
+IMAGE_VERSION=2026.08.14
+root@yerinde ~ # echo HELLO-YERINDE
+HELLO-YERINDE
+root@yerinde ~ # _

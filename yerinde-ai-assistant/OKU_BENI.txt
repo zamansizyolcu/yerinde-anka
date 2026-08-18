@@ -1,0 +1,1214 @@
+╔══════════════════════════════════════════════════════════╗
+║                Y.E.R.İ.N.D.E — CachyOS Sürümü                ║
+║   Gerçek zamanlı sesli kişisel AI asistanı (TR arayüz)     ║
+╚══════════════════════════════════════════════════════════╝
+
+Bu, projenin Windows sürümüyle aynı özelliklere sahip, CachyOS
+(Arch Linux tabanlı) için uyarlanmış sürümüdür.
+
+İki farklı model modunda çalışabilir:
+  • GEMİNİ  modu  → Google Gemini Live (bulut, gerçek zamanlı sesli akış)
+  • OLLAMA  modu  → tamamen çevrimdışı, bilgisayarındaki yerel modelle çalışır
+
+
+─────────────────────────  GEREKLİ SİSTEM PAKETLERİ  ─────────
+
+   sudo pacman -S python python-pip tk portaudio xclip wl-clipboard \
+                  espeak-ng ffmpeg xdotool
+
+   İsteğe bağlı (AUR, kullandığın uygulamalara göre):
+   yay -S google-chrome spotify visual-studio-code-bin obs-studio \
+          blender godot android-studio ollama
+
+
+─────────────────────────  KURULUM  ─────────────────────────
+
+1) Terminal aç, proje klasörüne gir.
+
+2) Kurulum betiğini çalıştırılabilir yap ve çalıştır:
+     chmod +x kurulum.sh baslat.sh
+     ./kurulum.sh
+
+   Bu betik:
+   - Sanal ortam (venv) oluşturur
+   - Python paketlerini kurar
+   - config/api_keys.json dosyasını hazırlar
+
+3a) GEMİNİ modu için:
+   - https://aistudio.google.com/apikey adresinden ücretsiz anahtar al
+   - Programı açıp ekrandaki AYARLAR (⚙) panelinden girebilirsin
+
+3b) OLLAMA modu (tamamen çevrimdışı, internet KAPALIYKEN de çalışır) için:
+   - Ollama'yı kur (AUR: yay -S ollama, ya da https://ollama.com)
+   - Bir veya birkaç model indir, örn:  ollama pull llama3.1
+   - Konuşma tanıma (STT) için:
+       pip install faster-whisper     (önerilir — Türkçe'de daha doğru)
+     ya da daha hafif bir seçenek istersen:
+       pip install vosk sounddevice
+       + Türkçe Vosk modeli indirip proje kökünde "vosk-model" klasörüne
+         çıkar (https://alphacephei.com/vosk/models)
+   - Seslendirme (TTS) için bir Türkçe Piper sesi ("dfki") zaten "voices"
+     klasöründe hazır geliyor! Piper artık requirements.txt üzerinden
+     OTOMATİK kuruluyor (kurulum.sh çalıştırdığında "piper-tts" pip paketiyle
+     birlikte gelir) — elle bir şey yapmana gerek yok. İstersen alternatif
+     olarak "yay -S piper-tts-bin" ile de kurabilirsin. Piper hiç yoksa
+     YERINDE otomatik olarak espeak-ng/spd-say'e düşer (o da tamamen
+     çevrimdışı, erkek/kadın varyantları vardır).
+   - Programdaki AYARLAR panelinden:
+       • "MODEL: GEMINI (BULUT)" düğmesine tıklayarak
+         "MODEL: OLLAMA (ÇEVRİMDIŞI)" durumuna geçir
+       • "OLLAMA MODELİ: ..." düğmesine tıklayarak bilgisayarında kurulu
+         modeller arasından seç — açılan listeden istediğine tıkla.
+         ÖNEMLİ: uygulama açma/kapatma gibi özelliklerin çalışması için
+         tool-calling destekleyen bir model seç (llama3.1, qwen2.5,
+         mistral-nemo, firefunction-v2, command-r). Desteklemeyen bir
+         model seçersen YERINDE seni uyarır ve düz sohbete düşer.
+       • DİKKAT — "OLLAMA MODELİ" ile "OLLAMA KOD MODELİ" İKİ AYRI
+         AYARDIR: birincisi sohbeti VE her mesajın "bu kod isteği mi,
+         sohbet mi?" sınıflandırmasını yapar (yani HER mesajda kullanılır),
+         ikincisi sadece kod üretim isteklerinde devreye girer. Küçük/hızlı
+         bir modeli (ör. Qwen 1.5B) sadece "OLLAMA KOD MODELİ" olarak
+         seçip "OLLAMA MODELİ"ni değiştirmeden bırakırsan, sıradan sohbet
+         hâlâ eski/büyük modelle yanıtlanmaya devam eder ve yavaş hisseder.
+         Her şeyin hızlı olmasını istiyorsan HER İKİ düğmeyi de küçük bir
+         modele ayarla (ya da AYARLAR panelindeki "HIZLI MOD (3B)" anahtarını
+         aç — ancak bu, sadece daha önce elle bir model SEÇMEDİYSEN geçerli
+         olur). Uygulama açılışında logda hangi modelin hangi role atandığı
+         ("Sohbet/sınıflandırma: ... | Kod: ... | Görü: ...") yazar — hızlı
+         model gerçekten seçili mi diye orayı kontrol et.
+       • "SES: ..." düğmesine tıklayarak Piper sesi veya espeak-ng'nin
+         kadın/erkek varyantlarından birini seç
+       • "ANLAMA MOTORU: ..." düğmesine tıklayarak Whisper (daha doğru)
+         ile Vosk (daha hafif) arasında geçiş yap
+     sonra YERINDE'i yeniden başlat
+
+
+─────────────────────────  BAŞLATMA  ────────────────────────
+
+   ./baslat.sh
+
+   İstersen program içindeki "MASAÜSTÜNE KISAYOL EKLE" ve
+   "AÇILIŞTA BAŞLAT" düğmelerini kullanabilirsin (XDG .desktop
+   dosyaları oluşturur).
+
+
+─────────────────────────  KISAYOLLAR  ──────────────────────
+
+   F4    → Mikrofonu sustur / aç        (Ctrl+M de çalışır)
+   F5    → Duraklat / devam et
+   F6    → Webcam'i aç / kapat (yalnızca Gemini modunda)
+   F11   → Tam ekran                     (Ctrl+F de çalışır)
+   ESC   → Tam ekrandan çık / pencere
+
+
+─────────────────────────  ÖZELLİKLER  ──────────────────────
+
+   • Sesli sohbet (Gemini modunda gerçek zamanlı, kesintisiz)
+   • Çevrimdışı sesli sohbet (Ollama modunda — Whisper/Vosk ile dinler,
+     Piper/espeak-ng ile konuşur, internet gerekmez)
+   • Yazılı komut kutusu
+   • Uygulama açma/kapatma: Chrome, Spotify, VS Code, Blender, Godot,
+     OBS Studio, Android Studio, Unity, Word, Excel, PowerPoint vb. —
+     sesle kontrol (Word/Excel/PowerPoint için LibreOffice, OnlyOffice,
+     WPS Office — hangisi kuruluysa otomatik onu açar; pkill ile kapatma)
+   • Ollama modunda bilgisayarındaki kurulu modeller arasında seçim
+   • Webcam'dan fotoğraf çekme ve video kaydı (Captures/ klasörüne)
+   • Dosya yükleyip analiz ettirme: PDF, Word, PowerPoint, Excel, resim
+     ("DOSYA YÜKLE" düğmesiyle seç, sonra "bunu analiz et" de — sağ tık: kaldır)
+   • PDF/Word/PowerPoint'i sesli kitap gibi okutma ("bunu sesli oku")
+   • Python kodu yazıp masaüstündeki "Çalışmalarım" klasörüne kaydetme
+   • Yüklenen .py dosyalarını analiz edip düzeltilmiş halini masaüstüne kaydetme
+   • "DUR" düğmesi: konuşurken/düşünürken anında susturma
+   • Sesle yazma: "yaz merhaba dünya" → aktif pencereye klavyeden yazar
+   • Scratch, Arduino IDE, Thonny IDE dahil daha fazla uygulama desteği
+
+   PIPER SES NOTU: "voices" klasöründeki tr_TR-dfki sesi KADIN sesidir —
+   Piper kurulunca (yukarıdaki adım) otomatik kadın Türkçe ses duyarsın.
+   Erkek Türkçe Piper sesi istersen: huggingface.co/rhasspy/piper-voices
+   adresinden tr/tr_TR altındaki "fahrettin" veya "fettah" modellerini
+   (.onnx + .onnx.json) indirip "voices" klasörüne at — SES listesinde
+   otomatik görünür.
+   • Sol paneldeki sistem durumunda ekran kartı (GPU) bilgisi
+   • Sistem bilgisi, bash komutu çalıştırma
+   • Hava durumu (varsayılan şehir: Edirne)
+   • Ekran analizi (yalnızca Gemini modunda — X11/xdotool, Hyprland
+     veya Sway masaüstlerinde aktif pencereyi okur)
+   • Webcam canlı akışı (yalnızca Gemini modunda)
+   • YouTube/Spotify'da müzik/video açma
+   • YouTube kanal istatistik raporu
+   • WhatsApp mesaj gönderme + kişi/rehber (.vcf) içe aktarma
+   • Kalıcı hafıza (seni hatırlar)
+   • Takvim ve Hatırlatıcılar (aşağıdaki nota bak)
+
+
+─────────────────────────  ÖNEMLİ NOT  ──────────────────────
+
+   Takvim ve Anımsatıcılar:
+   Linux'ta doğrudan sistem takvimine erişim yoktur. Bu yüzden:
+     - Takvim  → Google Calendar (tarayıcıda açılır)
+     - Hatırlatıcı → Google Tasks (tarayıcıda açılır)
+
+   Ollama modunda konuşma tanıma (STT) faster-whisper varsa onu, yoksa
+   Vosk'u kullanır; seslendirme (TTS) Piper varsa onu, yoksa espeak-ng/
+   spd-say'i kullanır — hangisi kurulu olursa olsun tamamen çevrimdışıdır.
+   Gemini modunda ses zaten bulut tarafından üretilir.
+
+   Ekran analizi masaüstü ortamına göre değişir: Hyprland (hyprctl),
+   Sway (swaymsg) veya X11 (xdotool) — hiçbiri yoksa pencere başlığı
+   boş dönebilir ama ekran görüntüsü yine de alınır.
+
+   Ofis penceresi bulma/odaklama (Alt+F4 güvenlik kontrolü, slayt/yazı
+   editörü klavye kısayolları, WhatsApp arama düğmesi konumu) de aynı
+   sırayla dener: Hyprland → Sway → KDE Plasma (kdotool). KDE Plasma
+   Wayland kullananlar için kurulum.sh artık kdotool'u otomatik kurmayı
+   dener (cargo install kdotool); kurulamazsa YERİNDE bu özellikleri
+   güvenli biçimde pasif bırakır, tahmin yürütmez.
+
+   Sesle Blender/Godot/OBS/Word/Excel/PowerPoint gibi araçları kapatmak
+   "pkill -f" ile ilgili süreci zorla sonlandırır — kaydedilmemiş çalışman varsa
+   önce kaydetmeyi unutma.
+
+   Windows kullanıyorsan bu projenin ayrı bir sürümü olan
+   "YERINDE V2 WINDOWS" klasörüne bak.
+
+
+─────────────────────────────────────────────────────────────
+   Sorun olursa: baslat.sh yerine terminalde
+   "source venv/bin/activate" sonra "python main.py" çalıştır;
+   hata mesajlarını orada görebilirsin.
+─────────────────────────────────────────────────────────────
+
+─────────────────  V3 ÇEKİRDEK (YENİ ÇEVRİMDIŞI MİMARİ)  ─────────────────
+
+   Çevrimdışı mod artık asenkron V3 çekirdeğiyle çalışır:
+   • "Yerinde" de, uyansın (Vosk wake-word). Vosk modeli yoksa otomatik
+     olarak eski sürekli-dinleme düzenine döner — asla sağır kalmaz.
+   • Anlama: Faster-Whisper + uyarlanabilir gürültü eşiği (gürültülü
+     ortamda da kararlı; Pardus'taki anlama sorunları için yeniden yazıldı).
+   • Beyin: Gemma 2 isteği sınıflandırır → kod işleri Qwen 2.5-Coder'a,
+     görüntü soruları Qwen2-VL'ye gider.  (ollama pull ile üçünü kur.)
+   • KAMERA: YOLO11 canlı nesne takibi (pip install ultralytics).
+   • SES profilleri: piper / sapi / espeak / chattts / xtts:referans.wav
+     (XTTS ses klonlama Coqui XTTS-v2 ile AYNI SÜREÇTE çalışır — ayrı
+     sunucuya gerek yok, sadece "pip install coqui-tts" yeterli.)
+   • Alışkanlık öğrenme: sık kullandığın uygulamaları ve saatlerini
+     öğrenir (memory/habits.json). "Her zamanki uygulamayı aç" çalışır.
+
+──────────────  BENİ DUYMUYORSA (SESLİ KOMUT SORUN GİDERME)  ──────────────
+
+   "Sistem hazır" diyor ama tepki yoksa sırasıyla kontrol et:
+
+   1) YENİ PAKETLER KURULU MU?  (V3 çekirdeği için şart)
+        pip install vosk sounddevice faster-whisper numpy
+      (kurulum betiğini yeniden çalıştırmak da yeterli)
+
+   2) "YERİNDE" DİYE UYANDIRMAK İSTİYORSAN — Vosk Türkçe modeli gerekli:
+        https://alphacephei.com/vosk/models  →  vosk-model-small-tr-0.3
+      Zip'i aç, klasörü proje köküne "vosk-model" ADIYLA koy.
+      MODEL YOKSA SORUN DEĞİL: program artık otomatik olarak
+      "sürekli dinleme" moduna geçer ve tetik kelimesiz, doğrudan
+      konuştuğunu anlar (sağdaki panele UYARI satırı düşer).
+
+   3) Sağdaki konuşma panelindeki SYS/UYARI/ERR satırlarını oku —
+      eksik olan her şey artık orada AÇIKÇA yazar (mikrofon yok,
+      Whisper kurulamadı, Vosk modeli bulunamadı...).
+
+   NOT: backend/ klasörünü hiçbir yere kopyalamana gerek yok — zip'in
+   içinde hazır gelir; sadece zip'i TAMAMEN yeni bir klasöre aç.
+
+──────────────  YENİ ÖZELLİKLER (BİÇİM/FARE/KENDİ SESİM)  ──────────────
+
+   • Office biçimlendirme (Windows/MS Office): belge açıkken
+     "yazı rengini kırmızı yap", "yazı boyutunu 24 yap", "yazıyı büyüt",
+     "sayfa rengini mavi yap" — seçili metin varsa ona, yoksa tümüne uygular.
+   • Fare: "tıkla", "sağ tıkla", "çift tıkla", "aşağı/yukarı kaydır",
+     "fareyi sağa götür", "imleci ortala".
+   • KENDİ SESİM: "sesimi kaydet" de → 10 sn konuş → ses profilin otomatik
+     "KENDİ SESİM" olur (SES listesinde de görünür). Sesinin klonlanması
+     için Coqui XTTS-v2 gerekir:
+        pip install coqui-tts
+     Ayrı sunucu kurmana gerek YOK — model YERINDE ile aynı süreçte,
+     ilk konuşmada tembel yüklenir (ilk sefer ~2 GB inebilir, birkaç
+     dakika sürebilir). Kurulu değilse YERINDE bunu loglar ve yedek
+     sesle konuşur.
+
+   VOSK MODELİ NEREYE? Klasör (adı vosk-model* ile başladığı sürece adı
+   önemli değil, otomatik bulunur) PROJE KLASÖRÜNÜN İÇİNDE olmalı — yani
+   main.py ile aynı yerde. Başka yere açtıysan klasörü buraya taşı.
+
+═══════════════════  MODEL KILAVUZU (OLLAMA)  ═══════════════════
+
+  HANGİ MODELLER KURULMALI? (terminalde, bir kez)
+
+      ollama pull llama3.1          → genel sohbet (varsayılan MODEL)
+      ollama pull gemma2:9b         → alternatif sohbet/yönlendirici
+      ollama pull qwen2.5-coder:7b  → kod + Blender betikleri ("masa çiz")
+      ollama pull qwen2-vl:7b       → kamera görüntü analizi ("bu ne?")
+                                      (alternatif: llama3.2-vision)
+
+  HANGİ AYAR HANGİ MODELİ KULLANIR?
+      • AYARLAR > OLLAMA MODELİ     → sohbet + istek yönlendirme
+        (listeden seçersin; kurulu modeller otomatik listelenir)
+      • Kod görevleri               → config: "ollama_coder_model"
+        (varsayılan qwen2.5-coder — değiştirmek istersen
+         config/app_config.json içine yaz)
+      • Görüntü analizi             → config: "ollama_vision_model"
+        (varsayılan qwen2-vl)
+
+  MODELDEN MODELE GEÇİŞ:
+      1) AYARLAR panelini aç → OLLAMA MODELİ satırına tıkla
+      2) Listeden yeni modeli seç — anında geçerli olur (uygulama
+         yeniden başlatma gerekmez; ilk yanıt model belleğe
+         yüklenirken birkaç sn gecikebilir)
+      RAM notu: 7-9B modeller ~6-8 GB; aynı anda üçü de yüklüyse
+      16 GB RAM rahat eder. RAM azsa: llama3.2:3b + qwen2.5-coder:1.5b.
+
+═════════════  KENDİ SESİM — COQUI XTTS-v2 TAM KURULUM  ═════════════
+
+  1) Paketi kur (bir kez):
+         pip install coqui-tts
+
+  2) AYRI SUNUCUYA GEREK YOK — XTTS-v2 YERINDE ile aynı Python sürecinde
+     çalışır (ChatTTS ile aynı mantık). İki seçenek:
+     • Hazır olsun istersen: AYARLAR panelinden "⚙ XTTS MODELİNİ YÜKLE"
+       düğmesine bas (ilk sefer ~2 GB indirir, birkaç dakika sürer).
+     • Ya da hiç dokunma: "sesimi kaydet" dedikten sonra ilk cevapta
+       model otomatik yüklenir (o ilk sefer biraz beklersin, sonrası hızlı).
+
+  3) YERINDE'de "sesimi kaydet" de → 10 sn doğal konuş →
+     ses profilin otomatik 🎙 KENDİ SESİM (XTTS) olur (SES listesinde de var).
+
+  4) Test: herhangi bir şey sor — cevap SENİN sesinle gelir.
+     Model kurulu değilse YERINDE loglar ve yedek sese döner.
+
+  NOT (lisans): XTTS-v2, Coqui Public Model License ile dağıtılır —
+  ticari olmayan kullanım için serbesttir. Ticari kullanım düşünüyorsan
+  Coqui'nin lisans sayfasını incele.
+
+═══════════  AYARLARDAN AÇ/KAPA (YENİ)  ═══════════
+
+  AYARLAR panelinde iki yeni düğme:
+      ◉ UYANDIRMA ('YERİNDE')  → kapatırsan tetik kelime dinlenmez,
+        doğrudan sürekli-dinleme modunda çalışır (yeniden başlatınca etkin)
+      ◉ SESLE KAPATMA          → kapatırsan "kendini kapat" komutu
+        uygulamayı kapatmaz (yanlışlıkla kapanmayı önler)
+
+──────────  YENİ: KLAVYE + BLENDER KAYDET + KOLAY SES KLONLAMA  ──────────
+
+  KLAVYE (sesle):
+     "escape", "enter", "sil"/"delete", "geri sil", "tab",
+     "alt tab" (pencere değiştir), "windows tab",
+     "yukarı/aşağı/sol/sağ ok", "kopyala", "yapıştır", "geri al",
+     "tümünü seç"
+     Gereksinim: pip install pyautogui  (Linux'ta ayrıca xdotool)
+
+  BLENDER TASARIMINI KAYDET:
+     "blender tasarımını kaydet" → Çalışmalarım/Blender klasörüne .blend
+     (Blender'ı YERINDE ile açmış olman gerekir: "blender aç" / "tasarım aç")
+
+  COQUI XTTS-v2 — AYRI SUNUCUYA GEREK YOK:
+     Tek yapman gereken:  pip install coqui-tts
+     Sonra "sesimi kaydet" de — model YERINDE ile AYNI SÜREÇTE, ilk
+     konuşmada kendisi yüklenir; ayrı terminal/sunucu açmana gerek yok.
+     • İlk sefer model inerken (~2 GB) birkaç dakika yedek sesle konuşur,
+       hazır olunca "XTTS-v2 hazır" der ve senin sesine geçer.
+     • Önceden yüklemek istersen: AYARLAR > "⚙ XTTS MODELİNİ YÜKLE".
+
+──────────  YENİ: OFFICE MEDYA + EXCEL + BLENDER AÇILIŞ  ──────────
+
+  RESİM EKLEME (sunum/Word):
+     "sunuma kedi resmi ekle"      → internetten indirir, slayda ORTALAR
+     "internetten İstanbul resmi indir ve ekle"
+     "belgeye Atatürk fotoğrafı ekle"
+     Kaynak: Openverse + Wikimedia Commons (açık lisanslı; API anahtarı YOK).
+     Resmi dosya yolundan da ekleyebilirsin.
+
+  WORD → PDF:
+     "pdf olarak kaydet" / "pdf'e çevir" → Çalışmalarım klasörüne PDF.
+
+  EXCEL (sesle):
+     "topla" / "sayıları topla"    → seçili sütunun altına =SUM formülü
+     "ortalamasını al"             → =AVERAGE formülü
+     "puan tablosu oluştur"        → Ad Soyad + 3 sınav + otomatik ortalama
+                                      + harf notu (AA/BA/BB/CB/CC/FF) formülleri
+
+  BLENDER AÇILIŞ EKRANI:
+     Artık YERINDE ile açtığında karşılama ekranı otomatik geçilir ve
+     "Genel" düzeni yüklenir — sen tıklamak zorunda kalmazsın.
+
+  NOT: Office komutları Windows + Microsoft Office ile çalışır (COM API).
+  LibreOffice'te resim İNDİRME çalışır, ekleme elle yapılır.
+
+──────────  YENİ: RESİM AYARLARI + TÜRKÇE YAZIM DÜZELTMESİ  ──────────
+
+  RESİM AYARLARI (sunum/Word'de eklenen resim üzerinde):
+     "resmi döndür" / "resmi sola döndür"   → 90° çevirir
+     "resmi büyüt" / "resmi küçült"          → %20 ölçekler
+     "resmi ortala" / "resmi sola hizala"    → konumlandırır
+     "resmi aynala"                          → yatay aynalar
+     "resmi düzelt"                          → döndürmeyi sıfırlar
+     Resmi tıklayıp seçersen onu, seçmezsen slayttaki SON resmi ayarlar.
+
+  TÜRKÇE KARAKTER HATASI DÜZELTİLDİ:
+     "yaz hayalden gerçeğe" dediğinde 'ğ, ç, ş, ı' harfleri eksik çıkıyordu.
+     Sebep: tuş tuş yazma yöntemi (pyautogui) ASCII dışı harfleri sessizce
+     atlıyordu. Artık metin PANOYA kopyalanıp yapıştırılıyor — tüm Türkçe
+     karakterler harfi harfine korunuyor.
+     Gereksinim:  pip install pyperclip
+     (Linux'ta ayrıca: xclip  ya da Wayland'de  wl-clipboard)
+
+──────────  YENİ: SUNUM GÖSTERİSİ, EFEKTLER, OTOMATİK İÇERİK  ──────────
+
+  SUNUM GÖSTERİSİ (sesle):
+     "sunumu başlat" / "tam ekran yap"   → tam ekran sunum
+     "sonraki slayt" / "önceki slayt"     → gezinme
+     "ekranı karart" · "sunumu bitir"
+
+  ANİMASYON ve GEÇİŞLER:
+     "geçiş ekle"                → rastgele geçiş (tüm slaytlara)
+     "solma/küp/kapı geçişi ekle" → isimli geçiş
+        (solma, itme, kaydırma, bölme, açılma, şerit, dama, büyütme,
+         çevirme, küp, kapı)
+     "animasyon ekle"             → öğelere giriş animasyonu
+        (belirme, solarak, uçarak, büyüyerek, dönerek, zıplayarak)
+     "animasyonları temizle" / "geçişleri kaldır" / "efektleri temizle"
+
+  OTOMATİK İÇERİK (hem çevrimiçi hem çevrimdışı):
+     "sunuma yapay zeka konusunu ekle"
+     "word'e donanım bileşenlerini yaz"
+     → Çevrimiçiyken Türkçe Vikipedi'den araştırır; internet yoksa YEREL
+       Ollama modelinle içerik üretir. Sunuma başlık slaydı + bölüm slaytları,
+       Word'e başlık/alt başlık/madde yapısıyla yazar.
+     İpucu: yazdıktan sonra "tasarım seç" + "geçiş ekle" de — sunum hazır.
+
+  RENK PALETİ 73 RENGE ÇIKTI:
+     bordo, lavanta, antrasit, camgöbeği, fuşya, hardal, petrol, indigo,
+     somon, nane, bakır, koyu yeşil, açık mavi... ("yazı rengini bordo yap")
+
+════════  YENİ: TEMALAR, SESLER, XTTS DÜĞMELERİ, LIBREOFFICE  ════════
+
+  ARAYÜZ TEMALARI (AYARLAR > TEMA):
+     • Karanlık (Turkuaz)  — varsayılan
+     • Krem (Aydınlık)     — beyaz/krem, gündüz kullanımı
+     • Yeşil (Yumuşak)     — yeşilimtırak, tatlı ton
+     • Mor-Mavi (Alacakaranlık)
+     • Güneş (Turuncu-Sarı)
+     Seçtikten sonra uygulamayı yeniden başlat.
+
+  SESLER:
+     ÇEVRİMDIŞI (SES listesi): 3 kadın + 3 erkek profil (espeak-ng tabanlı)
+        Kadın 1-2-3 (Yumuşak/Berrak/Sıcak), Erkek 1-2-3 (Derin/Net/Genç)
+        + Piper (en doğal) + ChatTTS + KENDİ SESİM
+        Gereksinim: espeak-ng kurulu olmalı.
+     ÇEVRİMİÇİ (ÇEVRİMİÇİ SES): Gemini'nin 6 sesi —
+        Kadın: Kore, Aoede, Leda   |   Erkek: Charon, Puck, Fenrir
+
+  COQUI XTTS-v2 DÜĞMELERİ (AYARLAR panelinde):
+     🎙 SES KAYDINI BAŞLAT     → 10 sn kaydeder, profili KENDİ SESİM yapar
+     📂 VAR OLAN KAYDI YÜKLE   → elindeki WAV'ı seçip ses profilin yapar
+     ⚙ XTTS MODELİNİ YÜKLE    → modeli önceden indirip belleğe yükler
+     (pip install coqui-tts — bir kez; ayrı sunucu YOK, aynı süreçte çalışır)
+
+  OFFICE DESTEĞİ:
+     • Microsoft Office (Windows): TÜM özellikler (COM ile).
+     • LibreOffice (Windows/Linux): biçimlendirme, yeni sayfa/slayt, resim
+       ekleme, PDF'e aktarma, sunum gösterisi, slayt GEÇİŞLERİ, efekt
+       temizleme ve otomatik içerik yazma — UNO köprüsüyle çalışır.
+       Kurulum:  sudo apt install libreoffice python3-uno
+                 (Arch: sudo pacman -S libreoffice-fresh python-uno)
+       Sınır: Impress'te ÖĞE ANİMASYONLARI uzaktan eklenemiyor (UNO bu API'yi
+       sunmuyor) — geçişler çalışır, animasyonu panelden eklersin.
+     • OnlyOffice: masaüstü sürümü dışarıya otomasyon API'si açmaz. Dosya
+       tabanlı işler (içerik dosyası üretme) çalışır; canlı biçimlendirme için
+       MS Office ya da LibreOffice gerekir. (Dürüst sınırlama.)
+
+════════  AYARLAR PANELİ (KAYDIRILABİLİR) ve V3 ÇEKİRDEK  ════════
+
+  Panel artık KAYDIRILABİLİR — fare tekerleğiyle aşağı in. Görünmeyen
+  ayarlar (ANLAMA motoru, XTTS düğmeleri) artık orada:
+
+     ◉ UYANDIRMA ('YERİNDE')      ◉ SESLE KAPATMA
+     ◉ V3 ÇEKİRDEK  ← YENİ        TEMA seçici
+     MODEL / OLLAMA MODELİ        SES (çevrimdışı) / ÇEVRİMİÇİ SES
+     ANLAMA (Whisper/Vosk)        🎙 SES KAYDINI BAŞLAT
+     📂 VAR OLAN KAYDI YÜKLE      ⚙ XTTS MODELİNİ YÜKLE
+
+  V3 ÇEKİRDEK düğmesi:
+     AÇIK  (varsayılan) → yeni asenkron çekirdek: wake-word, alışkanlık
+                          öğrenme, model yönlendirme (Gemma2 → Qwen-Coder/VL)
+     KAPALI              → eski V2 çevrimdışı motoru (daha basit, daha az
+                          bağımlılık). Sorun yaşarsan kapatıp deneyebilirsin.
+     Değişiklik yeniden başlatınca etkin olur.
+
+════════  KENDİ DİL MODELİNİ EĞİTMEK İÇİN VERİ TOPLAMA  ════════
+
+  YERINDE kullandıkça her etkileşimi EĞİTİME HAZIR biçimde kaydeder
+  (memory/habits.json):
+      instruction → senin söylediğin
+      output      → asistanın cevabı / araç sonucu
+      meta        → rota (chat/tool:...), araç parametreleri, saat dilimi
+
+  Dışa aktarma (Python konsolundan ya da kendi betiğinden):
+      from backend.habits import HabitLearner
+      h = HabitLearner("memory/habits.json")
+      print(h.dataset_stats())            # kaç örnek birikti?
+      print(h.export_dataset())           # → memory/egitim_verisi.jsonl
+
+  Üretilen JSONL, Alpaca/ShareGPT biçimindedir; LoRA/QLoRA ile kendi
+  Türkçe modelini ince ayarlamak için doğrudan kullanılabilir.
+
+──────────  HAVA DURUMU KONUMU (İL / İLÇE / KÖY)  ──────────
+
+  Varsayılan: Edirne · Lalapaşa · Vaysal Köyü
+  Ekranda: büyük satırda KÖY, altında İLÇE · İL görünür.
+
+  Değiştirmek istersen config/app_config.json içine:
+      "weather_il":   "Edirne",
+      "weather_ilce": "Lalapaşa",
+      "weather_koy":  "Vaysal Köyü"
+
+  Not: Köy adları hava servisinde çoğu zaman kayıtlı değildir. YERINDE
+  önce köyü, bulamazsa ilçeyi, o da olmazsa ili sorgular — ekranda yine
+  köy adını gösterir, veri en yakın istasyondan gelir.
+
+──────────  BAĞLANTI HATALARI (GEMİNİ MODU)  ──────────
+
+  Artık hata türüne göre farklı davranır:
+
+  • "Bağlantı zaman aşımına uğradı..."  → AĞ sorunu (internet yavaş/kesik).
+    Kendisi 2, 4, 8, 16, 20 sn aralıklarla sessizce yeniden bağlanır.
+    Senin bir şey yapmana gerek yok; anahtarını değiştirme!
+  • "API anahtarı geçersiz görünüyor"   → gerçekten anahtar sorunu.
+    AYARLAR > API AYARLARI'ndan yeniden gir.
+  • "Model/ses ayarında bir sorun var"  → seçili ses bu modelde yok.
+    AYARLAR'dan başka bir ÇEVRİMİÇİ SES seç.
+  • "Kota/hız sınırı"                    → Google tarafında sınır; birkaç
+    dakika sonra otomatik bağlanır.
+
+  ÖNEMLİ: Eskiden her hatada "API anahtarını kontrol et" yazıyordu; bu
+  yanıltıcıydı. Zaman aşımı hataları anahtarla ilgili DEĞİLDİR.
+
+════════  SIK KARŞILAŞILAN HATALAR ve ÇÖZÜMLERİ  ════════
+
+  ❌ "Unable to compare versions for numpy>=1.17 ... found=None"
+     Sebep: coqui-tts / ultralytics kurulumu numpy'nin sürüm bilgisini bozdu.
+     ÇÖZÜM (sanal ortam etkinken):
+         pip install --force-reinstall --no-cache-dir "numpy<2"
+     YERINDE artık bu durumu açılışta kendisi TESPİT EDİP bu komutu yazar
+     ve çevrimdışı mod tamamen çökmek yerine çalışmaya devam eder.
+
+  ❌ LibreOffice açık ama "belge bulamadım" diyor (Linux)
+     Sebep: python3-uno paketi SİSTEM python'una kurulur; YERINDE ise venv
+     içinde çalışıyordu ve modülü göremiyordu.
+     ÇÖZÜM: Yeni kurulum.sh venv'i --system-site-packages ile kurar.
+     Mevcut kurulumun varsa venv'i silip kurulum.sh'ı tekrar çalıştır:
+         rm -rf venv && ./kurulum.sh
+     (Kod ayrıca sistem yollarını otomatik tarayıp uno'yu bulmayı dener.)
+     Gerekli paket:  sudo apt install python3-uno   (Arch: python-uno)
+
+  ❌ Blender açılınca YERINDE kapanıyordu
+     Blender artık tamamen ayrı bir oturumda başlatılır ve HİÇBİR araç hatası
+     uygulamayı düşüremez (araç hataları Türkçe mesaja çevrilir, arayüz açık
+     kalır). Beklenmedik arayüz hataları da yakalanır.
+
+  ❌ Sunum tam ekran açılmıyor, ana ekranda kalıyordu (Windows)
+     PowerPoint'in "Sunucu Görünümü" (Presenter View) devreye giriyordu.
+     Artık kapatılıp tam ekran zorlanıyor.
+
+  ℹ️ Kamera etiketleri artık TÜRKÇE: person→insan, cat→kedi, laptop→dizüstü...
+
+──────────  DÜZELTMELER (LINUX ODAKLI)  ──────────
+
+  • Blender artık "-noaudio" ile açılır: Blender açılışta ses aygıtını ele
+    geçirip mikrofon akışımızla çakışıyor ve YERINDE'nin çökmesine yol
+    açabiliyordu. Ayrıca tamamen ayrı oturumda başlatılır.
+  • Ani kapanma olursa iz bırakılır:  ~/.yerinde/cokme.log
+    (Segfault dahil.) Bir daha çökerse bu dosyayı paylaş, kesin sebebi görelim.
+  • "Kapat" komutu artık İLK seferde çalışır: uygulamanın gerçekten çalışıp
+    çalışmadığı pgrep ile doğrulanır, nazik kapatma yetmezse aynı komutta
+    zorla kapatmaya yükseltilir (flatpak/snap sarmalayıcıları yüzünden
+    "ilk seferinde bulunamadı" sorunu çözüldü).
+  • Fare yönü: bağıl hareket yerine MUTLAK konumlandırma kullanılır —
+    "sola" dediğinde kesinlikle sola gider (Wayland/çoklu ekran dahil).
+  • Yeni klavye komutları: "alt f4" / "pencereyi kapat", "tab" / "sekme".
+
+════════  OFFICE DESTEĞİ: MS OFFICE · LIBREOFFICE · ONLYOFFICE  ════════
+
+  Komutlar üç katmanlı çalışır:  MS Office (COM) → LibreOffice (UNO) → klavye
+
+  ÖZELLİK                    MS Office   LibreOffice   OnlyOffice
+  ─────────────────────────  ─────────   ───────────   ──────────
+  Sunum başlat/bitir/gezin      ✓            ✓         ✓ (klavye)
+  Yeni slayt / sayfa            ✓            ✓         ✓ (Ctrl+M)
+  Slayt sil / geri al           ✓            ✓         ✓ (Del/Ctrl+Z)
+  Slayt geçişleri               ✓            ✓         ✗
+  Öğe animasyonları             ✓            ✗ (API yok) ✗
+  Rastgele tasarım              ✓ (tema)     ✓ (renk şeması) ✗
+  Yazı rengi / boyut            ✓            ✓         ✗
+  Metin hizalama                ✓            ✓         ✓ (Ctrl+L/E/R/J)
+  Resim ekle / PDF'e aktar      ✓            ✓         ✗
+  Excel: topla/ortalama/grafik/
+         puan tablosu/aralık    ✓            ✓ (Calc)  ✗
+
+  LibreOffice için:  sudo apt install libreoffice python3-uno
+                     (Arch: sudo pacman -S libreoffice-fresh python-uno)
+  OnlyOffice masaüstü dışarıya otomasyon API'si açmadığı için renk/tema gibi
+  ince ayarlar yapılamıyor — bunu gizlemek yerine açıkça söylüyorum.
+
+  SES ÇITIRTISI (CachyOS/PipeWire) DÜZELTİLDİ:
+  Ses artık pw-play → paplay → ffplay sırasıyla çalınıyor ve 22 kHz'lik çıktı
+  önceden 48 kHz'e yükseltiliyor (anlık yeniden örnekleme cızırtı yapıyordu).
+
+──────────  YENİ: BLENDER SAHNE + NESNE ALGILAMA  ──────────
+
+  BLENDER SİLME/TEMİZLEME (LLM'e sorulmadan, her seferinde çalışır):
+     "sahneyi temizle"  → tüm nesneleri siler
+     "küpü sil"          → varsayılan küpü siler
+     "seçiliyi sil"      → seçili nesneleri siler
+     "blenderda hepsini seç"
+
+  NESNE ALGILAMA (YOLO):
+     • AYARLAR > ◉ NESNE ALGILAMA düğmesi — kamera açıkken bile ANINDA etkir
+     • Sesle: "nesne algılamayı aç/kapat", "yolo kapat", "analizi kapat"
+     • Kapalıyken kamera çalışır ama YOLO hiç yüklenmez (CPU tasarrufu)
+
+  DÜZELTME: "Araç yanıtı gönderilemedi" uyarısı — yeni google-genai sürümü
+  (Python 3.13/3.14) araç yanıtlarını LİSTE olarak kabul etmiyor. Artık tek tek
+  gönderiliyor; eski sürümler için liste gönderimi yedekte duruyor.
+
+════════  HIZLI MOD, SADECE KOMUT MODU ve SÜRÜM ÖNERİLERİ  ════════
+
+  ◉ HIZLI MOD (3B)  — AYARLAR'dan aç, yeniden başlat
+      Sohbet : llama3.2:3b          (yerine llama3.1 ~8B)
+      Kod    : qwen2.5-coder:1.5b   (yerine qwen2.5-coder ~7B)
+      Görü   : moondream            (yerine qwen2-vl ~7B)
+      Anlama : Whisper "base"       (yerine "small")
+      Kurulum:
+          ollama pull llama3.2:3b qwen2.5-coder:1.5b moondream
+      8 GB RAM'li makinelerde ve Orange Pi'de belirgin şekilde akıcıdır.
+      Sohbet kalitesi biraz düşer; KOMUTLAR etkilenmez (aşağıya bak).
+
+  ◉ SADECE KOMUT MODU — yapay zekâ HİÇ kullanılmaz
+      Uygulama açma/kapatma, fare, klavye, ses düzeyi, medya, kamera,
+      Office, Blender, ekran görüntüsü... hepsi doğrudan Python modülleriyle
+      çalışır (intent_parser: regex tabanlı, komut başına ~13 mikrosaniye).
+      Bu modda Ollama kurulu olmasa bile asistan çalışır; sohbet istersen
+      "sadece komut modundayım" der. Sıfır model yükü, anında yanıt.
+
+  ÖNERİLEN SÜRÜMLER (kararlılık):
+      • Python 3.12  → EN KARARLI. (3.13/3.14'te google-genai ve bazı C
+        eklentileri sorun çıkarabiliyor; Windows'ta 3.12 kullanıyoruz ve
+        sorunsuz. Linux'ta da 3.12 önerilir:  python3.12 -m venv venv)
+      • Blender 4.2 LTS  → uzun destekli sürüm; köprü betiği (bpy) API'si
+        kararlı. 4.5/5.x'te de çalışır ama LTS'i öneririm.
+      • Ollama: güncel sürüm.
+      • NumPy: 2.x ile sorun yaşarsan  pip install "numpy<2"
+
+──────────  YENİ: FİLM SERVİSLERİ · SCRATCH · MİKROFON TESTİ  ──────────
+
+  FİLM/DİZİ:
+     "disney plus'tan Frozen aç", "netflix'te Dark aç",
+     "prime video'da The Boys aç", "youtube'da ... aç"
+     (Exxen, BluTV, Gain, TOD, MUBI de var.)
+     Not: Servisler dışarıdan doğrudan OYNATMAYA izin vermiyor; arama sayfası
+     açılır, tek tıkla oynatırsın. YouTube'da ilk sonuç zaten hazır gelir.
+
+  SCRATCH (Blender gibi sesle programlama):
+     "scratch'te 10 adım git"    → hareket bloğu
+     "90 derece sağa dön"         → dönüş bloğu
+     "scratch'te merhaba de"      → konuşma balonu
+     "2 saniye bekle" · "boyutu 150 yap"
+     "scratch'i temizle"          → betiği sıfırla
+     Bloklar BİRİKİR: her komutta .sb3 projesi güncellenir ve Scratch'te açılır
+     (Çalışmalarım/Scratch klasörüne kaydedilir). Scratch'in dışarıdan komut
+     alan bir arayüzü olmadığı için proje dosyası üretiyoruz — Blender'daki
+     canlı köprünün Scratch'teki karşılığı budur.
+
+  MİKROFON TESTİ (Linux'ta "beni duymuyor" sorunları için):
+     "mikrofonu test et" / "beni duyuyor musun"
+     → hangi aygıtı kullandığını, ses seviyesini ve ne duyduğunu söyler.
+       Seviye <0.01 ise mikrofon kapalı/yanlış aygıt; <0.05 ise çok kısık.
+
+  DÜZELTMELER:
+     • "sunum aç" artık BOŞ SUNUM açıyor (başlangıç ekranı değil) — 'sunum',
+       'belge', 'tablo' takma adları tanınıyor.
+     • "sunumu sonlandır/kapat" → sunum gösterisini bitirir (uygulamayı değil).
+     • OBS artık kendi klasöründen başlatılıyor (açılmama sorunu çözüldü).
+
+════════  WHATSAPP ARAMA + KRİTİK DÜZELTMELER  ════════
+
+  WHATSAPP SESLİ/GÖRÜNTÜLÜ ARAMA:
+     1) BİR KEZ öğret:  "whatsapp sesli arama düğmesini öğret"
+        → WhatsApp'ı aç, bir sohbete gir, imleci ARAMA düğmesinin üzerine
+          götür; 5 saniye içinde konumu kaydeder.
+        Görüntülü için: "whatsapp görüntülü arama düğmesini öğret"
+     2) Sonra: "annemi ara" · "babamla görüntülü konuş"
+     Not: WhatsApp'ın arama için resmi API'si yok; sohbeti biz açıyoruz,
+     arama düğmesine öğrettiğin konumdan tıklıyoruz. WhatsApp MASAÜSTÜ
+     uygulaması gerekir (Web sürümünde arama yok).
+
+  DÜZELTİLEN KRİTİK HATALAR:
+  • Klavye yedeği artık ofis penceresini ÖNE GETİRİP tuş gönderiyor; pencere
+    yoksa HİÇBİR tuş göndermiyor. (Eskiden Esc/Alt+F4 YERINDE'nin kendi
+    penceresine gidiyor, asistan tam ekrandan çıkıyor ya da KAPANIYORDU.)
+  • Wayland (Pardus/CachyOS): pyautogui orada sessizce başarısız oluyordu —
+    "basıldı" diyip hiçbir şey yapmıyordu. Artık wtype/ydotool kullanılıyor;
+    kurulu değilse dürüstçe söylüyor:
+        sudo apt install wtype ydotool     (Arch: pacman -S wtype ydotool)
+  • Çevrimdışı STT: Whisper yüklenemezse (numpy bozuk vb.) artık VOSK'a
+    düşüyor — "hiç duymuyor" durumu ortadan kalkıyor.
+  • Sistem komutları ("sunum aç", "word aç", "blender aç") yapay zekâya HİÇ
+    gitmiyor: ölçüldü, komut başına ~11 ms.
+
+════════  ÖNEMLİ: ARTIK "YERİNDE" DEMEDEN KOMUT VEREBİLİRSİN  ════════
+
+  Wake-word motoru artık TAM SÖZLÜKLE dinliyor:
+    • "Yerinde" dersen  → uzun cümleler için Whisper devreye girer (sohbet).
+    • Doğrudan "sunum aç" / "kamerayı kapat" / "sesi kıs" dersen → tetik
+      kelime GEREKMEDEN anında çalışır.
+  (Eskiden Vosk sadece "yerinde" kelimesini tanıyacak şekilde kısıtlıydı;
+   bu yüzden komut verdiğinde hiçbir şey olmuyordu.)
+
+  "SUNUMU KAPAT" ARTIK DOĞRU DAVRANIYOR:
+    • Tam ekran gösteri açıksa → gösteriden çıkar.
+    • Gösteri kapalıysa → sunum dosyasını kapatır (başka sunum yoksa
+      PowerPoint/Impress de kapanır).
+    • Hiç ofis penceresi yoksa → HİÇBİR tuş göndermez (eskiden Esc YERINDE'ye
+      gidiyordu), dürüstçe "açık sunum bulamadım" der.
+
+════════  KESİN ÇÖZÜM: LINUX'TA "HİÇ DUYMUYOR" SORUNU  ════════
+
+  KÖK NEDEN BULUNDU: sounddevice (PortAudio), bazı PipeWire/Pulse
+  kurulumlarında HATA VERMEDEN sessiz kalabiliyor — akış açılıyor, hiç veri
+  gelmiyor. Bu yüzden ne Vosk ne Whisper hiçbir şey duyamıyordu.
+
+  ÇÖZÜM: Yeni bir MicStream katmanı eklendi. Artık:
+    1) Önce sounddevice dener (çalışan sistemlerde gecikme YOK — ilk ses
+       paketi gelir gelmez onaylanır).
+    2) 1.5 saniye içinde GERÇEK veri gelmezse, PortAudio'yu TAMAMEN ATLAYIP
+       doğrudan 'parec' (PipeWire/Pulse) ya da 'arecord' (ALSA) alt
+       sürecinden ham ses okur. Bu yol neredeyse her Linux kurulumunda
+       çalışır ve wake-word, STT ile mikrofon testinin ÜÇÜ de bunu kullanır.
+
+  GEREKEN PAKETLER (kurulum.sh bunları otomatik önerir):
+     CachyOS/Arch:  sudo pacman -S pipewire-pulse wtype ydotool
+     Pardus/Ubuntu: sudo apt install pulseaudio-utils alsa-utils wtype ydotool
+
+  "Mikrofonu test et" dediğinde artık HANGİ ARKA UCUN (sounddevice/parec/
+  arecord) kullanıldığını da söyler — sorun sürerse bu bilgiyi paylaş.
+
+  AYRICA DÜZELTİLDİ: actions/ klasöründe core/intent_parser.py ve
+  core/prompt.txt dosyalarının eski, kullanılmayan kopyaları vardı (önceki
+  bir işlem sırasında yanlışlıkla oraya kopyalanmış, hiçbir yerden
+  çağrılmıyordu) — temizlendi.
+
+════════  COQUI XTTS-v2 KURULURKEN NUMPY DÜŞÜRÜLMESİ — SORUN MU?  ════════
+
+  "pip install coqui-tts" çalıştırırken numpy'nin ESKİ bir sürüme (ör.
+  2.5.1 → 1.26.x) DÜŞÜRÜLDÜĞÜNÜ görebilirsin. Bu NORMALDIR ve genelde
+  sorun YARATMAZ — coqui-tts'in bağımlı olduğu librosa/numba paketleri
+  numpy 2.x ile tam uyumlu olmayabiliyor, pip bu yüzden numpy'yi
+  bilerek indiriyor.
+
+  requirements.txt artık "numpy<2" olarak SABİTLENDİ — böylece ileride
+  başka bir paket kurulumu numpy'yi tekrar 2.x'e yükseltip coqui-tts'i
+  bozmuyor (paketler arasında "numpy tenis topu" olmasın diye).
+
+  GERÇEK RİSK (nadir): Eğer opencv-python/torch/ultralytics DAHA ÖNCE
+  numpy 2.x'e göre derlenmiş sürümleriyle kuruluysa, numpy'nin düşmesi
+  bu paketlerle İKİLİ (ABI) UYUMSUZLUĞA yol açabilir — "was compiled
+  using NumPy 1.x" gibi hatalar. YERINDE artık açılışta bunu da ayrıca
+  test eder ve TAM OLARAK hangi paketi yeniden kurman gerektiğini söyler:
+      pip install --force-reinstall --no-cache-dir opencv-python
+      (ya da hangi paket belirtildiyse onu)
+
+  Özetle: numpy'nin düşmesi başlı başına sorun değil; YERINDE'yi
+  yeniden başlattığında bir uyumsuzluk varsa açık ve net olarak söyler.
+
+──────────  BİLİNEN SORUN: XTTS-v2 + transformers 5.x UYUMSUZLUĞU  ──────────
+
+  Hata: "cannot import name 'isin_mps_friendly' from 'transformers.pytorch_utils'"
+
+  Sebep (doğrulanmış — github.com/idiap/coqui-ai-TTS issue #558):
+  coqui-tts, transformers'a gevşek bir alt sınır bırakıyor ("transformers>=4.57"),
+  pip de en yeni 5.x sürümünü kuruyor. Ama transformers 5.x, coqui-tts'in
+  kullandığı 'isin_mps_friendly' fonksiyonunu kaldırmış.
+
+  ÇÖZÜM (proje bakımcısının kendi önerisi):
+      pip install "transformers==4.57.6"
+
+  Ayrıca coqui-tts 0.27.4'ten itibaren PyTorch'u kendisi kurmuyor — ayrıca
+  gerekir:
+      pip install torch torchaudio
+
+  YERINDE bu hatayı artık TANIYOR: karşılaşırsan log'da doğrudan bu komutu
+  önerir, genel bir hata mesajı basmaz.
+
+  BU DÜŞÜRME BAŞKA BİR ŞEYİ BOZAR MI? Hayır — transformers, YERINDE'nin
+  kendi kodunda hiç kullanılmıyor (yalnızca coqui-tts'in alt bağımlılığı).
+  Ollama/Gemini/faster-whisper/Vosk/YOLO bundan etkilenmez. Tek istisna:
+  ChatTTS sesi de transformers kullanır — kurulumdan sonra "pip check"
+  çalıştırıp temiz çıktığını gör, istersen ChatTTS'i bir kez dene.
+
+  BİLİNEN SORUN 2 — torchcodec eksik:
+  Hata: "the torchcodec library is required for audio IO"
+  Sebep: PyTorch 2.9'dan itibaren ses okuma/yazma torchaudio'dan ayrı bir
+  pakete (torchcodec) taşındı.
+  Çözüm:
+      pip install coqui-tts[codec]
+      (olmazsa doğrudan: pip install torchcodec)
+  Windows'ta bu otomatik CPU sürümünü kurar; Linux'ta CUDA sürümü
+  varsayılan olabilir, sorun çıkarsa CPU'ya zorla:
+      pip install torchcodec --index-url https://download.pytorch.org/whl/cpu
+
+
+  BİLİNEN SORUN 3 — libtorchcodec yüklenemiyor (Windows, DLL hatası):
+  Hata: "Could not load libtorchcodec... FileNotFoundError: ...libtorchcodec_core8.dll"
+  Bu, torchcodec'in kendi GitHub deposunda birden fazla açık hata kaydı olan,
+  Windows'a özgü YAYGIN bir sorun (henüz tam çözülmemiş).
+  Sebep: FFmpeg'in "full-shared" (paylaşılan DLL'li) sürümü eksik/PATH'te değil.
+  Denenecek adımlar:
+      1) FFmpeg'in "full-shared" Windows derlemesini indir (ör. gyan.dev/ffmpeg/builds)
+      2) İçindeki "bin" klasörünü PATH'e ekle
+      3) Terminali TAMAMEN kapatıp yeniden aç, tekrar dene
+  Bazı Windows kurulumlarında bu adımlar sonrası bile sorun sürebilir — bilinen
+  bir sınırlama. ÇÖZEMESEN DE SORUN DEĞİL: YERINDE otomatik olarak yedek sese
+  (Piper/ChatTTS) düşer; ses klonlama isteğe bağlı bir özelliktir, asistanın
+  geri kalanını hiç etkilemez.
+
+════════  PIPER İÇİN EĞİTİM SETİ HAZIRLAMA (XTTS'e alternatif)  ════════
+
+  XTTS-v2 kurulumu zor geliyorsa (torch/transformers/torchcodec/FFmpeg
+  zinciri), Piper ile kendi sesini eğitmek çok daha sağlam bir yol —
+  sonuç yine .onnx + .onnx.json, YERINDE bunu SES listesinde otomatik
+  gösterir, hiçbir ek kuruluma gerek kalmaz.
+
+  FARK: XTTS 10 sn'de anlık klonluyordu; Piper gerçek bir EĞİTİM SETİ
+  ister (bir dizi cümleyi okuman gerekir). Karşılığında kurulum çok
+  daha az sorunlu.
+
+  KULLANIM:
+     "eğitim için ses kaydet"         → sırayla cümleleri okutur, her
+                                        birini otomatik doğru biçimde
+                                        kaydeder (mikrofon aynı akıllı
+                                        VAD ile — sessizlik olunca durur)
+     "eğitim setinin durumu"          → kaç cümle kaldığını söyler
+     "N. cümleyi tekrar kaydet"       → beğenmediğin bir kaydı yeniler
+     "eğitim setini paketle"          → wavs/ + metadata.csv + talimat
+                                        dosyasını tek .zip'e toplar
+     "eğitim setini sıfırla"          → baştan başlamak istersen
+     AYARLAR panelinde "📋 PIPER EĞİTİM SETİ HAZIRLA" düğmesi de aynı işi
+     sırayla yapmanı kolaylaştırır.
+
+  ~50 cümle fonetik açıdan çeşitli seçildi (tüm Türkçe sesli/ünsüz
+  harfler). Tamamını okumak zorunda değilsin — 15-20 cümle bile küçük
+  bir ince ayar (fine-tuning) için başlangıç olabilir, ama daha fazlası
+  daha iyi sonuç verir.
+
+  PAKETİ ALDIKTAN SONRA (Google Colab, ücretsiz):
+     1) wavs/ ve metadata.csv'yi Google Drive'a yükle
+     2) Piper eğitim not defterini aç:
+        colab.research.google.com/github/rmcpantoja/piper/blob/master/
+        notebooks/piper_multilingual_training_notebook.ipynb
+     3) Taban model olarak mevcut "tr_TR-dfki-medium" checkpoint'ini seç
+        (sıfırdan değil, İNCE AYAR — daha az veri/süreyle daha iyi sonuç)
+     4) Eğitim bitince: python3 -m piper_train.export_onnx model.ckpt model.onnx
+                        cp config.json model.onnx.json
+     5) İki dosyayı voices/ klasörüne koy — SES listesinde otomatik görünür
+
+════════  YENİ: 6 KLAVYE KISAYOLU + FARE TEKERİ + GÜVENLİ ALT+F4  ════════
+
+  YENİ KLAVYE KOMUTLARI:
+     "masaüstünü göster" / "windows d"     → Win+D
+     "tam ekran yap" / "tam ekrandan çık"  → F11 (aynı tuş, iki yönde de)
+     "yeniden adlandır"                     → F2
+     "kes"                                  → Ctrl+X
+     "ileri al"                             → Ctrl+Y (redo)
+     "büyük yap" / "caps lock"              → Caps Lock
+
+  FARE TEKERİ (artık Pardus/CachyOS'ta GERÇEKTEN çalışıyor):
+     "fare tekerini yukarı çevir" / "aşağı çevir"
+     "yukarıya kaydır" / "aşağıya kaydır"
+     Eskiden Wayland'de sadece 'ydotool kurulu mu?' kontrol ediliyor ama hiç
+     ÇAĞRILMIYORDU — tıklama/kaydırma sessizce hiçbir şey yapmıyordu. Şimdi
+     Wayland'de HER fare eylemi gerçekten ydotool ile yapılıyor ve
+     başarısızlıkta dürüst hata veriyor (sessizce "başarılı" demiyor).
+
+  "UYGULAMAYI KAPAT" / "PROGRAMI KAPAT" ARTIK GÜVENLİ ALT+F4'E DÜŞÜYOR:
+     Süreç tabanlı kapatma (taskkill/pkill) hedefi bulamazsa, SADECE aktif
+     pencerenin YERİNDE'nin kendisi OLMADIĞI kesin olarak doğrulanabiliyorsa
+     Alt+F4 dener (bkz. actions/window_safety.py). Emin olunamayan durumda
+     (Wayland gibi) hiçbir tuş göndermez — YERİNDE'nin kendi kendini
+     kapatma riskine bir daha girilmez.
+     Not: "programı kapat" artık YERİNDE'yi DEĞİL, açık uygulamayı kapatır
+     ("kendini kapat" / "yerinde kapat" hâlâ asistanın kendisini kapatır).
+
+════════  YENİ: KAMERA/SUNUM ÇİFT-MESAJ HATASI DÜZELTİLDİ + YENİ TEMA + YENİ ANİMASYON  ════════
+
+  KÖK NEDEN BULUNDU: Tetik kelimesiz ("Yerinde" demeden) doğrudan komutlar
+  (kamera kapat, sunum tam ekran yap, sunum aç vb.) çalıştırılırken mikrofon
+  HİÇ duraklatılmıyordu. Asistan kendi TTS onayını ("Kamera kapatıldı...")
+  duyup komutu bazen ikinci/üçüncü kez tetikleyebiliyordu. Artık hızlı komut
+  yolu da (tıpkı tetik kelimeli yol gibi) komut+TTS onayı bitene kadar
+  mikrofonu duraklatıyor. Windows/CachyOS/Pardus/Orange Pi'de aynı düzeltme.
+
+  YENİ TEMA — "Anka (Yeşil-Alev)": Gönderilen logodan (koyu orman yeşili +
+  nane/mint taş + altın + alev turuncusu) birebir renk örneklemesiyle
+  oluşturuldu. AYARLAR > TEMA listesinde diğer 7 tema ile birlikte durur.
+
+  YENİ KONUŞMA ANİMASYONU — "Anka (Elmas + Kanat + Alev)": Logodan
+  esinlenilmiş, merkezde nabız gibi atan bir elmas/taş + konuşurken çırpınan
+  iki kanat + titreyen iki alev yaprağı. ESKİ "Klasik (Parçacık Küre)"
+  animasyonu TAMAMEN KORUNDU — varsayılan hâlâ o. Değiştirmek için:
+  AYARLAR > TEMA SEÇ penceresinin altındaki "🔮 Konuşma animasyonu stili
+  değiştir »" linkine tıkla.
+
+════════  YENİ: 3. ANİMASYON + UYGULAMA YOLLARI + KÜÇÜK DÜZELTMELER  ════════
+
+  3. KONUŞMA ANİMASYONU — "Anka Baloncuk": Anka'nın Y-silüetini (kanat+alev+
+  gövde iskeleti) Klasik'in yüzen baloncuk estetiğiyle birleştirir — katı
+  şekil yok, her şey iskelet çizgileri boyunca süzülen küçük baloncuklardan
+  oluşuyor. AYARLAR > TEMA SEÇ altındaki "🔮 Konuşma animasyonu stili
+  değiştir »" linkinden üç stil arasında seçebilirsin.
+
+  ANKA ANİMASYONUNUN KANATLARI DÜZELTİLDİ: Logodan hassas piksel ölçümü
+  yapıldı (~28.6° kanat açısı) — artık gerçek logoya çok daha sadık.
+
+  YENİ AYAR: "📁 UYGULAMA YOLLARI" — AYARLAR panelinde. Sesle
+  çalıştıracağın uygulamalar için elle tam dosya yolu seçebilirsin
+  (otomatik bulma yanlış/eksikse ya da uygulama standart olmayan bir yere
+  kuruluysa). Kayıtlı bir yol HER ZAMAN otomatik bulmadan önceliklidir.
+
+  KREM TEMASI DÜZELTİLDİ: Buton renkleri (özellikle ORG2) açık arka plana
+  karşı çok düşük kontrastlıydı (2.32:1 — okunaksız). Tüm vurgu renkleri
+  WCAG AA standardına (4.5:1+) yakın olacak şekilde koyulaştırıldı.
+
+  "ARKAPLAN RENGİNİ DEĞİŞTİR" ARTIK ÇALIŞIYOR: Renk belirtmeden ("mavi
+  yap" demeden) söylersen artık hata vermek yerine hoş bir renk rastgele
+  seçip uyguluyor (hangi rengi seçtiğini de söylüyor).
+
+  "OYUN ARACI" / "KODLAMA ARACI" → SCRATCH: Bu ifadeler artık Scratch'i
+  açıyor, "scratch aç" ile aynı.
+
+════════  YENİ: ANİMASYON İNCELİKLERİ + CMD PENCERESİ SORUNU (Windows)  ════════
+
+  ANKA animasyonunun ALEV kısmı artık çok daha "konuşuyormuş gibi":
+  sol ve sağ alev BAĞIMSIZ (asimetrik) titriyor, konuşurken genlik belirgin
+  şekilde artıyor, alevlerin genişliği de nabız gibi atıyor. Elmasın
+  parlaklığı da hafifçe kıpırdayan bir parıltı kazandı.
+
+  ANKA BALONCUK animasyonundaki baloncuk sayısı ~2 katına çıkarıldı (7→12
+  her iskelet çizgisinde, merkez küme 10→16) — daha zengin, daha dolu bir
+  görünüm.
+
+  WINDOWS — CMD PENCERESİ ARTIK GÖRÜNMÜYOR: BASLAT.bat'ı çift tıkladığında
+  kısa süreliğine de olsa bir komut istemi penceresi görünüyordu (dahili
+  ses/uygulama komutları zaten güvenliydi — sorun YERİNDE'yi BAŞLATAN
+  script'in kendisindeydi). Artık BASLAT.bat, kendini _sessiz_baslat.vbs
+  üzerinden TAMAMEN görünmez şekilde yeniden başlatıyor — hiçbir pencere
+  belirmiyor. Bu iki dosyayı (BASLAT.bat + _sessiz_baslat.vbs) BİRLİKTE
+  aynı klasörde tut, biri diğerini çağırıyor.
+
+════════  YENİ: WHATSAPP ARAMA/GÖRÜNTÜLÜ ARAMA DÜZELTİLDİ  ════════
+
+  İKİ GERÇEK SORUN BULUNUP DÜZELTİLDİ:
+
+  1) MUTLAK PİKSEL → ORANSAL KONUM: Eskiden arama düğmesinin yeri MUTLAK
+  ekran pikseli olarak kaydediliyordu — WhatsApp penceresini taşısan ya da
+  yeniden boyutlandırsan tıklama YANLIŞ yere gidiyordu (arama başlamıyordu).
+  Artık konum "pencereye göre yüzde" olarak kaydediliyor; pencere nerede/ne
+  boyutta olursa olsun doğru noktaya tıklanıyor. ("whatsapp sesli arama
+  düğmesini öğret" ile tekrar kalibre etmen gerekiyor, eski kayıtlar hâlâ
+  çalışır ama yeni sistemin avantajını görmek için yeniden öğretmen iyi olur.)
+
+  2) WAYLAND'DE (PARDUS/CACHYOS) TIKLAMA ARTIK GERÇEKTEN ÇALIŞIYOR: Bu
+  dosya kendi ham pyautogui.click()'ini kullanıyordu — mouse_control.py'de
+  daha önce düzelttiğimiz AYNI Wayland hatasının ayrı bir kopyasıydı.
+  Artık mouse_control.py'nin kanıtlanmış ydotool mantığını yeniden kullanıyor.
+
+  3) Sabit 3.5 saniye beklemek yerine WhatsApp penceresi GERÇEKTEN belirene
+  kadar aktif olarak kontrol ediyor (yavaş bilgisayarlarda eskiden pencere
+  açılmadan tıklanmaya çalışılabiliyordu).
+
+════════  YENİ: SCRATCH ÇOK DAHA AYRINTILI + DOSYA ÇOĞALMASI DÜZELTİLDİ  ════════
+
+  GERÇEK HATA DÜZELTİLDİ: Eskiden HER Scratch komutunda saat damgalı YENİ
+  bir dosya (yerinde_103015.sb3, yerinde_103045.sb3...) oluşuyordu — kısa
+  sürede onlarca dosya birikip her komutta yeni bir Scratch penceresi
+  açılıyordu. Artık TEK SABİT dosya (yerinde_proje.sb3) kullanılıyor;
+  Scratch sadece İLK komutta açılıyor, sonraki komutlar aynı dosyayı
+  günceller. (Not: Scratch dış değişikliği otomatik yenilemez — "scratch'i
+  yeniden aç" dersen mevcut dosyayı tazeleyerek yeniden açar.)
+
+  ÇOK DAHA AYRINTILI KONTROL — yeni komutlar:
+     "5 kere tekrarla" ... "blok bitti"        → DÖNGÜ (içine ne dersen girer)
+     "sonsuza kadar tekrarla" ... "blok bitti" → SONSUZ DÖNGÜ
+     "eğer kenara değerse" ... "blok bitti"    → KOŞUL
+     "eğer [tuş] tuşuna basılırsa" ... "blok bitti" → TUŞ KOŞULU
+     "kalemi indir/kaldır/temizle"             → ÇİZİM (Kalem uzantısı)
+     "kalem rengini kırmızı yap"               → kalem rengi
+     "[ad] değişkenini [değer] yap"            → DEĞİŞKEN
+     "göster" / "gizle" / "düşün" / "boyutunu değiştir" → daha fazla görünüm
+  Döngü/koşul içindeyken söylediğin her şey OTOMATİK olarak onun İÇİNE
+  girer — "blok bitti" deyince ana betiğe (ya da bir üstteki bloğa) geri
+  dönersin. İç içe (döngü içinde koşul gibi) de çalışır.
+
+════════  YENİ: SCRATCH'TE KUKLA/KOSTÜM/YORUM + DOSYA ANALİZ-ONARIM  ════════
+
+  DÜZELTİLDİ: "kukla ekle"/"kukla sil"/"kostüm ekle"/"yorum ekle" komutları
+  eskiden SADECE bellekte değişiklik yapıp "eklendi/silindi" diyordu ama
+  dosyayı hiç güncellemiyor, Scratch'i hiç açmıyordu — söylediği şey
+  GERÇEKTE olmuyordu. Artık hepsi diğer komutlar gibi dosyayı gerçekten
+  kaydedip Scratch'i açıyor/güncelliyor.
+
+  KUKLA YÖNETİMİ:
+     "kukla ekle Köpek"                → yeni kukla oluşturur, AKTİF yapar
+     "kukla ekle Köpek kırmızı yıldız"  → renkli/şekilli kukla oluşturur
+     "kukla sil Köpek"                 → kuklayı siler (son kukla silinemez)
+     "Kedi kuklasına geç"              → hangi kuklaya komut ekleneceğini
+                                          değiştirir (her kuklanın KENDİ
+                                          betiği vardır, birbirini etkilemez)
+     "kukla çiz kırmızı yıldız"        → basit bir SVG şekil ÇİZİP yeni
+                                          kukla olarak ekler (renk: kırmızı/
+                                          mavi/yeşil/sarı/turuncu/mor/pembe/
+                                          siyah/beyaz; şekil: daire/kare/
+                                          üçgen/yıldız)
+     "kostüm ekle mavi kare"           → AKTİF kuklaya EK bir görünüm ekler
+                                          (animasyon için, ör. yürüme karesi)
+
+  YORUM SATIRI:
+     "yorum ekle: bu kısım zıplatıyor" → son eklenen bloğa sarı açıklama
+                                          notu iğneler
+
+  DOSYA ANALİZ + ONARIM (YENİ ÖZELLİK):
+     "sb3 dosyasını analiz et"         → kendi projemizi (ya da 'değer'
+     "kod bloklarını kontrol et"         olarak verilen BAŞKA bir .sb3
+                                          dosyasını) açar, KOPUK BLOK
+                                          REFERANSLARINI bulur ve OTOMATİK
+                                          DÜZELTİR, hiçbir yeşil bayrağa
+                                          bağlı olmayan (erişilemez) bloklar
+                                          varsa bunları da raporlar (silmez,
+                                          sadece bildirir — kullanıcı yanlış
+                                          bir şey silinmesin diye).
+
+  Not: Her kuklanın kendi bağımsız betiği ve döngü/koşul yığını vardır —
+  bir kuklada döngü açıkken başka kuklaya geçersen, o kuklanın kendi
+  (kapalı) durumuyla devam edersin, karışıklık olmaz.
+
+════════  YENİ: 91 GERÇEK SCRATCH KÜTÜPHANE KUKLASI + 3 HATA DÜZELTİLDİ  ════════
+
+  GERÇEK KÜTÜPHANE ENTEGRASYONU: "köpek kuklası ekle" dediğinde artık
+  benim çizdiğim basit bir mavi daire DEĞİL, Scratch'in KENDİ kurulumundan
+  (kullanıcının yüklediği gerçek Scratch Desktop'tan) çıkarılan GERÇEK
+  "Dog2" görseli kullanılıyor. 91 kayıt da hem resmi Scratch kütüphane
+  meta verisinde hem gerçek disk dosyalarında TEK TEK doğrulandı — hiçbir
+  görsel/hash TAHMİN EDİLMEDİ. Kapsananlar: kedi, köpek, aslan, tilki,
+  ayı, fil, zürafa, maymun, tavşan, kurbağa, yılan, penguen, kelebek,
+  ördek, at, top, elma, muz, pasta, yıldız, kalp, gitar, roket, araba,
+  ağaç, güneş, gökkuşağı, robot, cadı, hayalet ve daha fazlası.
+  NOT: Renk AÇIKÇA belirtirsen ("kırmızı yıldız" gibi) gerçek kütüphane
+  ATLANIR, elle çizilmiş RENKLİ şekil kullanılır — çünkü kütüphane
+  görselinin rengi sabittir, senin istediğin rengi veremez.
+
+  ÜÇ GERÇEK HATA DÜZELTİLDİ:
+  1) "köpek kuklası ekle" gibi İSİM-ÖNCE sıralamalar hiç eşleşmiyordu
+     (sadece "kukla ekle köpek" çalışıyordu) — artık HER İKİ sıralama da
+     çalışıyor, hem ekleme hem silme komutlarında.
+  2) Renk/şekil ayrıştırma yanlış alana bakıyordu, bu yüzden ne dersen de
+     hep "mavi daire" çıkıyordu — düzeltildi.
+  3) "Scratch zaten açık mı" kontrolü kalıcı olmayan bir bayrağa
+     dayanıyordu — YERİNDE yeniden başlayınca Scratch AÇIK OLSA BİLE
+     yeniden açılıyordu. Artık psutil ile GERÇEK süreç listesine
+     bakılıyor, bayrağa güvenilmiyor.
+
+  YENİ KLAVYE KISAYOLU: "üst klasöre git" / "bir üst klasör" → Alt+Yukarı
+  (Windows Gezgini VE çoğu Linux dosya yöneticisinde güvenilir şekilde
+  çalışan, sürüm bağımsız kısayol).
+
+════════  YENİ: SCRATCH DOSYA YÜKLE/KAPAT + WHATSAPP ARAMA HATASI DÜZELTİLDİ  ════════
+
+  WHATSAPP ARAMA — GERÇEK KÖK NEDEN BULUNDU: "Telefon numarası uluslararası
+  formatta olmalı" hatası, numaranın formatıyla İLGİLİ DEĞİLDİ — kod kayıtlı
+  kişinin telefon numarasını YANLIŞ bir sözlük anahtarından ("phone" yerine
+  "value" olması gerekiyordu) okumaya çalışıyordu, bu yüzden HER ZAMAN boş
+  bir numara alıp başarısız oluyordu. Artık doğru anahtarı kullanıyor —
+  sesli/görüntülü arama gerçekten çalışıyor.
+
+  SCRATCH — YENİ: "bilgisayarımdan yükle" / "kaydedilen dosyayı aç" →
+  DİSKTEKİ kaydedilmiş projeyi açar. Bu, YERİNDE yeniden başlamış olsa
+  bile (bellek sıfırlanmış olsa bile) çalışır — önceki oturumdan kalan
+  gerçek dosyayı kontrol eder, sadece o anki bellek durumuna bakmaz.
+
+  SCRATCH — YENİ: "scratch'i kapat" → çalışan Scratch sürecini kapatır.
+
+════════  YENİ: SCRATCH AÇILMAMA SORUNU DÜZELTİLDİ  ════════
+
+  KÖK NEDEN BULUNDU: Scratch kodlama özelliğinin kendi Scratch-bulma
+  mantığı, SADECE "Program Files" konumlarına bakıyordu — Scratch
+  Desktop'ın YAYGIN kullanıcı-bazlı kurulum yeri olan
+  %LOCALAPPDATA%\Programs\Scratch 3\ klasörüne HİÇ bakmıyordu. Bu yüzden
+  bu şekilde kurulu Scratch'lerde "scratch aç" bazen açmıyor ya da
+  sorunlu açıyordu — oysa genel "uygulama aç" komutu zaten bu yolu da
+  kontrol ettiği için sorunsuz çalışıyordu. Artık Scratch özelliği de
+  AYNI kanıtlanmış arama mantığını kullanıyor.
+
+  "Scratch'i kapat" da artık iki yöntemi birlikte deniyor (süreç listesi
+  + taskkill) — biri diğerini tamamlıyor, tek başına ikisinden de daha
+  güvenilir.
+
+════════  YENİ: SCRATCH — BAŞKA PENCEREDEYKEN KAPATMA + YEŞİL BAYRAK ÇALIŞTIRMA  ════════
+
+  "SCRATCH'İ KAPAT" ARTIK BAŞKA PENCEREDEYKEN DE ÇALIŞIYOR: Üç yöntemi
+  SIRAYLA dener — (1) süreç listesi, (2) taskkill, (3) hiçbiri işe
+  yaramazsa Scratch penceresini ÖNCE KENDİMİZ ÖNE GETİRİP sonra Alt+F4
+  gönderiyoruz. Bu üçüncü yöntem, SEN BAŞKA BİR PENCEREDE OLSAN BİLE
+  çalışır — çünkü aktif pencereye körlemesine göndermiyoruz, önce
+  Scratch'i biz buluyoruz.
+
+  YENİ: "scratch yeşil bayrağı öğret" → yeşil bayrak düğmesinin yerini
+  bir kez öğrenir (WhatsApp arama düğmesiyle AYNI, kanıtlanmış yöntem —
+  pencereye göre ORANSAL kaydeder, pencere taşınsa/boyutu değişse bile
+  doğru yeri bulur). Sonra "scratch'i çalıştır" ya da "yeşil bayrağa
+  tıkla" dediğinde yazdığın kodu ÇALIŞTIRIR — öğrencilerin kendi
+  kodlarını sesle test etmesi için ideal.
+
+════════  YENİ: BLOCKLY GAMES SESLE AÇMA (ÖĞRETMENLER İÇİN)  ════════
+
+  Google'ın Türkçe kodlama bulmacaları (Labirent, Kuş, Gölet, Kaplumbağa,
+  Bulmaca, Film, Müzik) artık projeyle BİRLİKTE geliyor (blockly-games/
+  klasörü) — internet gerekmez, sesle doğru oyunu anında açabilirsin:
+
+     "labirent aç"          → Labirent bulmacasını tarayıcıda açar
+     "kuş oyununu aç"       → Kuş bulmacasını açar
+     "gölet aç"             → Gölet bulmacasını açar
+     "kaplumbağa aç"        → Kaplumbağa bulmacasını açar
+     "bulmaca aç"           → Bulmaca oyununu açar
+     "blockly games aç"     → Oyun merkezinin ana sayfasını açar
+
+  Not: Blockly Games, Scratch gibi bir masaüstü uygulaması DEĞİL — bloklar
+  tarayıcıda fare ile sürüklenerek yapılır. Bu özellik SADECE doğru
+  oyunu/sayfayı sesle açar (öğretmenin "labirent aç" deyip öğrencilere
+  anında doğru bulmacayı göstermesi için); blokları sesle yazmaz.
+
+════════  YENİ: LABİRENT'İ SESLE ÇÖZME (DENEYSEL — TEST GEREKTİRİR)  ════════
+
+  "labirentin 3. seviyesini çöz" → o seviyenin GERÇEK (senin ders
+  materyalinden doğrulanmış) çözümünü GERÇEK Blockly bloklarına çevirip
+  tarayıcıya ekler ve Çalıştır'a basar. 1-10 arası tüm seviyeler + 10.
+  seviyenin alternatif çözümü ("...alternatif çöz" ile) mevcut.
+
+  ⚠️ DÜRÜST UYARI: Bu özellik Selenium ile GERÇEK bir tarayıcıyı uzaktan
+  kumanda ediyor — Scratch entegrasyonu kadar "garantili" değil. Kurulum:
+      pip install selenium webdriver-manager
+  (Chrome kurulu olmalı; sürücüyü webdriver-manager kendisi indirir.)
+
+  İLK DENEMEDE ÇALIŞMAYABİLİR. Çalışmazsa tarayıcıda F12'ye basıp
+  Console sekmesindeki hatayı bildirirsen, birlikte düzeltebiliriz —
+  bu, iteratif test gerektiren bir özellik.
+
+════════  DÜZELTİLDİ: LABİRENT ÇÖZÜCÜ — CHROME file:// GÜVENLİK KISITLAMASI  ════════
+
+  GERÇEK KULLANICI TESTİNDE BULUNAN KÖK NEDEN: Dosyalar "file://" ile
+  açılıyordu — Chrome her file:// adresini BENZERSİZ bir güvenlik kaynağı
+  saydığı için seviye değiştirmeye çalışınca "Unsafe attempt to load URL...
+  unique security origins" hatası veriyor, sayfa 1. seviyeye dönüyordu.
+  Aynı zamanda "/common/storage.js" gibi kök-göreli yollar da (sunucu kökü
+  olmadığı için) yanlış konuma bakıp 404 veriyordu.
+
+  ÇÖZÜM: Artık oyunlar YERİNDE'nin KENDİ küçük yerel web sunucusundan
+  (http://127.0.0.1) sunuluyor — internet gerekmez, ama artık gerçek bir
+  web sitesi gibi davranıyor, bu iki sorun da ortadan kalktı.
+
+  AYRICA: Doğru seviyeye GERÇEKTEN geçildiğinden emin olmak için, gerçek
+  kaynak kodda doğrulanan seviye linklerine (id="level1", "level2"...)
+  tıklama adımı eklendi — eskiden hep aynı (varsayılan) seviyeye blok
+  ekleniyordu. Bloğun tuval üzerindeki konumu da netleştirildi (eskiden
+  "bağlantısız duruyormuş" gibi görünebiliyordu).
+
+  Hâlâ deneysel — çalışmazsa F12 konsolundaki hatayı paylaş, düzeltelim.
+
+════════  DÜZELTİLDİ: LABİRENT ÇÖZÜCÜ — ZAMANLAMA/HAZIR OLMA SORUNU  ════════
+
+  Seviye geçişi ÇALIŞIYORDU ama bloklar eklenmiyordu — muhtemel sebep:
+  seviye linkine tıklandığında sayfa kendi çalışma alanını (Blockly.
+  mainWorkspace) YENİDEN kuruyor, enjeksiyon kodu bu yeniden kurulma
+  TAM O ANDA olurken çalışıyordu. Artık: (1) seviye geçişinden sonra daha
+  uzun bekleniyor, (2) enjeksiyon GERÇEKTEN kaç blok eklediğini SAYIP
+  döndürüyor (körlemesine "başarılı" denmiyor), (3) ilk deneme 0 blok
+  dönerse bir kez daha (biraz bekleyip) deneniyor.
+
+════════  DÜZELTİLDİ: LABİRENT — SEVİYEYE DOĞRUDAN URL İLE GİDİLİYOR  ════════
+
+  Gerçek kullanıcı testinde konsolda URL'nin "maze.html?lang=tr&level=2&
+  skin=0" biçiminde olduğu görüldü — yani seviye linkine TIKLAMAK yerine
+  bunu doğrudan URL'ye yazıp gidebiliyoruz. Bu, tıklama+geçiş animasyonu
+  zamanlamasına bağımlı kalmayı tamamen ortadan kaldırıyor: artık sayfa
+  DAHA İLK YÜKLENİRKEN doğru seviyede açılıyor.
+
+════════  YENİ: AKIŞ ŞEMASI VE ALGORİTMA ÖĞRETİM ARACI (SIFIRDAN YAZILDI)  ════════
+
+  "algoritma oyununu aç" / "akış şeması aracını aç" → YERİNDE'nin KENDİ
+  yazdığı, tek dosyalık (akis-semasi/akis-semasi.html) bir akış şeması
+  editörünü tarayıcıda açar. Blockly Games'ten farklı olarak bu BAŞKASININ
+  kodu değil — bu yüzden "gizli API" ya da "file:// kısıtlaması" gibi
+  sorunlar burada YOK (tek sayfa, sayfa geçişi yok).
+
+  İÇERİK:
+    • Başla/Bitir, İşlem (x=x+1), Karar (Evet/Hayır), Giriş/Çıkış kutuları
+    • Fare ile kutu ekleme, bağlama, çift tıkla düzenleme, sürükleyerek taşıma
+    • "▶▶ Çalıştır" → adım adım simülasyon: aktif kutu vurgulanır, sağ
+      panelde değişkenlerin anlık değerleri ve ekran çıktısı görünür
+    • "🐍 Python Kodu" → çizilen şemayı OTOMATİK Python koduna çevirir
+      (sıralama, iç içe eğer/değilse, döngü — her iki yönde iç içelik
+      dahil, 7 farklı senaryoyla test edildi)
+
+  Öğretmen için: öğrenciler blokları/kutuları kendileri kurar, "Çalıştır"a
+  basıp adım adım izler, isterse karşılık gelen Python kodunu da görür.
+
+════════  YENİ: ÇARKIFELEK — BİLİŞİM BİLGİ YARIŞMASI (SIFIRDAN YAZILDI)  ════════
+
+  "çarkıfelek oyununu aç" → tek dosyalık (carkifelek/carkifelek.html) bir
+  çarkıfelek bilgi yarışmasını tarayıcıda açar. Sorular kullanıcının kendi
+  ders sitesinden (bilgisayarinminikelleri.biz "Temel Kavramlar" sayfası)
+  ÇIKARILDI — bilişim, bilgi, iletişim, teknoloji, donanım/yazılım,
+  giriş-çıkış-depolama birimleri konularını kapsıyor (35 soru — Temel Kavramlar +
+  Algoritma/Akış Şeması, Değişkenler, Dosya, İşletim Sistemleri, Şifre
+  Güvenliği, Kapasite Birimleri, Ağ/IP, Antivirüsler).
+
+  Çarkı çevir → rastgele bir dilime (100-600 puan) düş → o dilimin
+  sorusunu cevapla (4 seçenekli) → doğruysa puanı kap. 15 soru bitince
+  toplam puan gösterilir, "Yeniden Oyna" ile sıfırdan başlanabilir.
+
+  Akış şeması aracıyla AYNI mimari: sıfırdan yazıldı, tek bağımsız HTML
+  dosyası, dış bağımlılık yok — kapsamlı test edildi (soru bankası
+  bütünlüğü, karıştırma, tam oyun akışı, doğru/yanlış puanlama, 15
+  sorunun tamamının oynanması, yeniden başlatma).
+
+════════  YENİ: EĞİTİM VERİSİ DIŞA AKTARMA (KENDİ MODELİNİ EĞİTMEK İÇİN)  ════════
+
+  KEŞİF: HabitLearner zaten her etkileşimi eğitime-hazır biçimde
+  arka planda kaydediyordu (memory/habits.json), ve export_dataset()
+  fonksiyonu da JSONL üretmeye hazırdı — AMA bunu tetikleyecek hiçbir
+  sesli komut YOKTU (kod vardı, kimse çağırmıyordu). Şimdi eklendi:
+
+     "eğitim verimi dışa aktar"     → memory/egitim_verisi.jsonl üretir
+                                       (Alpaca/ShareGPT tarzı: instruction/
+                                       input/output/meta) — LoRA/QLoRA ince
+                                       ayar araçlarıyla DOĞRUDAN kullanılabilir
+     "eğitim verisi durumu" /
+     "ne kadar eğitim verisi birikti" → kaç etkileşim kaydedildi, kaçı
+                                       eğitime uygun, hangi rotalarda
+
+  Not: Bu, ince ayar (fine-tuning) sonrası GGUF'a çevirme adımını
+  KAPSAMAZ — o, llama.cpp'nin kendi dönüştürme araçlarıyla ayrı bir
+  adımdır. Burada üretilen JSONL, o sürecin İLK GİRDİSİDİR.
+
+════════  YENİ: AYARLARDA "🎓 EĞİTİM VERİSİ" DÜĞMESİ  ════════
+
+  Sesli komutun yanı sıra, AYARLAR panelinde (Uygulama Yolları
+  düğmesinin hemen altında) "🎓 EĞİTİM VERİSİ" düğmesi eklendi. Tıklayınca
+  açılan pencerede:
+    • Kaç etkileşim kaydedildi, kaçı eğitime uygun, hangi rotalarda —
+      anlık olarak gösterilir ("🔄 Yenile" ile güncellenebilir)
+    • "📤 JSONL Olarak Dışa Aktar" düğmesiyle memory/egitim_verisi.jsonl
+      dosyası tek tıkla üretilir

@@ -1,0 +1,29 @@
+#!/bin/bash
+# final27.md §3: YERINDE canlı ortam kullanıcısı "yerinde".
+#
+# NEDEN ÇALIŞMA ZAMANINDA? Airootfs passwd'ine BAKED uid-1000 kullanıcı
+# KOYMAYIZ: Calamares, kurulumda hedef /etc/passwd'e (airootfs kopyası)
+# bakar — baked "yerinde" satırı olsaydı ve kullanıcı kurulumda da
+# "yerinde" adını seçseydi useradd ÇAKIŞIRDI (kurulum hatası).
+# Bunun yerine canlı açılışta, YALNIZCA archiso ortamında oluşturulur:
+#   - ConditionPathExists=/run/archiso (kurulu sistemde birim ateşlenmez)
+#   - Before=display-manager.service (SDDM oto-girişinden önce hazır)
+#   - kurulu sisteme yalnızca ÖLÜ birim dosyası kopyalanır; finalize siler
+set -eu
+
+if id yerinde &>/dev/null; then
+    exit 0   # idempotent
+fi
+
+# Boş parola (şifresiz canlı oturum) + skel'den ev dizini (-m).
+# Gruplar: wheel (sudo) + uinput/input (ydotool sesli denetim) +
+# multimedya/grupları (cacyhos paritesi).
+useradd -m -p '' \
+    -G wheel,uinput,input,audio,video,storage,optical,lp,power,network \
+    -s /usr/bin/zsh \
+    -c 'Yerinde Kullanıcı' \
+    yerinde
+
+# Kanıt satırları journal'a düşer.
+id yerinde
+ls -ld /home/yerinde

@@ -1,0 +1,16 @@
+# final27.md §3: canlı kullanıcı birimi — yalnızca archiso canlı ortamında
+# çalışır (/run/archiso yalnızca archiso initramfs'inde var). Kurulu sistemde
+# koşul yanlış kalır; ayrıca yerinde-finalize.sh birimi hedeften siler.
+[Unit]
+Description=YERINDE canlı kullanici (yerinde) olusturma
+ConditionPathExists=/run/archiso
+Before=display-manager.service
+After=systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/yerinde-live-user
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,3 @@
+# final27.md §2 (cacyhos paritesi): /dev/uinput — uinput grubuna 0660.
+# ydotool (Wayland sesli fare/klavye denetimi) bunu ister.
+KERNEL=="uinput", GROUP="uinput", MODE="0660"

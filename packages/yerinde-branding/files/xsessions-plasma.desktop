@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Plasma (X11)
+Comment=KDE Plasma (X11 oturumu)
+Exec=startplasma-x11
+TryExec=startplasma-x11
+Type=Application
+DesktopNames=KDE
+X-KDE-PluginInfo-Author=Yerinde Project

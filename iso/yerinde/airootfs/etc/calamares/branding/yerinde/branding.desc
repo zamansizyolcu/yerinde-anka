@@ -1,0 +1,44 @@
+---
+componentName:  yerinde
+
+welcomeStyleCalamares:   true
+welcomeExpandingLogo:    true
+
+windowExpanding:    normal
+windowSize: 800px,520px
+windowPlacement: center
+
+sidebar: widget
+navigation: widget
+
+strings:
+  productName: "Yerinde ANKA"
+  shortProductName: "Yerinde"
+  version: "1.0"
+  shortVersion: "1.0"
+  versionedName: "Yerinde ANKA 1.0"
+  shortVersionedName: "Yerinde 1.0"
+  bootloaderEntryName: "Yerinde ANKA"
+  productUrl: ""
+  supportUrl: ""
+  knownIssuesUrl: ""
+  releaseNotesUrl: ""
+  donateUrl: ""
+  welcome: "Yerinde ANKA'ya hoş geldiniz. Kurulumu tamamlamak için lütfen aşağıdaki adımları izleyin."
+
+images:
+  productIcon: "yerinde-icon-256.png"
+  productLogo: "yerinde-icon-256.png"
+  productWelcome: "yerinde-anka-lockup-720.png"
+
+style:
+   SidebarBackground:        "#1F3D2E"
+   SidebarText:              "#F7F2E2"
+   SidebarTextCurrent:       "#1F3D2E"
+   SidebarBackgroundCurrent: "#F5A93F"
+
+slideshow:               "show.qml"
+slideshowAPI: 2
+
+uploadServer :
+    type :    "none"

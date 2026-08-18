@@ -1,0 +1,28 @@
+#!/bin/bash
+# Yerinde ANKA — Ollama servisini garantiye alan ilk açılış betiği
+set -u
+
+if ! id ollama &>/dev/null; then
+  getent group ollama >/dev/null || sudo -n groupadd -r ollama 2>/dev/null || true
+  sudo -n useradd -r -u 780 -d /var/lib/ollama -s /bin/false ollama 2>/dev/null || true
+fi
+
+sudo -n mkdir -p /usr/share/ollama/models 2>/dev/null || true
+sudo -n chown -R ollama:ollama /usr/share/ollama 2>/dev/null || true
+
+# Canlı (live) oturum: modeller sfs'te /usr/local/share/ollama-models altında.
+# Kurulu sistemde finalize bu yolu /var/lib/ollama/models'e taşır (burada yoksa atlanır).
+if [ -d /usr/local/share/ollama-models ]; then
+  sudo -n rm -rf /var/lib/ollama/models 2>/dev/null || true
+  sudo -n ln -s /usr/local/share/ollama-models /var/lib/ollama/models 2>/dev/null || true
+fi
+
+sudo -n systemctl enable --now ollama.service 2>/dev/null || sudo -n systemctl enable ollama.service >/dev/null 2>&1 || true
+
+sleep 3
+if ! ollama list 2>/dev/null | grep -q llama3.1; then
+  if command -v kdialog >/dev/null 2>&1; then
+    kdialog --title "YERINDE AI" --warning "Ollama modeli henuz gorunmuyor. Servis ayakta mi diye kontrol edin." 2>/dev/null || true
+  fi
+fi
+exit 0

@@ -1,0 +1,26 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+.claude/
+.swift-cache/
+.swift-home/
+
+config/api_keys.json
+memory/memory.json
+memory/phone_book.json
+
+# BÜYÜK/İNDİRİLEBİLİR VARLIKLAR (aifinal.md §5 — push boyut kontrolü):
+# model-egitimi/llama.cpp: iç içe git klonu — kurulum_linux.sh yeniden klonlar
+model-egitimi/llama.cpp/
+model-egitimi/venv*/
+# vosk-model: indirilebilir Vosk STT modeli (~57MB)
+vosk-model/
+# voices/*.onnx: indirilebilir Piper ses modelleri
+voices/*.onnx
+voices/*.onnx.json
+*.pkg.tar.zst
+# yolo11n.pt: indirilebilir YOLO ağırlıkları
+yolo11n.pt
+*.gguf

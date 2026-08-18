@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <defs>
+    <radialGradient id="bgGradDark" cx="50%" cy="40%" r="75%">
+      <stop offset="0%" stop-color="#11523D"/>
+      <stop offset="100%" stop-color="#0B3D2E"/>
+    </radialGradient>
+    <radialGradient id="gemGradDark" cx="40%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="55%" stop-color="#A8E8C6"/>
+      <stop offset="100%" stop-color="#3FAE72"/>
+    </radialGradient>
+  </defs>
+  <rect x="8" y="8" width="224" height="224" rx="54" fill="url(#bgGradDark)"/>
+  <polygon points="108,112 22,34 35,52" fill="#5FCE92"/>
+  <polygon points="108,112 35,52 58,98" fill="#1E6B47"/>
+  <polygon points="132,112 218,34 205,52" fill="#3A9F6E"/>
+  <polygon points="132,112 205,52 182,98" fill="#12452F"/>
+  <polygon points="117,132 123,132 120,222" fill="#F5A93F"/>
+  <polygon points="110,124 78,168 100,213" fill="#D96A2E"/>
+  <polygon points="78,168 90,178 100,196" fill="#FFC15A"/>
+  <polygon points="130,124 140,213 168,160" fill="#E88F2E"/>
+  <polygon points="120,102 136,118 120,134 104,118" fill="url(#gemGradDark)" stroke="#F7F2E2" stroke-width="1.5"/>
+</svg>

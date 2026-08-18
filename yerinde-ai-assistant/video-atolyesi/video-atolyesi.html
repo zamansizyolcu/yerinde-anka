@@ -1,0 +1,2227 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Atölyesi — YERİNDE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ── YERİNDE tema paleti (mavi / yeşil / krem) ───────────────────── */
+  :root, [data-theme="blue"]{
+    --bg:#0d1420; --panel:#16213a; --panel2:#1c2a45;
+    --pri:#5ec8e8; --pri-text:#06202e; --text:#eef3fa; --dim:#33415c;
+    --accent:#f2a154; --danger:#e0604a;
+    --input-bg:#0c1420; --btn-bg:#102030; --btn-hover-bg:#16283c;
+  }
+  [data-theme="green"]{
+    --bg:#071a13; --panel:#0e241b; --panel2:#123024;
+    --pri:#8ff0cc; --pri-text:#06231a; --text:#eef8f2; --dim:#1c3a2c;
+    --accent:#f2a154; --danger:#e0604a;
+    --input-bg:#0a1f16; --btn-bg:#0f2a1e; --btn-hover-bg:#163828;
+  }
+  [data-theme="cream"]{
+    --bg:#f3ecdc; --panel:#fffbf2; --panel2:#f7f0e2;
+    --pri:#9c6b30; --pri-text:#fffbf2; --text:#2b2013; --dim:#d9c7a3;
+    --accent:#b5651d; --danger:#b23a2e;
+    --input-bg:#fffdf8; --btn-bg:#f7f0e2; --btn-hover-bg:#efe4cd;
+  }
+  :root{
+    /* Bu dosyanın geri kalanı bu isimleri kullanıyor; yukarıdaki temaya göre otomatik güncellenir */
+    --line:var(--dim);
+    --ink:var(--text);
+    --ink-dim: color-mix(in srgb, var(--text) 78%, var(--bg));
+    --ink-faint: color-mix(in srgb, var(--text) 56%, var(--bg));
+    --amber:var(--pri); --amber-ink:var(--pri-text); --teal:var(--accent); --rec:var(--danger);
+    --radius:10px;
+    --font-display:'Space Grotesk','Segoe UI',system-ui,sans-serif;
+    --font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:'JetBrains Mono','SF Mono',Consolas,'Courier New',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--font-body);
+    min-height:100vh; -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--amber); color:var(--amber-ink); }
+  a{ color:var(--teal); }
+  button{ font-family:inherit; }
+  input,select{ font-family:inherit; color:var(--ink); }
+
+  /* ── Header ─────────────────────────────────────────────────────── */
+  header{
+    position:sticky; top:0; z-index:40;
+    background:color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+    padding:12px 20px 0;
+  }
+  .brand{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .brand-id{ display:flex; align-items:center; gap:10px; }
+  .sprocket-mark{ width:26px; height:26px; flex:0 0 auto; }
+  .sprocket-mark .pri-stroke{ stroke:var(--amber); }
+  .sprocket-mark .pri-fill{ fill:var(--amber); }
+  .brand h1{
+    font-family:var(--font-display); font-weight:600; font-size:16px; letter-spacing:.02em;
+    margin:0; color:var(--ink);
+  }
+  .brand h1 b{ color:var(--amber); font-weight:700; }
+  .brand small{ display:block; font-size:10.5px; color:var(--ink-faint); font-weight:400; letter-spacing:.14em; text-transform:uppercase; margin-top:1px; }
+
+  #themeSwitcher{ display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--ink-faint); flex:0 0 auto; }
+  #themeSwitcher select{
+    background:var(--btn-bg); color:var(--ink); border:1px solid var(--line);
+    border-radius:6px; padding:4px 8px; font-size:11.5px; cursor:pointer; font-family:var(--font-body);
+  }
+  #themeSwitcher select:hover{ border-color:var(--amber); }
+
+  nav.tabs{ display:flex; gap:6px; max-width:1180px; margin:0 auto; }
+  nav.tabs button{
+    background:none; border:none; color:var(--ink-dim); cursor:pointer;
+    font-family:var(--font-display); font-size:13px; font-weight:600; letter-spacing:.02em;
+    padding:10px 16px 12px; position:relative; border-radius:8px 8px 0 0;
+  }
+  nav.tabs button:hover{ color:var(--ink); background:rgba(255,255,255,.03); }
+  nav.tabs button.active{ color:var(--amber); }
+  nav.tabs button.active::after{
+    content:""; position:absolute; left:10px; right:10px; bottom:0; height:2px;
+    background:var(--amber); border-radius:2px 2px 0 0;
+  }
+  nav.tabs button .tabnum{ font-family:var(--font-mono); font-size:10px; color:var(--ink-faint); margin-right:6px; }
+
+  main{ max-width:1180px; margin:0 auto; padding:22px 20px 80px; }
+  .tabpanel{ display:none; }
+  .tabpanel.active{ display:block; animation:fadein .25s ease; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+  h2.section-title{
+    font-family:var(--font-display); font-size:14px; font-weight:600; color:var(--ink);
+    margin:0 0 4px; display:flex; align-items:center; gap:8px;
+  }
+  p.section-hint{ font-size:12px; color:var(--ink-faint); margin:0 0 16px; line-height:1.5; }
+
+  .grid{ display:grid; grid-template-columns:1fr 320px; gap:16px; align-items:start; }
+  @media (max-width:860px){ .grid{ grid-template-columns:1fr; } }
+
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px;
+  }
+  .card + .card{ margin-top:14px; }
+  .card h3{
+    font-family:var(--font-display); font-size:11.5px; font-weight:600; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--ink-faint); margin:0 0 12px;
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────────── */
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:9px 14px; font-size:12.5px; font-weight:600; cursor:pointer;
+    transition:border-color .12s, background .12s; white-space:nowrap;
+  }
+  .btn:hover{ border-color:var(--ink-faint); background:#212836; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn.primary{ background:var(--amber); border-color:var(--amber); color:var(--amber-ink); }
+  .btn.primary:hover{ background:#f0af52; }
+  .btn.teal{ background:var(--teal); border-color:var(--teal); color:#04231d; }
+  .btn.danger{ background:var(--rec); border-color:var(--rec); color:#2a0505; }
+  .btn.ghost{ background:none; }
+  .btn.block{ width:100%; }
+  .btn.sm{ padding:6px 10px; font-size:11.5px; }
+  .btn-row{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  .file-drop{
+    border:1.5px dashed var(--line); border-radius:var(--radius); padding:26px 16px;
+    text-align:center; cursor:pointer; transition:border-color .12s, background .12s;
+  }
+  .file-drop:hover, .file-drop.drag{ border-color:var(--amber); background:rgba(232,163,61,.05); }
+  .file-drop .icon{ font-size:22px; margin-bottom:6px; opacity:.8; }
+  .file-drop .main{ font-size:12.5px; color:var(--ink); font-weight:600; }
+  .file-drop .sub{ font-size:11px; color:var(--ink-faint); margin-top:3px; }
+
+  /* ── Video preview / crop overlay ───────────────────────────────── */
+  .preview-wrap{
+    position:relative; background:#000; border-radius:var(--radius); overflow:hidden;
+    display:flex; align-items:center; justify-content:center; min-height:200px;
+    border:1px solid var(--line);
+  }
+  .preview-wrap video, .preview-wrap canvas{ width:100%; height:auto; display:block; }
+  .preview-empty{ color:var(--ink-faint); font-size:12.5px; padding:60px 20px; text-align:center; }
+
+  .crop-box{
+    position:absolute; border:2px solid var(--amber); box-shadow:0 0 0 2000px rgba(0,0,0,.55);
+    cursor:move; display:none;
+  }
+  .crop-box.active{ display:block; }
+  .crop-box .handle{
+    position:absolute; width:12px; height:12px; background:var(--amber); border-radius:3px;
+    border:1px solid #241804;
+  }
+  .crop-box .handle.nw{ top:-6px; left:-6px; cursor:nwse-resize; }
+  .crop-box .handle.ne{ top:-6px; right:-6px; cursor:nesw-resize; }
+  .crop-box .handle.sw{ bottom:-6px; left:-6px; cursor:nesw-resize; }
+  .crop-box .handle.se{ bottom:-6px; right:-6px; cursor:nwse-resize; }
+
+  /* ── Filmstrip timeline / trim scrubber (signature element) ───────── */
+  .filmstrip{
+    position:relative; height:46px; border-radius:6px; margin-top:14px;
+    background:
+      radial-gradient(circle, #05070a 2.5px, transparent 2.6px) 0 5px / 16px 10px repeat-x,
+      radial-gradient(circle, #05070a 2.5px, transparent 2.6px) 0 calc(100% - 5px) / 16px 10px repeat-x,
+      linear-gradient(#20262f,#20262f);
+    border:1px solid var(--line); cursor:pointer; overflow:hidden;
+  }
+  .filmstrip .selected-range{
+    position:absolute; top:0; bottom:0; background:rgba(232,163,61,.28);
+    border-left:2px solid var(--amber); border-right:2px solid var(--amber);
+  }
+  .filmstrip .playhead{
+    position:absolute; top:0; bottom:0; width:2px; background:var(--teal); pointer-events:none;
+  }
+  .filmstrip .handle{
+    position:absolute; top:0; bottom:0; width:14px; margin-left:-7px;
+    background:var(--amber); cursor:ew-resize; border-radius:3px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .filmstrip .handle::before{ content:"⋮"; color:#241804; font-size:11px; letter-spacing:-1px; }
+  .time-readout{
+    display:flex; justify-content:space-between; margin-top:8px; font-family:var(--font-mono);
+    font-size:12px; color:var(--ink-dim);
+  }
+  .time-readout b{ color:var(--ink); font-weight:600; }
+  .time-inputs{ display:flex; gap:8px; align-items:center; margin-top:10px; }
+  .time-inputs label{ font-size:11px; color:var(--ink-faint); display:block; margin-bottom:3px; }
+  .time-inputs input{
+    width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:6px;
+    padding:7px 8px; font-family:var(--font-mono); font-size:12.5px;
+  }
+
+  /* ── Queue / list items (merge + slides) ───────────────────────── */
+  .queue-list{ display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+  .queue-item{
+    display:flex; align-items:center; gap:10px; background:var(--panel2);
+    border:1px solid var(--line); border-radius:8px; padding:8px 10px;
+  }
+  .queue-item .grip{ color:var(--ink-faint); cursor:grab; font-size:14px; }
+  .queue-item .idx{
+    font-family:var(--font-mono); font-size:10.5px; color:var(--bg); background:var(--amber);
+    width:20px; height:20px; border-radius:5px; display:flex; align-items:center; justify-content:center;
+    flex:0 0 auto;
+  }
+  .queue-item .thumb{ width:44px; height:30px; object-fit:cover; border-radius:4px; background:#000; flex:0 0 auto; }
+  .queue-item .name{ flex:1; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .queue-item .dur{ width:64px; }
+  .queue-item .dur input{
+    width:100%; background:var(--panel); border:1px solid var(--line); border-radius:6px;
+    padding:4px 6px; font-family:var(--font-mono); font-size:11.5px; text-align:center;
+  }
+  .queue-item .mini{ background:none; border:none; color:var(--ink-faint); cursor:pointer; font-size:14px; padding:2px 4px; }
+  .queue-item .mini:hover{ color:var(--ink); }
+  .queue-item.dragging{ opacity:.4; }
+  .queue-empty{ font-size:12px; color:var(--ink-faint); padding:14px 4px; text-align:center; }
+
+  /* ── Radio segmented control ───────────────────────────────────── */
+  .seg{ display:flex; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:3px; }
+  .seg label{ flex:1; text-align:center; padding:8px 6px; font-size:12px; font-weight:600; border-radius:6px; cursor:pointer; color:var(--ink-dim); }
+  .seg input{ display:none; }
+  .seg input:checked + label{ background:var(--amber); color:var(--amber-ink); }
+
+  .toggle-row{ display:flex; gap:10px; }
+  .toggle-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:12px 8px; cursor:pointer;
+  }
+  .toggle-btn .ic{ font-size:18px; }
+  .toggle-btn .lb{ font-size:11px; font-weight:600; color:var(--ink-dim); }
+  .toggle-btn.on{ border-color:var(--teal); background:rgba(73,200,176,.09); }
+  .toggle-btn.on .lb{ color:var(--teal); }
+  .toggle-btn.off .lb{ color:var(--ink-faint); }
+
+  /* ── Recorder ──────────────────────────────────────────────────── */
+  .rec-stage{
+    position:relative; background:#000; border-radius:var(--radius); overflow:hidden;
+    border:1px solid var(--line); aspect-ratio:16/9; display:flex; align-items:center; justify-content:center;
+  }
+  .rec-stage canvas{ width:100%; height:100%; object-fit:contain; touch-action:none; }
+  .rec-stage .placeholder{ color:var(--ink-faint); font-size:12.5px; text-align:center; padding:20px; }
+  .rec-badge{
+    position:absolute; top:12px; left:12px; display:none; align-items:center; gap:7px;
+    background:rgba(0,0,0,.6); border-radius:20px; padding:6px 12px 6px 8px;
+  }
+  .rec-badge.show{ display:flex; }
+  .rec-dot{ width:9px; height:9px; border-radius:50%; background:var(--rec); animation:pulse 1.1s infinite; }
+  .rec-dot.paused{ animation:none; background:var(--ink-faint); }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
+  .rec-timer{ font-family:var(--font-mono); font-size:13px; color:#fff; letter-spacing:.03em; }
+
+  .rec-countdown{
+    position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.45); font-family:var(--font-display); font-weight:700;
+    font-size:96px; color:#fff; text-shadow:0 4px 24px rgba(0,0,0,.5);
+  }
+  .rec-countdown.show{ display:flex; }
+
+  .rec-controls{ display:flex; gap:10px; margin-top:14px; justify-content:center; }
+  .rec-controls .btn{ min-width:120px; }
+
+  .toast-wrap{
+    position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:100;
+    display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none;
+  }
+  .toast{
+    background:var(--panel2); border:1px solid var(--line); border-left:3px solid var(--teal);
+    color:var(--ink); font-size:12.5px; padding:10px 16px; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,.4);
+    opacity:0; transform:translateY(8px); transition:opacity .2s, transform .2s;
+  }
+  .toast.show{ opacity:1; transform:translateY(0); }
+  .toast.err{ border-left-color:var(--rec); }
+  .toast.ok{ border-left-color:var(--teal); }
+
+  .progress-wrap{ margin-top:12px; display:none; }
+  .progress-wrap.show{ display:block; }
+  .progress-bar{ height:6px; background:var(--panel2); border-radius:4px; overflow:hidden; border:1px solid var(--line); }
+  .progress-bar i{ display:block; height:100%; width:0%; background:var(--amber); transition:width .15s; }
+  .progress-label{ font-size:11px; color:var(--ink-faint); margin-top:5px; font-family:var(--font-mono); }
+
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:11.5px; color:var(--ink-faint); margin-bottom:5px; font-weight:600; }
+  .field select, .field input[type=file]{
+    width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:7px;
+    padding:8px 9px; font-size:12.5px;
+  }
+  .radio-row{ display:flex; gap:14px; font-size:12px; color:var(--ink-dim); }
+  .radio-row label{ display:flex; align-items:center; gap:5px; cursor:pointer; }
+
+  .hidden{ display:none !important; }
+  .stack{ display:flex; flex-direction:column; gap:10px; }
+
+  ::-webkit-scrollbar{ width:9px; height:9px; }
+  ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:5px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-id">
+      <svg class="sprocket-mark" viewBox="0 0 26 26" fill="none">
+        <rect class="pri-stroke" x="1" y="1" width="24" height="24" rx="4" stroke-width="1.6"/>
+        <circle class="pri-fill" cx="7" cy="7" r="1.8"/><circle class="pri-fill" cx="19" cy="7" r="1.8"/>
+        <circle class="pri-fill" cx="7" cy="19" r="1.8"/><circle class="pri-fill" cx="19" cy="19" r="1.8"/>
+        <circle class="pri-stroke" cx="13" cy="13" r="3.2" stroke-width="1.6"/>
+      </svg>
+      <h1>VIDEO <b>ATÖLYESİ</b><small>Yerinde çalışan tarayıcı düzenleyici</small></h1>
+    </div>
+    <span id="themeSwitcher"><select id="themeSelect">
+      <option value="blue">🔵 Mavi</option>
+      <option value="green">🟢 Yeşil</option>
+      <option value="cream">🟡 Krem</option>
+    </select></span>
+  </div>
+  <nav class="tabs">
+    <button class="active" data-tab="editor"><span class="tabnum">A</span>Düzenleyici</button>
+    <button data-tab="slides"><span class="tabnum">B</span>Slayt Oluştur</button>
+    <button data-tab="record"><span class="tabnum">C</span>Kayıt</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ══════════════════════ TAB A — EDİTÖR ══════════════════════ -->
+  <section class="tabpanel active" id="tab-editor">
+    <h2 class="section-title">Video Düzenleyici</h2>
+    <p class="section-hint">Bir video aç; zaman içinde kırp, alan kırp, ses ayır/ekle, ya da birkaç videoyu birleştir. İşlemler bilgisayarında, tarayıcı içinde yapılır — dosyalar hiçbir yere yüklenmez.</p>
+
+    <div class="grid">
+      <div>
+        <div class="card" id="editorDropCard">
+          <div class="file-drop" id="editorDrop">
+            <div class="icon">🎬</div>
+            <div class="main">Video dosyası seç ya da buraya sürükle</div>
+            <div class="sub">MP4, WebM, MOV, MKV, AVI ve daha fazlası</div>
+            <input type="file" id="editorFileInput" accept="video/*" class="hidden">
+          </div>
+        </div>
+
+        <div class="card hidden" id="editorPreviewCard">
+          <h3>Önizleme</h3>
+          <div class="preview-wrap" id="editorPreviewWrap">
+            <video id="editorVideo" controls playsinline></video>
+            <div class="crop-box" id="cropBox">
+              <div class="handle nw"></div><div class="handle ne"></div>
+              <div class="handle sw"></div><div class="handle se"></div>
+            </div>
+          </div>
+
+          <div class="filmstrip" id="filmstrip">
+            <div class="selected-range" id="selectedRange"></div>
+            <div class="playhead" id="playhead"></div>
+            <div class="handle" id="trimStartHandle" style="left:0%"></div>
+            <div class="handle" id="trimEndHandle" style="left:100%"></div>
+          </div>
+          <div class="time-readout">
+            <span>Başlangıç: <b id="trimStartLabel">00:00.0</b></span>
+            <span>Toplam süre: <b id="totalDurLabel">00:00.0</b></span>
+            <span>Bitiş: <b id="trimEndLabel">00:00.0</b></span>
+          </div>
+
+          <div class="btn-row" style="margin-top:14px;">
+            <button class="btn" id="cropToggleBtn">▭ Alanı Kırp (aç/kapat)</button>
+            <button class="btn ghost" id="cropResetBtn">Kırpmayı Sıfırla</button>
+          </div>
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="btn sm" id="presetStoryBtn">9:16 Hikaye</button>
+            <button class="btn sm" id="presetSquareBtn">1:1 Kare</button>
+            <button class="btn sm" id="presetWideBtn">16:9 Yatay</button>
+          </div>
+
+          <div class="progress-wrap" id="editorProgress">
+            <div class="progress-bar"><i id="editorProgressBar"></i></div>
+            <div class="progress-label" id="editorProgressLabel">İşleniyor…</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h3>Dışa Aktar</h3>
+          <p class="section-hint" style="margin-bottom:8px;">Zaman çubuğunda seçtiğin aralıkla ne yapılacağını seç:</p>
+          <div class="radio-row" style="margin-bottom:10px;">
+            <label><input type="radio" name="trimMode" value="keep" checked> Bu aralığı SAKLA (dışını at)</label>
+            <label><input type="radio" name="trimMode" value="remove"> Bu aralığı ÇIKAR (baş ve sonu birleştir)</label>
+          </div>
+
+          <div class="field">
+            <label>Hız</label>
+            <select id="speedSelect">
+              <option value="0.5">0.5× (yavaş çekim)</option>
+              <option value="0.75">0.75×</option>
+              <option value="1" selected>1× (normal)</option>
+              <option value="1.25">1.25×</option>
+              <option value="1.5">1.5×</option>
+              <option value="2">2× (hızlı)</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Döndür</label>
+            <select id="rotateSelect">
+              <option value="0" selected>Döndürme</option>
+              <option value="90cw">90° sağa</option>
+              <option value="90ccw">90° sola</option>
+              <option value="180">180°</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Yumuşak geçiş (fade)</label>
+            <div class="radio-row">
+              <label><input type="checkbox" id="fadeInChk"> Başlangıçta</label>
+              <label><input type="checkbox" id="fadeOutChk"> Bitişte</label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Metin / başlık (isteğe bağlı)</label>
+            <input type="text" id="overlayTextInput" placeholder="Videoya eklenecek yazı" style="width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:7px; padding:8px 9px; font-size:12.5px;">
+            <div class="radio-row" style="margin-top:6px;">
+              <label><input type="radio" name="textPos" value="top"> Üst</label>
+              <label><input type="radio" name="textPos" value="middle"> Orta</label>
+              <label><input type="radio" name="textPos" value="bottom" checked> Alt</label>
+            </div>
+          </div>
+
+          <button class="btn primary block" id="exportTrimBtn" disabled>Videoyu Dışa Aktar</button>
+          <button class="btn ghost block hidden" id="continueEditingBtn" style="margin-top:8px;">Bu sonuçla düzenlemeye devam et (tekrar dilimle)</button>
+        </div>
+
+        <div class="card">
+          <h3>Dosya Boyutunu Küçült</h3>
+          <p class="section-hint" style="margin-bottom:8px;">Açık olan videonun paylaşım için daha küçük bir kopyasını indirir (kırpma/hız gibi diğer ayarları uygulamaz, sadece küçültür).</p>
+          <div class="field">
+            <label>Hedef kalite</label>
+            <select id="compressQualitySelect">
+              <option value="high">Yüksek kalite (orta boyut)</option>
+              <option value="medium" selected>Orta kalite (küçük boyut)</option>
+              <option value="low">Düşük kalite (en küçük boyut)</option>
+            </select>
+          </div>
+          <button class="btn block" id="compressBtn" disabled>Küçültülmüş Kopyayı İndir</button>
+        </div>
+
+        <div class="card">
+          <h3>Ses İşlemleri</h3>
+          <div class="stack">
+            <button class="btn block" id="extractAudioBtn" disabled>🎧 Sesi Ayır (MP3)</button>
+            <button class="btn block" id="muteDownloadBtn" disabled>🔇 Sessiz Olarak İndir (sesi kaldır)</button>
+            <div class="field" style="margin:6px 0 0;">
+              <label>Yeni ses dosyası ekle / değiştir</label>
+              <input type="file" id="addAudioInput" accept="audio/*" disabled>
+            </div>
+            <div class="radio-row">
+              <label><input type="radio" name="audioMode" value="replace" checked> Sesi değiştir</label>
+              <label><input type="radio" name="audioMode" value="mix"> Mevcut sesle karıştır</label>
+            </div>
+            <button class="btn block" id="applyAudioBtn" disabled>Ses Dosyasını Uygula</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Videoları Birleştir</h3>
+          <button class="btn block" id="addToQueueBtn" disabled>+ Sıraya Ekle (açık video)</button>
+          <div class="queue-list" id="mergeQueueList">
+            <div class="queue-empty">Sıra boş — bir video açıp "Sıraya Ekle" ile başla.</div>
+          </div>
+          <button class="btn teal block" id="mergeBtn" style="margin-top:10px;" disabled>Sırayı Birleştir ve Dışa Aktar</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ TAB B — SLAYT ══════════════════════ -->
+  <section class="tabpanel" id="tab-slides">
+    <h2 class="section-title">Resimlerden Video Oluştur</h2>
+    <p class="section-hint">Fotoğraflarını sırayla ekle, her birine süre ver, istersen arkaplan müziği koy — hepsini tek bir videoya dönüştür.</p>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <div class="file-drop" id="slidesDrop">
+            <div class="icon">🖼️</div>
+            <div class="main">Görselleri seç ya da buraya sürükle</div>
+            <div class="sub">Birden fazla görsel seçebilirsin — sıralarını sürükleyerek değiştirirsin</div>
+            <input type="file" id="slidesFileInput" accept="image/*" multiple class="hidden">
+          </div>
+          <div class="queue-list" id="slidesList">
+            <div class="queue-empty">Henüz görsel eklenmedi.</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h3>Ayarlar</h3>
+          <div class="field">
+            <label>Çıkış çözünürlüğü</label>
+            <select id="slidesResSelect">
+              <option value="1280:720">1280 × 720</option>
+              <option value="1920:1080">1920 × 1080</option>
+              <option value="720:1280">720 × 1280 (dikey)</option>
+              <option value="1080:1920">1080 × 1920 (dikey)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Arkaplan müziği (isteğe bağlı)</label>
+            <input type="file" id="slidesAudioInput" accept="audio/*">
+          </div>
+          <div class="field">
+            <label><input type="checkbox" id="slidesCrossfadeChk"> Görseller arasında yumuşak geçiş (crossfade)</label>
+          </div>
+          <div class="progress-wrap" id="slidesProgress">
+            <div class="progress-bar"><i id="slidesProgressBar"></i></div>
+            <div class="progress-label" id="slidesProgressLabel">İşleniyor…</div>
+          </div>
+          <button class="btn primary block" id="buildSlidesBtn" style="margin-top:4px;" disabled>Videoyu Oluştur</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════ TAB C — KAYIT ══════════════════════ -->
+  <section class="tabpanel" id="tab-record">
+    <h2 class="section-title">Ekran / Kamera Kaydı</h2>
+    <p class="section-hint">Ekranın tamamını, tek bir pencereyi ya da kamerayı — istersen ikisini birlikte — mikrofonla kaydet. Kayıt sırasında kamerayı ve mikrofonu istediğin an açıp kapatabilirsin. Kamera balonunu, kayıt görüntüsünün üzerinde fareyle tutup sürükleyerek istediğin köşeye taşıyabilirsin.</p>
+
+    <div class="grid">
+      <div>
+        <div class="rec-stage" id="recStage">
+          <div class="placeholder" id="recPlaceholder">Önce kaynağı seç, sonra ne zaman başlayacağını sen belirle</div>
+          <canvas id="recCanvas" class="hidden"></canvas>
+          <div class="rec-badge" id="recBadge">
+            <span class="rec-dot" id="recDot"></span>
+            <span class="rec-timer" id="recTimer">00:00:00</span>
+          </div>
+          <div class="rec-countdown hidden" id="recCountdown">3</div>
+        </div>
+
+        <div class="rec-controls" id="recStageControls">
+          <button class="btn primary" id="recSelectSourceBtn">🎬 Kaynağı Seç (ekran / pencere / kamera)</button>
+        </div>
+
+        <div class="rec-controls hidden" id="recStartControls" style="flex-wrap:wrap;">
+          <div class="seg" id="recDelaySeg" style="max-width:230px;">
+            <input type="radio" name="recDelay" id="delay0" value="0" checked><label for="delay0">Hemen</label>
+            <input type="radio" name="recDelay" id="delay3" value="3"><label for="delay3">3 sn sonra</label>
+            <input type="radio" name="recDelay" id="delay5" value="5"><label for="delay5">5 sn sonra</label>
+          </div>
+          <button class="btn primary" id="recStartBtn">● Kaydı Başlat</button>
+          <button class="btn ghost" id="recCancelStageBtn">Vazgeç</button>
+        </div>
+
+        <div class="rec-controls hidden" id="recActiveControls">
+          <button class="btn" id="recPauseBtn">⏸ Duraklat</button>
+          <button class="btn danger" id="recStopBtn">■ Durdur</button>
+        </div>
+
+        <div class="card hidden" id="recResultCard" style="margin-top:14px;">
+          <h3>Kayıt Tamamlandı</h3>
+          <div class="preview-wrap" style="margin-bottom:12px;">
+            <video id="recResultVideo" controls></video>
+          </div>
+          <div class="btn-row">
+            <a class="btn primary" id="recDownloadBtn" download="kayit.webm">⭳ İndir (WebM)</a>
+            <button class="btn" id="recToMp4Btn">MP4'e Dönüştür</button>
+            <button class="btn ghost" id="recToEditorBtn">Düzenleyiciye Gönder</button>
+          </div>
+          <div class="progress-wrap" id="recConvertProgress">
+            <div class="progress-bar"><i id="recConvertProgressBar"></i></div>
+            <div class="progress-label" id="recConvertProgressLabel">Dönüştürülüyor…</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h3>Kayıt Modu</h3>
+          <div class="seg" id="recModeSeg">
+            <input type="radio" name="recMode" id="modeScreen" value="screen" checked><label for="modeScreen">Ekran</label>
+            <input type="radio" name="recMode" id="modeCamera" value="camera"><label for="modeCamera">Kamera</label>
+            <input type="radio" name="recMode" id="modeBoth" value="both"><label for="modeBoth">Ekran + Kamera</label>
+            <input type="radio" name="recMode" id="modeAudio" value="audio"><label for="modeAudio">Sadece Ses</label>
+          </div>
+          <p class="section-hint" style="margin:10px 0 0;">Ekran seçince tarayıcı sana "tüm ekran / bir pencere / bir sekme" seçeneklerini sunar.</p>
+        </div>
+
+        <div class="card">
+          <h3>Kaynaklar</h3>
+          <div class="toggle-row">
+            <div class="toggle-btn off" id="camToggle"><span class="ic">📷</span><span class="lb">Kamera Kapalı</span></div>
+            <div class="toggle-btn on" id="micToggle"><span class="ic">🎙️</span><span class="lb">Mikrofon Açık</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script type="module">
+const $ = (sel)=>document.querySelector(sel);
+const $$ = (sel)=>Array.from(document.querySelectorAll(sel));
+
+function toast(msg, kind='info', duration=3200){
+  const wrap = $('#toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast' + (kind==='err'?' err':kind==='ok'?' ok':'');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  setTimeout(()=>{
+    el.classList.remove('show');
+    setTimeout(()=>el.remove(), 300);
+  }, duration);
+}
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 30000);
+}
+
+function fmtTime(s){
+  if(!isFinite(s)) s=0;
+  const m = Math.floor(s/60);
+  const sec = (s-m*60).toFixed(1).padStart(4,'0');
+  return String(m).padStart(2,'0')+':'+sec;
+}
+
+function nameForInput(filename, fallbackBase='input'){
+  const m = (filename||'').match(/\.([a-zA-Z0-9]+)$/);
+  const ext = m? m[1] : 'mp4';
+  return `${fallbackBase}.${ext}`;
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function getCssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#e8a33d';
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+/* ══════════════════════ FFMPEG ENGINE (lazy-loaded) ══════════════════════ */
+const FFMPEG_CORE_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+const FFMPEG_ESM_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm';
+const FFMPEG_PKG = `${FFMPEG_ESM_BASE}/index.js`;
+const FFMPEG_UTIL_PKG = 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js';
+
+let _ffmpeg=null, _ffmpegPromise=null, _util=null;
+let ffLogLines = [];
+let currentProgressCb = null;
+
+async function getUtil(){
+  if(!_util) _util = await import(FFMPEG_UTIL_PKG);
+  return _util;
+}
+
+/* Video motorunu (core.js/wasm/worker) tarayıcının Cache Storage'ında kalıcı olarak
+   saklıyoruz. Sayfa yenilense/kapatılıp açılsa bile ikinci seferden itibaren
+   internete gitmeden, önbellekten anında yükleniyor. */
+const FFMPEG_CACHE_NAME = 'video-atolyesi-ffmpeg-v1';
+let usedCacheThisLoad = true;
+
+async function cachedFetch(url){
+  if(!('caches' in window)){ usedCacheThisLoad=false; return fetch(url); }
+  try{
+    const cache = await caches.open(FFMPEG_CACHE_NAME);
+    const hit = await cache.match(url);
+    if(hit) return hit;
+    usedCacheThisLoad = false;
+    const resp = await fetch(url);
+    if(resp.ok) cache.put(url, resp.clone());
+    return resp;
+  }catch(e){
+    usedCacheThisLoad = false;
+    return fetch(url);
+  }
+}
+
+async function cachedFetchText(url){
+  const resp = await cachedFetch(url);
+  return resp.text();
+}
+
+async function cachedBlobURL(url, mimeType){
+  const resp = await cachedFetch(url);
+  const buf = await resp.arrayBuffer();
+  return URL.createObjectURL(new Blob([buf], {type:mimeType}));
+}
+
+// worker.js (dist/esm) imports "./const.js" and "./errors.js" via *relative* module
+// specifiers. When worker.js alone is turned into a blob: URL, those relative
+// imports can no longer resolve (a blob has no real directory), so the worker's
+// module graph silently fails to load and the app hangs forever on "yükleniyor".
+// Fix: fetch all three small files as text, inline const.js/errors.js in place of
+// the import statements, and blob the combined, self-contained script instead.
+async function buildFFmpegWorkerBlobURL(){
+  const [constSrc, errorsSrc, workerSrc] = await Promise.all([
+    cachedFetchText(`${FFMPEG_ESM_BASE}/const.js`),
+    cachedFetchText(`${FFMPEG_ESM_BASE}/errors.js`),
+    cachedFetchText(`${FFMPEG_ESM_BASE}/worker.js`),
+  ]);
+  const stripExport = (src)=> src.replace(/^export\s+/gm, '');
+  const workerBody = workerSrc
+    .replace(/^import\s*\{[^}]*\}\s*from\s*["']\.\/const\.js["'];?\s*$/m, '')
+    .replace(/^import\s*\{[^}]*\}\s*from\s*["']\.\/errors\.js["'];?\s*$/m, '');
+  const combined = `${stripExport(constSrc)}\n${stripExport(errorsSrc)}\n${workerBody}`;
+  return URL.createObjectURL(new Blob([combined], {type:'text/javascript'}));
+}
+
+async function ensureFFmpeg(){
+  if(_ffmpeg) return _ffmpeg;
+  if(_ffmpegPromise) return _ffmpegPromise;
+  _ffmpegPromise = (async ()=>{
+    usedCacheThisLoad = true;
+    const { FFmpeg } = await import(FFMPEG_PKG);
+    const ff = new FFmpeg();
+    ff.on('progress', ({progress})=>{ if(currentProgressCb) currentProgressCb(progress); });
+    ff.on('log', ({message})=>{
+      ffLogLines.push(message);
+      if(ffLogLines.length>800) ffLogLines.splice(0, ffLogLines.length-800);
+    });
+    const [coreURL, wasmURL, classWorkerURL] = await Promise.all([
+      cachedBlobURL(`${FFMPEG_CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
+      cachedBlobURL(`${FFMPEG_CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+      buildFFmpegWorkerBlobURL(),
+    ]);
+    toast(usedCacheThisLoad ? 'Video motoru önbellekten yükleniyor…' : 'Video motoru indiriliyor (ilk sefer, internet gerekir)…', 'info', 4000);
+    await ff.load({ coreURL, wasmURL, classWorkerURL });
+    _ffmpeg = ff;
+    return ff;
+  })();
+  try{
+    return await _ffmpegPromise;
+  }catch(err){
+    _ffmpegPromise = null;
+    toast('Video motoru yüklenemedi. İnternet bağlantını kontrol et.','err',6000);
+    throw err;
+  }
+}
+
+async function ffWriteFile(ff, name, source){
+  const { fetchFile } = await getUtil();
+  const data = await fetchFile(source);
+  await ff.writeFile(name, data);
+}
+
+// ff.exec() BAŞARISIZ OLSA BİLE reddetmiyor (throw etmiyor) — sadece 0/başarılı,
+// 0-değil/hata şeklinde bir kod döndürüyor. Bunu kontrol etmezsek, ffmpeg arka
+// planda patlasa da kod "başarılı" sanıp bozuk/yarım bir dosyayı indirmeye kalkar.
+async function execOrThrow(ff, args){
+  const code = await ff.exec(args);
+  if(code !== 0){
+    throw new Error(`ffmpeg işlemi başarısız oldu (kod ${code}). Videoların formatı/sesi uyumsuz olabilir.`);
+  }
+  return code;
+}
+
+function setProgressTarget(barEl, labelEl){
+  barEl.style.width = '0%';
+  labelEl.textContent = 'Başlıyor…';
+  currentProgressCb = (p)=>{
+    const pct = Math.min(100, Math.max(0, Math.round(p*100)));
+    barEl.style.width = pct+'%';
+    labelEl.textContent = pct+'%';
+  };
+}
+
+/* ══════════════════════ TEMA SEÇİCİ (mavi/yeşil/krem) ══════════════════════ */
+const THEME_STORAGE_KEY = 'yerindeVideoAtolyesiTema';
+const themeSelectEl = document.getElementById('themeSelect');
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  if(themeSelectEl.value !== theme) themeSelectEl.value = theme;
+  try{ localStorage.setItem(THEME_STORAGE_KEY, theme); }catch(e){ /* localStorage yoksa sessizce geç */ }
+}
+themeSelectEl.addEventListener('change', ()=>applyTheme(themeSelectEl.value));
+let savedTheme = 'blue';
+try{ savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'blue'; }catch(e){ /* yoksay */ }
+applyTheme(savedTheme);
+
+/* Sayfa gerçekten kapatılınca (yenileme değil) yerel sunucuya "kapan" sinyali gönder.
+   sunucu.py bunu ~4 saniye bekleyip, bu sürede yeni bir sayfa yüklemesi (yenileme)
+   olmadıysa gerçekten kapatıyor. Dosya file:// üzerinden açıldıysa bu istek zaten
+   sessizce başarısız olur, bir zararı yok. */
+window.addEventListener('pagehide', ()=>{
+  try{ navigator.sendBeacon('/__shutdown__'); }catch(e){}
+});
+
+/* ══════════════════════ TAB SWITCHING ══════════════════════ */
+function switchTab(name){
+  $$('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  $$('.tabpanel').forEach(p=>p.classList.toggle('active', p.id==='tab-'+name));
+}
+$$('nav.tabs button').forEach(b=>b.addEventListener('click', ()=>switchTab(b.dataset.tab)));
+
+/* ══════════════════════ EDITOR TAB ══════════════════════ */
+const editor = { file:null, url:null, duration:0, trimStart:0, trimEnd:0, crop:null, queue:[] };
+
+const editorDrop = $('#editorDrop');
+const editorFileInput = $('#editorFileInput');
+const editorVideo = $('#editorVideo');
+const filmstrip = $('#filmstrip');
+const trimStartHandle = $('#trimStartHandle');
+const trimEndHandle = $('#trimEndHandle');
+const selectedRange = $('#selectedRange');
+const playhead = $('#playhead');
+const cropBox = $('#cropBox');
+const previewWrap = $('#editorPreviewWrap');
+let cropActive = false;
+
+editorDrop.addEventListener('click', ()=>editorFileInput.click());
+editorFileInput.addEventListener('change', e=>{ if(e.target.files[0]) loadEditorFile(e.target.files[0]); });
+['dragover','dragleave','drop'].forEach(ev=>{
+  editorDrop.addEventListener(ev, e=>{
+    e.preventDefault();
+    if(ev==='dragover') editorDrop.classList.add('drag');
+    else editorDrop.classList.remove('drag');
+    if(ev==='drop' && e.dataTransfer.files[0]) loadEditorFile(e.dataTransfer.files[0]);
+  });
+});
+
+function loadEditorFile(file){
+  editor.file = file;
+  if(editor.url) URL.revokeObjectURL(editor.url);
+  editor.url = URL.createObjectURL(file);
+  editorVideo.src = editor.url;
+  $('#editorPreviewCard').classList.remove('hidden');
+  editor.crop = null; cropActive = false;
+  cropBox.classList.remove('active');
+  lastExportedBlob = null;
+  $('#continueEditingBtn').classList.add('hidden');
+  editorVideo.onloadedmetadata = ()=>{
+    editor.duration = editorVideo.duration;
+    editor.trimStart = 0; editor.trimEnd = editor.duration;
+    requestAnimationFrame(()=>{ updateTrimUI(); renderCropBox(); });
+  };
+  ['exportTrimBtn','extractAudioBtn','muteDownloadBtn','compressBtn','addAudioInput','addToQueueBtn'].forEach(id=>{ $('#'+id).disabled=false; });
+}
+
+$('#continueEditingBtn').addEventListener('click', ()=>{
+  if(!lastExportedBlob) return;
+  loadEditorFile(new File([lastExportedBlob], 'duzenlenmis-video.mp4', {type:'video/mp4'}));
+  toast('Sonuç düzenleyiciye yüklendi — istersen tekrar dilimleyebilirsin.','ok');
+});
+
+function fracToTime(frac){ return frac * editor.duration; }
+function timeToFrac(t){ return editor.duration? t/editor.duration : 0; }
+
+function updateTrimUI(){
+  $('#trimStartLabel').textContent = fmtTime(editor.trimStart);
+  $('#trimEndLabel').textContent = fmtTime(editor.trimEnd);
+  $('#totalDurLabel').textContent = fmtTime(editor.duration);
+  positionHandles();
+}
+function positionHandles(){
+  const sf = timeToFrac(editor.trimStart)*100;
+  const ef = timeToFrac(editor.trimEnd)*100;
+  trimStartHandle.style.left = sf+'%';
+  trimEndHandle.style.left = ef+'%';
+  selectedRange.style.left = sf+'%';
+  selectedRange.style.width = (ef-sf)+'%';
+}
+
+function setupTrimDrag(handle, isStart){
+  handle.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    const onMove = (ev)=>{
+      const rect = filmstrip.getBoundingClientRect();
+      let frac = (ev.clientX - rect.left)/rect.width;
+      frac = Math.min(1, Math.max(0, frac));
+      const t = fracToTime(frac);
+      if(isStart){ editor.trimStart = Math.min(t, editor.trimEnd - 0.05); if(editor.trimStart<0) editor.trimStart=0; }
+      else { editor.trimEnd = Math.max(t, editor.trimStart + 0.05); if(editor.trimEnd>editor.duration) editor.trimEnd=editor.duration; }
+      updateTrimUI();
+    };
+    const onUp = ()=>{
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  });
+}
+setupTrimDrag(trimStartHandle, true);
+setupTrimDrag(trimEndHandle, false);
+
+filmstrip.addEventListener('click', e=>{
+  if(e.target===trimStartHandle || e.target===trimEndHandle) return;
+  if(!editor.duration) return;
+  const rect = filmstrip.getBoundingClientRect();
+  const frac = (e.clientX-rect.left)/rect.width;
+  editorVideo.currentTime = fracToTime(frac);
+});
+
+editorVideo.addEventListener('timeupdate', ()=>{
+  const f = timeToFrac(editorVideo.currentTime)*100;
+  playhead.style.left = f+'%';
+});
+
+/* crop box */
+$('#cropToggleBtn').addEventListener('click', ()=>{
+  if(!editor.duration) return;
+  cropActive = !cropActive;
+  cropBox.classList.toggle('active', cropActive);
+  if(cropActive && !editor.crop){
+    editor.crop = { xf:0.1, yf:0.1, wf:0.8, hf:0.8 };
+  }
+  renderCropBox();
+});
+$('#cropResetBtn').addEventListener('click', ()=>{
+  editor.crop = null; cropActive = false;
+  cropBox.classList.remove('active');
+});
+
+function renderCropBox(){
+  if(!editor.crop || !cropActive) return;
+  const w = previewWrap.clientWidth, h = editorVideo.clientHeight || previewWrap.clientHeight;
+  cropBox.style.left = (editor.crop.xf*w)+'px';
+  cropBox.style.top = (editor.crop.yf*h)+'px';
+  cropBox.style.width = (editor.crop.wf*w)+'px';
+  cropBox.style.height = (editor.crop.hf*h)+'px';
+}
+window.addEventListener('resize', renderCropBox);
+
+cropBox.addEventListener('pointerdown', e=>{
+  if(e.target.classList.contains('handle')) return;
+  e.preventDefault();
+  cropBox.setPointerCapture(e.pointerId);
+  const startX=e.clientX, startY=e.clientY;
+  const orig = {...editor.crop};
+  const w = previewWrap.clientWidth, h = editorVideo.clientHeight || previewWrap.clientHeight;
+  const onMove = ev=>{
+    const dxf = (ev.clientX-startX)/w, dyf=(ev.clientY-startY)/h;
+    editor.crop.xf = Math.min(1-orig.wf, Math.max(0, orig.xf+dxf));
+    editor.crop.yf = Math.min(1-orig.hf, Math.max(0, orig.yf+dyf));
+    renderCropBox();
+  };
+  const onUp = ()=>{ window.removeEventListener('pointermove',onMove); window.removeEventListener('pointerup',onUp); };
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+});
+
+$$('#cropBox .handle').forEach(handle=>{
+  handle.addEventListener('pointerdown', e=>{
+    e.preventDefault(); e.stopPropagation();
+    handle.setPointerCapture(e.pointerId);
+    const corner = [...handle.classList].find(c=>['nw','ne','sw','se'].includes(c));
+    const startX=e.clientX, startY=e.clientY;
+    const orig = {...editor.crop};
+    const w = previewWrap.clientWidth, h = editorVideo.clientHeight || previewWrap.clientHeight;
+    const onMove = ev=>{
+      const dxf=(ev.clientX-startX)/w, dyf=(ev.clientY-startY)/h;
+      let {xf,yf,wf,hf} = orig;
+      if(corner.includes('w')){ xf = orig.xf+dxf; wf = orig.wf-dxf; }
+      if(corner.includes('e')){ wf = orig.wf+dxf; }
+      if(corner.includes('n')){ yf = orig.yf+dyf; hf = orig.hf-dyf; }
+      if(corner.includes('s')){ hf = orig.hf+dyf; }
+      wf = Math.max(0.05, wf); hf = Math.max(0.05, hf);
+      xf = Math.max(0, Math.min(xf, 1-wf));
+      yf = Math.max(0, Math.min(yf, 1-hf));
+      editor.crop = {xf,yf,wf,hf};
+      renderCropBox();
+    };
+    const onUp = ()=>{ window.removeEventListener('pointermove',onMove); window.removeEventListener('pointerup',onUp); };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  });
+});
+
+function computeCropFilterString(){
+  if(!editor.crop) return null;
+  const vw = editorVideo.videoWidth, vh = editorVideo.videoHeight;
+  let w = Math.round(editor.crop.wf*vw);
+  let h = Math.round(editor.crop.hf*vh);
+  let x = Math.round(editor.crop.xf*vw);
+  let y = Math.round(editor.crop.yf*vh);
+  w -= w%2; h -= h%2; x -= x%2; y -= y%2;
+  return `crop=${w}:${h}:${x}:${y}`;
+}
+
+/* sosyal medya oranı önayarları — mevcut kırpma altyapısını yeniden kullanır */
+function applyAspectPreset(targetRatio){
+  if(!editor.duration) return;
+  const vw = editorVideo.videoWidth, vh = editorVideo.videoHeight;
+  if(!vw || !vh) return;
+  let cw, ch;
+  if(vw/vh > targetRatio){ ch = vh; cw = vh*targetRatio; }
+  else { cw = vw; ch = vw/targetRatio; }
+  editor.crop = { xf:(vw-cw)/2/vw, yf:(vh-ch)/2/vh, wf:cw/vw, hf:ch/vh };
+  cropActive = true;
+  cropBox.classList.add('active');
+  renderCropBox();
+  toast('Kırpma alanı ayarlandı — "Dışa Aktar" ile birlikte uygulanacak.','ok');
+}
+$('#presetStoryBtn').addEventListener('click', ()=>applyAspectPreset(9/16));
+$('#presetSquareBtn').addEventListener('click', ()=>applyAspectPreset(1));
+$('#presetWideBtn').addEventListener('click', ()=>applyAspectPreset(16/9));
+
+/* metin ekleme için yazı tipi — bir kere indirilip ffmpeg dosya sistemine yazılır (kalıcı önbellekten) */
+let fontLoaded = false;
+async function ensureFont(ff){
+  if(fontLoaded) return;
+  const resp = await cachedFetch('https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/Roboto-Regular.ttf');
+  const buf = await resp.arrayBuffer();
+  await ff.writeFile('font.ttf', new Uint8Array(buf));
+  fontLoaded = true;
+}
+
+/* kırpma + döndürme + hız + fade + metni TEK bir filtre zincirinde birleştirir */
+function buildEditFilterChains({ cropFilter, rotate, speed, fadeIn, fadeOut, outDuration, hasText }){
+  const fadeDur = 0.7;
+  const finalDuration = outDuration / speed;
+  const vParts = [];
+  if(cropFilter) vParts.push(cropFilter);
+  if(rotate==='90cw') vParts.push('transpose=1');
+  else if(rotate==='90ccw') vParts.push('transpose=2');
+  else if(rotate==='180') vParts.push('transpose=1,transpose=1');
+  if(speed !== 1) vParts.push(`setpts=${(1/speed).toFixed(6)}*PTS`);
+  if(fadeIn) vParts.push(`fade=t=in:st=0:d=${fadeDur}`);
+  if(fadeOut) vParts.push(`fade=t=out:st=${Math.max(0, finalDuration-fadeDur).toFixed(3)}:d=${fadeDur}`);
+  if(hasText){
+    const pos = (document.querySelector('input[name=textPos]:checked')||{}).value || 'bottom';
+    const yExpr = pos==='top' ? '40' : pos==='middle' ? '(h-text_h)/2' : 'h-text_h-40';
+    vParts.push(`drawtext=fontfile=font.ttf:textfile=overlay_text.txt:fontsize=42:fontcolor=white:borderw=3:bordercolor=black@0.7:x=(w-text_w)/2:y=${yExpr}`);
+  }
+  const aParts = [];
+  if(speed !== 1) aParts.push(`atempo=${speed}`);
+  if(fadeIn) aParts.push(`afade=t=in:st=0:d=${fadeDur}`);
+  if(fadeOut) aParts.push(`afade=t=out:st=${Math.max(0, finalDuration-fadeDur).toFixed(3)}:d=${fadeDur}`);
+  return {
+    vChain: vParts.length? vParts.join(',') : null,
+    aChain: aParts.length? aParts.join(',') : null,
+  };
+}
+
+/* export trim/crop/hız/döndürme/fade/metin */
+let lastExportedBlob = null;
+$('#exportTrimBtn').addEventListener('click', async ()=>{
+  const btn = $('#exportTrimBtn');
+  btn.disabled = true;
+  const progWrap = $('#editorProgress'), progBar=$('#editorProgressBar'), progLabel=$('#editorProgressLabel');
+  progWrap.classList.add('show');
+  setProgressTarget(progBar, progLabel);
+  const mode = document.querySelector('input[name=trimMode]:checked').value;
+  const speed = parseFloat($('#speedSelect').value) || 1;
+  const rotate = $('#rotateSelect').value;
+  const fadeIn = $('#fadeInChk').checked;
+  const fadeOut = $('#fadeOutChk').checked;
+  const overlayText = $('#overlayTextInput').value.trim();
+  try{
+    const ff = await ensureFFmpeg();
+    const inName = nameForInput(editor.file.name);
+    await ffWriteFile(ff, inName, editor.file);
+    const outName = 'out.mp4';
+    const cropFilter = computeCropFilterString();
+
+    if(overlayText){
+      await ff.writeFile('overlay_text.txt', new TextEncoder().encode(overlayText));
+      await ensureFont(ff);
+    }
+
+    // hangi ham segment(ler) korunacak (zaman aralığı SAKLA/ÇIKAR)
+    let segments;
+    if(mode==='keep'){
+      segments = [[editor.trimStart, editor.trimEnd]];
+    } else {
+      segments = [];
+      if(editor.trimStart > 0.05) segments.push([0, editor.trimStart]);
+      if(editor.trimEnd < editor.duration - 0.05) segments.push([editor.trimEnd, editor.duration]);
+      if(segments.length === 0){
+        toast('Çıkarılacak bir şey kalmadı — seçim tüm videoyu kapsıyor.','err');
+        throw new Error('Sonuç boş kalırdı');
+      }
+    }
+    const outDuration = segments.reduce((sum,[s,e])=>sum+(e-s), 0);
+
+    // ham segmentleri [vraw]/[araw]'a indir (tek segment = basit trim, çoklu = concat)
+    let filterParts = [];
+    if(segments.length === 1){
+      const [s,e] = segments[0];
+      filterParts.push(`[0:v]trim=start=${s}:end=${e},setpts=PTS-STARTPTS[vraw]`);
+      filterParts.push(`[0:a]atrim=start=${s}:end=${e},asetpts=PTS-STARTPTS[araw]`);
+    } else {
+      segments.forEach((seg,i)=>{
+        filterParts.push(`[0:v]trim=start=${seg[0]}:end=${seg[1]},setpts=PTS-STARTPTS[v${i}]`);
+        filterParts.push(`[0:a]atrim=start=${seg[0]}:end=${seg[1]},asetpts=PTS-STARTPTS[a${i}]`);
+      });
+      const joins = segments.map((_,i)=>`[v${i}][a${i}]`).join('');
+      filterParts.push(`${joins}concat=n=${segments.length}:v=1:a=1[vraw][araw]`);
+    }
+
+    // kırpma + döndürme + hız + fade + metni ekle
+    const { vChain, aChain } = buildEditFilterChains({
+      cropFilter, rotate, speed, fadeIn, fadeOut, outDuration, hasText: !!overlayText
+    });
+    filterParts.push(`[vraw]${vChain? vChain : 'null'}[v]`);
+    filterParts.push(`[araw]${aChain? aChain : 'anull'}[a]`);
+
+    const filter = filterParts.join(';');
+    const args = ['-i', inName, '-filter_complex', filter, '-map','[v]','-map','[a]',
+      '-c:v','libx264','-preset','veryfast','-c:a','aac', outName];
+
+    await execOrThrow(ff, args);
+    const data = await ff.readFile(outName);
+    const blob = new Blob([data.buffer], {type:'video/mp4'});
+    downloadBlob(blob, 'duzenlenmis-video.mp4');
+    lastExportedBlob = blob;
+    $('#continueEditingBtn').classList.remove('hidden');
+    toast('Video dışa aktarıldı.','ok');
+    await ff.deleteFile(inName); await ff.deleteFile(outName);
+    if(overlayText) await ff.deleteFile('overlay_text.txt');
+  }catch(err){
+    console.error(err);
+    toast('Dışa aktarma başarısız: '+err.message,'err');
+  }finally{
+    btn.disabled=false;
+    progWrap.classList.remove('show');
+  }
+});
+
+/* extract audio */
+$('#extractAudioBtn').addEventListener('click', async ()=>{
+  const btn=$('#extractAudioBtn'); btn.disabled=true;
+  const progWrap=$('#editorProgress'), progBar=$('#editorProgressBar'), progLabel=$('#editorProgressLabel');
+  progWrap.classList.add('show'); setProgressTarget(progBar, progLabel);
+  try{
+    const ff = await ensureFFmpeg();
+    const inName = nameForInput(editor.file.name);
+    await ffWriteFile(ff, inName, editor.file);
+    await execOrThrow(ff, ['-i', inName, '-vn', '-q:a','2', 'audio_out.mp3']);
+    const data = await ff.readFile('audio_out.mp3');
+    downloadBlob(new Blob([data.buffer],{type:'audio/mp3'}), 'ses.mp3');
+    toast('Ses ayrıştırıldı.','ok');
+    await ff.deleteFile(inName); await ff.deleteFile('audio_out.mp3');
+  }catch(err){ console.error(err); toast('Ses ayırma başarısız: '+err.message,'err'); }
+  finally{ btn.disabled=false; progWrap.classList.remove('show'); }
+});
+
+$('#muteDownloadBtn').addEventListener('click', async ()=>{
+  const btn=$('#muteDownloadBtn'); btn.disabled=true;
+  const progWrap=$('#editorProgress'), progBar=$('#editorProgressBar'), progLabel=$('#editorProgressLabel');
+  progWrap.classList.add('show'); setProgressTarget(progBar, progLabel);
+  try{
+    const ff = await ensureFFmpeg();
+    const inName = nameForInput(editor.file.name);
+    await ffWriteFile(ff, inName, editor.file);
+    await execOrThrow(ff, ['-i', inName, '-c:v','copy','-an','sessiz_out.mp4']);
+    const data = await ff.readFile('sessiz_out.mp4');
+    downloadBlob(new Blob([data.buffer],{type:'video/mp4'}), 'sessiz-video.mp4');
+    toast('Sesi kaldırılmış video indirildi.','ok');
+    await ff.deleteFile(inName); await ff.deleteFile('sessiz_out.mp4');
+  }catch(err){ console.error(err); toast('Sessiz indirme başarısız: '+err.message,'err'); }
+  finally{ btn.disabled=false; progWrap.classList.remove('show'); }
+});
+
+$('#compressBtn').addEventListener('click', async ()=>{
+  const btn=$('#compressBtn'); btn.disabled=true;
+  const progWrap=$('#editorProgress'), progBar=$('#editorProgressBar'), progLabel=$('#editorProgressLabel');
+  progWrap.classList.add('show'); setProgressTarget(progBar, progLabel);
+  try{
+    const ff = await ensureFFmpeg();
+    const inName = nameForInput(editor.file.name);
+    await ffWriteFile(ff, inName, editor.file);
+    const quality = $('#compressQualitySelect').value;
+    const presets = {
+      high:   { crf:26, scale:null,        audioBitrate:'128k' },
+      medium: { crf:30, scale:'1280:-2',   audioBitrate:'96k'  },
+      low:    { crf:34, scale:'854:-2',    audioBitrate:'80k'  },
+    };
+    const p = presets[quality] || presets.medium;
+    const args = ['-i', inName];
+    if(p.scale) args.push('-vf', `scale=${p.scale}:force_original_aspect_ratio=decrease`);
+    args.push('-c:v','libx264','-crf', String(p.crf), '-preset','veryfast','-c:a','aac','-b:a', p.audioBitrate, 'compressed_out.mp4');
+    await execOrThrow(ff, args);
+    const data = await ff.readFile('compressed_out.mp4');
+    downloadBlob(new Blob([data.buffer],{type:'video/mp4'}), 'kucultulmus-video.mp4');
+    toast('Küçültülmüş kopya indirildi.','ok');
+    await ff.deleteFile(inName); await ff.deleteFile('compressed_out.mp4');
+  }catch(err){ console.error(err); toast('Küçültme başarısız: '+err.message,'err'); }
+  finally{ btn.disabled=false; progWrap.classList.remove('show'); }
+});
+
+/* apply audio (replace / mix) */
+let pendingAudioFile = null;
+$('#addAudioInput').addEventListener('change', e=>{
+  pendingAudioFile = e.target.files[0] || null;
+  $('#applyAudioBtn').disabled = !pendingAudioFile;
+});
+
+$('#applyAudioBtn').addEventListener('click', async ()=>{
+  if(!pendingAudioFile) return;
+  const mode = document.querySelector('input[name=audioMode]:checked').value;
+  const btn=$('#applyAudioBtn'); btn.disabled=true;
+  const progWrap=$('#editorProgress'), progBar=$('#editorProgressBar'), progLabel=$('#editorProgressLabel');
+  progWrap.classList.add('show'); setProgressTarget(progBar, progLabel);
+  try{
+    const ff = await ensureFFmpeg();
+    const inName = nameForInput(editor.file.name);
+    const audioName = nameForInput(pendingAudioFile.name, 'aud');
+    await ffWriteFile(ff, inName, editor.file);
+    await ffWriteFile(ff, audioName, pendingAudioFile);
+    const outName='audio_applied.mp4';
+    let args;
+    if(mode==='replace'){
+      args = ['-i', inName, '-i', audioName, '-map','0:v:0','-map','1:a:0','-c:v','copy','-c:a','aac','-shortest', outName];
+    } else {
+      args = ['-i', inName, '-i', audioName, '-filter_complex','[0:a][1:a]amix=inputs=2:duration=first:dropout_transition=2[a]','-map','0:v:0','-map','[a]','-c:v','copy','-c:a','aac', outName];
+    }
+    await execOrThrow(ff, args);
+    const data = await ff.readFile(outName);
+    downloadBlob(new Blob([data.buffer],{type:'video/mp4'}), 'ses-uygulandi.mp4');
+    toast('Ses uygulandı ve indirildi.','ok');
+    await ff.deleteFile(inName); await ff.deleteFile(audioName); await ff.deleteFile(outName);
+  }catch(err){ console.error(err); toast('İşlem başarısız: '+err.message,'err'); }
+  finally{ btn.disabled=false; progWrap.classList.remove('show'); }
+});
+
+/* merge queue */
+$('#addToQueueBtn').addEventListener('click', ()=>{
+  editor.queue.push({file:editor.file, url:editor.url, name:editor.file.name});
+  renderQueue();
+  toast('Sıraya eklendi.','ok');
+});
+
+function renderQueue(){
+  const list = $('#mergeQueueList');
+  list.innerHTML='';
+  if(editor.queue.length===0){
+    list.innerHTML = '<div class="queue-empty">Sıra boş — bir video açıp "Sıraya Ekle" ile başla.</div>';
+    $('#mergeBtn').disabled = true;
+    return;
+  }
+  editor.queue.forEach((item, i)=>{
+    const el = document.createElement('div');
+    el.className='queue-item';
+    el.draggable = true;
+    el.dataset.idx = i;
+    el.innerHTML = `
+      <span class="grip">⠿</span>
+      <span class="idx">${i+1}</span>
+      <span class="name">${escapeHtml(item.name)}</span>
+      <button class="mini" data-act="up" title="Yukarı">↑</button>
+      <button class="mini" data-act="down" title="Aşağı">↓</button>
+      <button class="mini" data-act="remove" title="Kaldır">✕</button>
+    `;
+    list.appendChild(el);
+  });
+  $('#mergeBtn').disabled = editor.queue.length<2;
+
+  list.querySelectorAll('.mini').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const idx = parseInt(btn.closest('.queue-item').dataset.idx,10);
+      const act = btn.dataset.act;
+      if(act==='remove') editor.queue.splice(idx,1);
+      if(act==='up' && idx>0) [editor.queue[idx-1],editor.queue[idx]]=[editor.queue[idx],editor.queue[idx-1]];
+      if(act==='down' && idx<editor.queue.length-1) [editor.queue[idx+1],editor.queue[idx]]=[editor.queue[idx],editor.queue[idx+1]];
+      renderQueue();
+    });
+  });
+
+  let dragSrc=null;
+  list.querySelectorAll('.queue-item').forEach(el=>{
+    el.addEventListener('dragstart', ()=>{ dragSrc=el; el.classList.add('dragging'); });
+    el.addEventListener('dragend', ()=>{ el.classList.remove('dragging'); });
+    el.addEventListener('dragover', e=>e.preventDefault());
+    el.addEventListener('drop', e=>{
+      e.preventDefault();
+      if(dragSrc===el) return;
+      const from = parseInt(dragSrc.dataset.idx,10), to=parseInt(el.dataset.idx,10);
+      const moved = editor.queue.splice(from,1)[0];
+      editor.queue.splice(to,0,moved);
+      renderQueue();
+    });
+  });
+}
+
+function probeVideoDims(file){
+  return new Promise(resolve=>{
+    const v = document.createElement('video');
+    v.muted = true; v.preload = 'metadata';
+    const url = URL.createObjectURL(file);
+    v.src = url;
+    const finish = (info)=>{ URL.revokeObjectURL(url); resolve(info); };
+    v.onloadedmetadata = ()=> finish({ duration: v.duration||1, w: v.videoWidth||1280, h: v.videoHeight||720 });
+    v.onerror = ()=> finish({ duration:1, w:1280, h:720 });
+  });
+}
+
+// HTMLMediaElement.audioTracks Chrome'da güvenilir çalışmıyor (çoğu zaman undefined
+// dönüyor), o yüzden bir dosyanın sesi olup olmadığını ffmpeg'in kendi log çıktısından
+// anlıyoruz: "-i dosya" (çıktı belirtmeden) çalıştırınca ffmpeg, hata vermeden önce
+// dosyanın akışlarını ("Stream #0:0: Video: ...", "Stream #0:1: Audio: ...") loglar.
+async function probeHasAudioViaFFmpeg(ff, name){
+  const startIdx = ffLogLines.length;
+  try{ await ff.exec(['-i', name]); }catch(e){ /* beklenen: çıktı dosyası belirtilmedi hatası */ }
+  return ffLogLines.slice(startIdx).some(line=>/Stream #\d+:\d+.*Audio:/i.test(line));
+}
+
+$('#mergeBtn').addEventListener('click', async ()=>{
+  const btn=$('#mergeBtn'); btn.disabled=true;
+  const progWrap=$('#editorProgress'), progBar=$('#editorProgressBar'), progLabel=$('#editorProgressLabel');
+  progWrap.classList.add('show'); setProgressTarget(progBar, progLabel);
+  try{
+    const ff = await ensureFFmpeg();
+    const names=[];
+    const infos=[];
+    for(let i=0;i<editor.queue.length;i++){
+      const nm = `q${i}_${nameForInput(editor.queue[i].name)}`;
+      await ffWriteFile(ff, nm, editor.queue[i].file);
+      names.push(nm);
+      const dims = await probeVideoDims(editor.queue[i].file);
+      const hasAudio = await probeHasAudioViaFFmpeg(ff, nm);
+      infos.push({ ...dims, hasAudio });
+    }
+    const n = names.length;
+
+    // Ortak çözünürlük: sıradaki ilk videonun boyutu (farklı boyutlu videolar olsa bile birleşebilsin diye)
+    let TW = infos[0].w, TH = infos[0].h;
+    TW -= TW%2; TH -= TH%2;
+
+    const inputArgs = names.flatMap(nm=>['-i', nm]);
+    let extraInputArgs = [];
+    let nextExtraIdx = n;
+    const filterParts = [];
+    const vLabels = [], aLabels = [];
+
+    for(let i=0;i<n;i++){
+      filterParts.push(`[${i}:v]scale=${TW}:${TH}:force_original_aspect_ratio=decrease,pad=${TW}:${TH}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30[v${i}]`);
+      vLabels.push(`[v${i}]`);
+      if(infos[i].hasAudio){
+        filterParts.push(`[${i}:a]aresample=44100,aformat=channel_layouts=stereo[a${i}]`);
+      } else {
+        // sesi olmayan bir video (ör. mikrofonsuz ekran kaydı) — o bölüm için sessiz bir ses parçası üret
+        extraInputArgs.push('-f','lavfi','-i','anullsrc=channel_layout=stereo:sample_rate=44100');
+        filterParts.push(`[${nextExtraIdx}:a]atrim=duration=${Math.max(0.1, infos[i].duration)},asetpts=PTS-STARTPTS[a${i}]`);
+        nextExtraIdx++;
+      }
+      aLabels.push(`[a${i}]`);
+    }
+    const joinPairs = vLabels.map((v,i)=>`${v}${aLabels[i]}`).join('');
+    filterParts.push(`${joinPairs}concat=n=${n}:v=1:a=1[v][a]`);
+    const filter = filterParts.join(';');
+
+    const args = [...inputArgs, ...extraInputArgs, '-filter_complex', filter, '-map','[v]','-map','[a]','-c:v','libx264','-preset','veryfast','-c:a','aac','merged_out.mp4'];
+    await execOrThrow(ff, args);
+    const data = await ff.readFile('merged_out.mp4');
+    if(!data || data.length < 1000){
+      throw new Error('Sonuç dosyası boş/bozuk çıktı — girdi videolarının kodekleri uyumsuz olabilir.');
+    }
+    downloadBlob(new Blob([data.buffer],{type:'video/mp4'}), 'birlestirilmis-video.mp4');
+    toast('Videolar birleştirildi.','ok');
+    for(const nm of names) await ff.deleteFile(nm);
+    await ff.deleteFile('merged_out.mp4');
+  }catch(err){ console.error(err); toast('Birleştirme başarısız: '+err.message,'err'); }
+  finally{ btn.disabled=false; progWrap.classList.remove('show'); }
+});
+
+/* ══════════════════════ SLIDES TAB ══════════════════════ */
+const slides = { images: [], audioFile: null };
+const slidesDrop = $('#slidesDrop');
+const slidesFileInput = $('#slidesFileInput');
+
+slidesDrop.addEventListener('click', ()=>slidesFileInput.click());
+slidesFileInput.addEventListener('change', e=> addSlideImages(Array.from(e.target.files)));
+['dragover','dragleave','drop'].forEach(ev=>{
+  slidesDrop.addEventListener(ev, e=>{
+    e.preventDefault();
+    if(ev==='dragover') slidesDrop.classList.add('drag'); else slidesDrop.classList.remove('drag');
+    if(ev==='drop') addSlideImages(Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/')));
+  });
+});
+
+function addSlideImages(files){
+  files.forEach(f=>{
+    slides.images.push({file:f, url:URL.createObjectURL(f), duration:3});
+  });
+  renderSlidesList();
+}
+
+function renderSlidesList(){
+  const list = $('#slidesList');
+  list.innerHTML='';
+  if(slides.images.length===0){
+    list.innerHTML='<div class="queue-empty">Henüz görsel eklenmedi.</div>';
+    $('#buildSlidesBtn').disabled=true;
+    return;
+  }
+  slides.images.forEach((img,i)=>{
+    const el = document.createElement('div');
+    el.className='queue-item'; el.draggable=true; el.dataset.idx=i;
+    el.innerHTML = `
+      <span class="grip">⠿</span>
+      <span class="idx">${i+1}</span>
+      <img class="thumb" src="${img.url}">
+      <span class="name">${escapeHtml(img.file.name)}</span>
+      <span class="dur"><input type="number" min="0.2" step="0.1" value="${img.duration}" data-idx="${i}"> sn</span>
+      <button class="mini" data-act="remove">✕</button>
+    `;
+    list.appendChild(el);
+  });
+  $('#buildSlidesBtn').disabled = slides.images.length===0;
+
+  list.querySelectorAll('.dur input').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const idx = parseInt(inp.dataset.idx,10);
+      slides.images[idx].duration = Math.max(0.2, parseFloat(inp.value)||3);
+    });
+  });
+  list.querySelectorAll('.mini[data-act=remove]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = parseInt(btn.closest('.queue-item').dataset.idx,10);
+      URL.revokeObjectURL(slides.images[idx].url);
+      slides.images.splice(idx,1);
+      renderSlidesList();
+    });
+  });
+
+  let dragSrc=null;
+  list.querySelectorAll('.queue-item').forEach(el=>{
+    el.addEventListener('dragstart', ()=>{ dragSrc=el; el.classList.add('dragging'); });
+    el.addEventListener('dragend', ()=>el.classList.remove('dragging'));
+    el.addEventListener('dragover', e=>e.preventDefault());
+    el.addEventListener('drop', e=>{
+      e.preventDefault();
+      if(dragSrc===el) return;
+      const from=parseInt(dragSrc.dataset.idx,10), to=parseInt(el.dataset.idx,10);
+      const moved = slides.images.splice(from,1)[0];
+      slides.images.splice(to,0,moved);
+      renderSlidesList();
+    });
+  });
+}
+
+$('#slidesAudioInput').addEventListener('change', e=>{ slides.audioFile = e.target.files[0]||null; });
+
+$('#buildSlidesBtn').addEventListener('click', async ()=>{
+  if(slides.images.length===0) return;
+  const btn=$('#buildSlidesBtn'); btn.disabled=true;
+  const progWrap=$('#slidesProgress'), progBar=$('#slidesProgressBar'), progLabel=$('#slidesProgressLabel');
+  progWrap.classList.add('show'); setProgressTarget(progBar, progLabel);
+  const useCrossfade = $('#slidesCrossfadeChk').checked && slides.images.length>=2;
+  try{
+    const ff = await ensureFFmpeg();
+    const names=[];
+    for(let i=0;i<slides.images.length;i++){
+      const ext = (slides.images[i].file.name.match(/\.([a-zA-Z0-9]+)$/)||[,'jpg'])[1];
+      const nm = `img${i}.${ext}`;
+      await ffWriteFile(ff, nm, slides.images[i].file);
+      names.push(nm);
+    }
+    const res = $('#slidesResSelect').value;
+    const [rw,rh] = res.split(':');
+    let args, audioName=null;
+
+    if(!useCrossfade){
+      let listTxt='';
+      names.forEach((nm,i)=>{ listTxt += `file '${nm}'\nduration ${slides.images[i].duration}\n`; });
+      listTxt += `file '${names[names.length-1]}'\n`;
+      await ff.writeFile('list.txt', new TextEncoder().encode(listTxt));
+
+      args = ['-f','concat','-safe','0','-i','list.txt'];
+      if(slides.audioFile){
+        audioName = nameForInput(slides.audioFile.name,'bgm');
+        await ffWriteFile(ff, audioName, slides.audioFile);
+        args.push('-i', audioName);
+        args.push('-map','0:v','-map','1:a','-shortest');
+      }
+      args.push('-vf', `scale=${rw}:${rh}:force_original_aspect_ratio=decrease,pad=${rw}:${rh}:(ow-iw)/2:(oh-ih)/2,format=yuv420p`);
+      args.push('-r','30','-c:v','libx264','-pix_fmt','yuv420p');
+      if(slides.audioFile) args.push('-c:a','aac');
+      args.push('slides_out.mp4');
+    } else {
+      // yumuşak geçişli (xfade) sürüm: geçiş süresini en kısa görselin süresine göre güvenli seç
+      const durations = slides.images.map(im=>Math.max(0.3, im.duration));
+      const T = Math.max(0.2, Math.min(0.8, Math.min(...durations)*0.4));
+      const n = names.length;
+      const inputArgs = names.flatMap((nm,i)=>['-loop','1','-t',String(durations[i]),'-i',nm]);
+
+      const filterParts = [];
+      for(let i=0;i<n;i++){
+        filterParts.push(`[${i}:v]scale=${rw}:${rh}:force_original_aspect_ratio=decrease,pad=${rw}:${rh}:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[s${i}]`);
+      }
+      let cum = durations[0];
+      let prevLabel = 's0';
+      for(let i=1;i<n;i++){
+        const offset = Math.max(0, cum - i*T);
+        const outLabel = (i===n-1) ? 'vout' : `x${i}`;
+        filterParts.push(`[${prevLabel}][s${i}]xfade=transition=fade:duration=${T.toFixed(3)}:offset=${offset.toFixed(3)}[${outLabel}]`);
+        cum += durations[i] - T;
+        prevLabel = outLabel;
+      }
+      const filter = filterParts.join(';');
+
+      args = [...inputArgs];
+      if(slides.audioFile){
+        audioName = nameForInput(slides.audioFile.name,'bgm');
+        await ffWriteFile(ff, audioName, slides.audioFile);
+        args.push('-i', audioName);
+      }
+      args.push('-filter_complex', filter, '-map','[vout]');
+      if(slides.audioFile) args.push('-map', `${n}:a`, '-shortest');
+      args.push('-r','30','-c:v','libx264','-pix_fmt','yuv420p');
+      if(slides.audioFile) args.push('-c:a','aac');
+      args.push('slides_out.mp4');
+    }
+
+    await execOrThrow(ff, args);
+    const data = await ff.readFile('slides_out.mp4');
+    downloadBlob(new Blob([data.buffer],{type:'video/mp4'}), 'slayt-video.mp4');
+    toast('Slayt videosu oluşturuldu.','ok');
+
+    for(const nm of names) await ff.deleteFile(nm);
+    if(!useCrossfade) await ff.deleteFile('list.txt');
+    if(audioName) await ff.deleteFile(audioName);
+    await ff.deleteFile('slides_out.mp4');
+  }catch(err){ console.error(err); toast('Slayt oluşturma başarısız: '+err.message,'err'); }
+  finally{ btn.disabled=false; progWrap.classList.remove('show'); }
+});
+
+/* ══════════════════════ RECORDER TAB ══════════════════════ */
+const rec = {
+  mode:'screen', screenStream:null, camStream:null, micStream:null,
+  camEnabled:false, micEnabled:true,
+  canvasStream:null, mediaRecorder:null, chunks:[],
+  recording:false, paused:false, staged:false,
+  startTs:0, pausedAccum:0, pauseStartTs:0, timerInt:null,
+  rafId:null, audioCtx:null, audioMixDest:null,
+  screenVideoEl:null, camVideoEl:null, outBlob:null, outWasAudioOnly:false,
+};
+
+const camToggle = $('#camToggle'), micToggle = $('#micToggle');
+
+function updateToggleUI(el, on, label){
+  el.classList.toggle('on', on);
+  el.classList.toggle('off', !on);
+  el.querySelector('.lb').textContent = `${label} ${on? 'Açık':'Kapalı'}`;
+}
+
+$$('input[name=recMode]').forEach(r=>r.addEventListener('change', e=>{ rec.mode = e.target.value; }));
+
+function connectAudioTrack(track){
+  if(!rec.audioCtx || !track) return;
+  const src = rec.audioCtx.createMediaStreamSource(new MediaStream([track]));
+  src.connect(rec.audioMixDest);
+}
+
+async function startCamStream(){
+  try{
+    rec.camStream = await navigator.mediaDevices.getUserMedia({video:{width:320,height:240}});
+    rec.camVideoEl.srcObject = rec.camStream;
+    await rec.camVideoEl.play().catch(()=>{});
+  }catch(err){
+    toast('Kameraya erişilemedi: '+err.message,'err');
+    rec.camEnabled=false;
+    updateToggleUI(camToggle, false, 'Kamera');
+  }
+}
+function stopCamStream(){
+  if(rec.camStream){ rec.camStream.getTracks().forEach(t=>t.stop()); rec.camStream=null; }
+}
+
+camToggle.addEventListener('click', async ()=>{
+  rec.camEnabled = !rec.camEnabled;
+  updateToggleUI(camToggle, rec.camEnabled, 'Kamera');
+  if(!rec.staged) return;
+  if(rec.camEnabled) await startCamStream();
+  else stopCamStream();
+});
+
+micToggle.addEventListener('click', async ()=>{
+  rec.micEnabled = !rec.micEnabled;
+  updateToggleUI(micToggle, rec.micEnabled, 'Mikrofon');
+  if(!rec.staged) return;
+  if(rec.micEnabled && !rec.micStream){
+    try{
+      rec.micStream = await navigator.mediaDevices.getUserMedia({audio:true});
+      connectAudioTrack(rec.micStream.getAudioTracks()[0]);
+    }catch(err){
+      toast('Mikrofona erişilemedi: '+err.message,'err');
+      rec.micEnabled=false; updateToggleUI(micToggle,false,'Mikrofon');
+      return;
+    }
+  }
+  if(rec.micStream) rec.micStream.getAudioTracks().forEach(t=>t.enabled = rec.micEnabled);
+});
+
+function waitForVideoReady(videoEl){
+  return new Promise(resolve=>{
+    if(videoEl.readyState>=1 && videoEl.videoWidth) return resolve();
+    videoEl.addEventListener('loadedmetadata', ()=>resolve(), {once:true});
+  });
+}
+
+function pickMime(){
+  const opts = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  for(const o of opts) if(window.MediaRecorder && MediaRecorder.isTypeSupported(o)) return o;
+  return '';
+}
+function pickAudioMime(){
+  const opts = ['audio/webm;codecs=opus','audio/webm'];
+  for(const o of opts) if(window.MediaRecorder && MediaRecorder.isTypeSupported(o)) return o;
+  return '';
+}
+
+function updateTimer(){
+  let ms = Date.now()-rec.startTs - rec.pausedAccum;
+  if(ms<0) ms=0;
+  const totalSec = Math.floor(ms/1000);
+  const h = String(Math.floor(totalSec/3600)).padStart(2,'0');
+  const m = String(Math.floor((totalSec%3600)/60)).padStart(2,'0');
+  const s = String(totalSec%60).padStart(2,'0');
+  $('#recTimer').textContent = `${h}:${m}:${s}`;
+}
+
+async function setupLiveStage(){
+  $('#recSelectSourceBtn').disabled = true;
+  try{
+    if(rec.mode === 'audio'){
+      rec.micStream = await navigator.mediaDevices.getUserMedia({audio:true});
+      rec.staged = true;
+      $('#recPlaceholder').textContent = '🎙️ Ses kaydı hazır — mikrofon bağlandı, görüntü yok';
+      $('#recPlaceholder').classList.remove('hidden');
+      $('#recCanvas').classList.add('hidden');
+      $('#recStageControls').classList.add('hidden');
+      $('#recStartControls').classList.remove('hidden');
+      return;
+    }
+
+    if(!rec.screenVideoEl){
+      rec.screenVideoEl = document.createElement('video'); rec.screenVideoEl.muted=true; rec.screenVideoEl.playsInline=true;
+    }
+    if(!rec.camVideoEl){
+      rec.camVideoEl = document.createElement('video'); rec.camVideoEl.muted=true; rec.camVideoEl.playsInline=true;
+    }
+
+    rec.needScreen = rec.mode==='screen' || rec.mode==='both';
+    rec.needCamVideo = rec.mode==='camera' || rec.mode==='both' || rec.camEnabled;
+
+    if(rec.needScreen){
+      rec.screenStream = await navigator.mediaDevices.getDisplayMedia({video:{frameRate:30}, audio:true});
+      rec.screenVideoEl.srcObject = rec.screenStream;
+      await rec.screenVideoEl.play().catch(()=>{});
+      rec.screenStream.getVideoTracks()[0].addEventListener('ended', ()=>{
+        if(rec.recording) stopRecording(); else cancelStage();
+      });
+    }
+    if(rec.needCamVideo){
+      rec.camEnabled = true;
+      updateToggleUI(camToggle, true, 'Kamera');
+      await startCamStream();
+    }
+    if(rec.micEnabled){
+      rec.micStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    }
+
+    const baseVideo = rec.needScreen? rec.screenVideoEl : rec.camVideoEl;
+    await waitForVideoReady(baseVideo);
+
+    const canvas = $('#recCanvas');
+    canvas.width = baseVideo.videoWidth || 1280;
+    canvas.height = baseVideo.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+    canvas.classList.remove('hidden');
+    $('#recPlaceholder').classList.add('hidden');
+    rec.bubbleColor = getCssVar('--amber');
+
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      if(rec.needScreen && rec.screenVideoEl.readyState>=2){
+        ctx.drawImage(rec.screenVideoEl, 0,0, canvas.width, canvas.height);
+      }
+      if(rec.camEnabled && rec.camStream && rec.camVideoEl.readyState>=2){
+        if(rec.mode==='camera'){
+          ctx.drawImage(rec.camVideoEl, 0,0, canvas.width, canvas.height);
+          rec.lastBubbleRect = null;
+        } else {
+          const bw = canvas.width*0.22, bh = bw * ((rec.camVideoEl.videoHeight/rec.camVideoEl.videoWidth)||0.75);
+          if(!rec.bubblePos){
+            rec.bubblePos = { xf:(canvas.width-bw-20)/canvas.width, yf:(canvas.height-bh-20)/canvas.height };
+          }
+          let bx = rec.bubblePos.xf*canvas.width, by = rec.bubblePos.yf*canvas.height;
+          bx = Math.max(0, Math.min(bx, canvas.width-bw));
+          by = Math.max(0, Math.min(by, canvas.height-bh));
+          rec.lastBubbleRect = {bx,by,bw,bh};
+          ctx.save();
+          roundRect(ctx, bx, by, bw, bh, 14);
+          ctx.clip();
+          ctx.drawImage(rec.camVideoEl, bx, by, bw, bh);
+          ctx.restore();
+          ctx.lineWidth=3; ctx.strokeStyle=rec.bubbleColor;
+          roundRect(ctx, bx, by, bw, bh, 14); ctx.stroke();
+        }
+      } else {
+        rec.lastBubbleRect = null;
+      }
+      rec.rafId = requestAnimationFrame(draw);
+    }
+    draw();
+
+    rec.canvasStream = canvas.captureStream(30);
+    rec.staged = true;
+
+    $('#recStageControls').classList.add('hidden');
+    $('#recStartControls').classList.remove('hidden');
+  }catch(err){
+    console.error(err);
+    toast('Kaynak seçilemedi: '+err.message,'err');
+    $('#recSelectSourceBtn').disabled = false;
+    cleanupStreams();
+  }
+}
+
+const DEFAULT_REC_PLACEHOLDER = 'Önce kaynağı seç, sonra ne zaman başlayacağını sen belirle';
+
+function cancelStage(){
+  cleanupStreams();
+  rec.staged = false;
+  cancelAnimationFrame(rec.rafId);
+  $('#recCanvas').classList.add('hidden');
+  $('#recPlaceholder').textContent = DEFAULT_REC_PLACEHOLDER;
+  $('#recPlaceholder').classList.remove('hidden');
+  $('#recStartControls').classList.add('hidden');
+  $('#recStageControls').classList.remove('hidden');
+  $('#recSelectSourceBtn').disabled = false;
+}
+
+async function runCountdown(seconds){
+  if(seconds<=0) return;
+  const el = $('#recCountdown');
+  el.classList.add('show');
+  for(let s=seconds; s>=1; s--){
+    el.textContent = s;
+    await new Promise(r=>setTimeout(r, 1000));
+  }
+  el.classList.remove('show');
+}
+
+async function beginCapture(){
+  $('#recStartControls').classList.add('hidden');
+  const delayEl = document.querySelector('input[name=recDelay]:checked');
+  const delay = delayEl? parseInt(delayEl.value,10)||0 : 0;
+  if(delay>0) await runCountdown(delay);
+  if(!rec.staged){ return; } // bu sırada kullanıcı vazgeçmiş olabilir
+
+  try{
+    rec.audioCtx = new AudioContext();
+    rec.audioMixDest = rec.audioCtx.createMediaStreamDestination();
+    if(rec.micStream) connectAudioTrack(rec.micStream.getAudioTracks()[0]);
+    if(rec.screenStream) rec.screenStream.getAudioTracks().forEach(connectAudioTrack);
+
+    const finalTracks = (rec.mode==='audio')
+      ? [rec.audioMixDest.stream.getAudioTracks()[0]]
+      : [...rec.canvasStream.getVideoTracks(), rec.audioMixDest.stream.getAudioTracks()[0]];
+    const finalStream = new MediaStream(finalTracks);
+    const mime = rec.mode==='audio' ? pickAudioMime() : pickMime();
+    rec.mediaRecorder = new MediaRecorder(finalStream, mime? {mimeType:mime} : undefined);
+    rec.chunks = [];
+    rec.mediaRecorder.ondataavailable = e=>{ if(e.data.size>0) rec.chunks.push(e.data); };
+    rec.mediaRecorder.onstop = onRecorderStop;
+    rec.mediaRecorder.start(250);
+
+    rec.recording = true; rec.paused=false;
+    rec.startTs = Date.now(); rec.pausedAccum=0;
+    $('#recBadge').classList.add('show');
+    $('#recDot').classList.remove('paused');
+    $('#recPauseBtn').textContent='⏸ Duraklat';
+    rec.timerInt = setInterval(updateTimer, 250);
+    $('#recActiveControls').classList.remove('hidden');
+    $('#recResultCard').classList.add('hidden');
+    toast('Kayıt başladı.','ok');
+  }catch(err){
+    console.error(err);
+    toast('Kayıt başlatılamadı: '+err.message,'err');
+    cancelStage();
+  }
+}
+
+function togglePause(){
+  if(!rec.mediaRecorder) return;
+  if(!rec.paused){
+    rec.mediaRecorder.pause();
+    rec.paused=true;
+    rec.pauseStartTs = Date.now();
+    $('#recPauseBtn').textContent='▶ Devam Et';
+    $('#recDot').classList.add('paused');
+  } else {
+    rec.mediaRecorder.resume();
+    rec.paused=false;
+    rec.pausedAccum += Date.now()-rec.pauseStartTs;
+    $('#recPauseBtn').textContent='⏸ Duraklat';
+    $('#recDot').classList.remove('paused');
+  }
+}
+
+function stopRecording(){
+  if(!rec.mediaRecorder) return;
+  rec.mediaRecorder.stop();
+  rec.recording=false;
+  rec.staged=false;
+  clearInterval(rec.timerInt);
+  cancelAnimationFrame(rec.rafId);
+  $('#recActiveControls').classList.add('hidden');
+  $('#recStageControls').classList.remove('hidden');
+  $('#recSelectSourceBtn').disabled = false;
+  $('#recCanvas').classList.add('hidden');
+  $('#recPlaceholder').textContent = DEFAULT_REC_PLACEHOLDER;
+  $('#recPlaceholder').classList.remove('hidden');
+  $('#recBadge').classList.remove('show');
+  cleanupStreams();
+}
+
+function cleanupStreams(){
+  [rec.screenStream, rec.camStream, rec.micStream].forEach(s=>{ if(s) s.getTracks().forEach(t=>t.stop()); });
+  rec.screenStream=null; rec.camStream=null; rec.micStream=null;
+  if(rec.audioCtx){ rec.audioCtx.close().catch(()=>{}); rec.audioCtx=null; rec.audioMixDest=null; }
+}
+
+function onRecorderStop(){
+  const wasAudioOnly = rec.mode === 'audio';
+  rec.outWasAudioOnly = wasAudioOnly;
+  const blob = new Blob(rec.chunks, {type: wasAudioOnly? 'audio/webm' : 'video/webm'});
+  rec.outBlob = blob;
+  const url = URL.createObjectURL(blob);
+  $('#recResultVideo').src = url;
+  $('#recDownloadBtn').href = url;
+  $('#recDownloadBtn').download = wasAudioOnly ? 'kayit-ses.webm' : 'kayit.webm';
+  $('#recToMp4Btn').textContent = wasAudioOnly ? "MP3'e Dönüştür" : "MP4'e Dönüştür";
+  $('#recToEditorBtn').classList.toggle('hidden', wasAudioOnly);
+  $('#recResultCard').classList.remove('hidden');
+  toast('Kayıt tamamlandı.','ok');
+}
+
+$('#recSelectSourceBtn').addEventListener('click', setupLiveStage);
+$('#recCancelStageBtn').addEventListener('click', cancelStage);
+$('#recStartBtn').addEventListener('click', beginCapture);
+
+/* kamera balonunu sürükleyerek taşıma */
+(function(){
+  const canvas = $('#recCanvas');
+  let dragOffset = null;
+  function toCanvasXY(e){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width/rect.width, scaleY = canvas.height/rect.height;
+    return { x:(e.clientX-rect.left)*scaleX, y:(e.clientY-rect.top)*scaleY };
+  }
+  canvas.addEventListener('pointerdown', e=>{
+    if(!rec.lastBubbleRect) return;
+    const {x,y} = toCanvasXY(e);
+    const {bx,by,bw,bh} = rec.lastBubbleRect;
+    if(x>=bx && x<=bx+bw && y>=by && y<=by+bh){
+      dragOffset = { dx:x-bx, dy:y-by };
+      canvas.setPointerCapture(e.pointerId);
+      canvas.style.cursor='grabbing';
+    }
+  });
+  canvas.addEventListener('pointermove', e=>{
+    if(!rec.lastBubbleRect) return;
+    const {x,y} = toCanvasXY(e);
+    if(dragOffset){
+      const {bw,bh} = rec.lastBubbleRect;
+      let nbx = x-dragOffset.dx, nby = y-dragOffset.dy;
+      nbx = Math.max(0, Math.min(nbx, canvas.width-bw));
+      nby = Math.max(0, Math.min(nby, canvas.height-bh));
+      rec.bubblePos = { xf:nbx/canvas.width, yf:nby/canvas.height };
+    } else {
+      const {bx,by,bw,bh} = rec.lastBubbleRect;
+      canvas.style.cursor = (x>=bx&&x<=bx+bw&&y>=by&&y<=by+bh)? 'grab' : 'default';
+    }
+  });
+  function endDrag(e){
+    if(dragOffset){ try{ canvas.releasePointerCapture(e.pointerId); }catch(err){} }
+    dragOffset = null;
+    canvas.style.cursor='';
+  }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+})();
+$('#recPauseBtn').addEventListener('click', togglePause);
+$('#recStopBtn').addEventListener('click', stopRecording);
+
+$('#recToMp4Btn').addEventListener('click', async ()=>{
+  if(!rec.outBlob) return;
+  const btn=$('#recToMp4Btn'); btn.disabled=true;
+  const progWrap=$('#recConvertProgress'), progBar=$('#recConvertProgressBar'), progLabel=$('#recConvertProgressLabel');
+  progWrap.classList.add('show'); setProgressTarget(progBar, progLabel);
+  try{
+    const ff = await ensureFFmpeg();
+    await ffWriteFile(ff, 'rec_in.webm', rec.outBlob);
+    if(rec.outWasAudioOnly){
+      await execOrThrow(ff, ['-i','rec_in.webm','-c:a','libmp3lame','-q:a','2','rec_out.mp3']);
+      const data = await ff.readFile('rec_out.mp3');
+      downloadBlob(new Blob([data.buffer],{type:'audio/mp3'}), 'kayit.mp3');
+      toast('MP3 olarak indirildi.','ok');
+      await ff.deleteFile('rec_out.mp3');
+    } else {
+      await execOrThrow(ff, ['-i','rec_in.webm','-vf','scale=trunc(iw/2)*2:trunc(ih/2)*2','-c:v','libx264','-pix_fmt','yuv420p','-preset','veryfast','-c:a','aac','-max_muxing_queue_size','9999','rec_out.mp4']);
+      const data = await ff.readFile('rec_out.mp4');
+      downloadBlob(new Blob([data.buffer],{type:'video/mp4'}), 'kayit.mp4');
+      toast('MP4 olarak indirildi.','ok');
+      await ff.deleteFile('rec_out.mp4');
+    }
+    await ff.deleteFile('rec_in.webm');
+  }catch(err){ console.error(err); toast('Dönüştürme başarısız: '+err.message,'err'); }
+  finally{ btn.disabled=false; progWrap.classList.remove('show'); }
+});
+
+$('#recToEditorBtn').addEventListener('click', ()=>{
+  if(!rec.outBlob) return;
+  const file = new File([rec.outBlob], 'kayit.webm', {type:'video/webm'});
+  switchTab('editor');
+  loadEditorFile(file);
+  toast('Kayıt düzenleyiciye gönderildi.','ok');
+});
+
+</script>
+<script>
+/* ══════════════════════ YERİNDE sesli komut köprüsü ══════════════════════
+   Bu blok, video-atolyesi.html'in yukarıdaki type="module" betiğinden BAĞIMSIZ,
+   sıradan (classic) bir script'tir. Kasıtlı olarak öyle: yukarıdaki modülün iç
+   değişkenlerine erişmeye çalışmak yerine, tıpkı gerçek bir kullanıcı gibi
+   sayfadaki GERÇEK form elemanlarını (select/input/checkbox) değiştirip GERÇEK
+   düğmelere tıklıyor — böylece modül içindeki tüm doğrulanmış iş mantığı
+   (ffmpeg komutları, dosya kontrolleri vb.) olduğu gibi yeniden kullanılıyor.
+   NOT: Tarayıcı güvenliği nedeniyle <input type=file> içeriği JS ile
+   DOLDURULAMAZ — bu yüzden "video/ses/görsel dosyası seç" gibi komutlar
+   burada YOKTUR; kullanıcının dosyayı önce elle seçmesi gerekir. Aynı şekilde
+   ekran/kamera paylaşım izni isteyen "kaynak seç" komutu, tarayıcının kullanıcı
+   etkileşimi (gerçek tıklama) şartı nedeniyle bazı tarayıcılarda engellenebilir.
+*/
+(function(){
+  function bridgeToast(msg, kind){
+    var wrap = document.getElementById('toastWrap');
+    if(!wrap){ console.log('[YERİNDE]', msg); return; }
+    var el = document.createElement('div');
+    el.className = 'toast' + (kind==='err'?' err':kind==='ok'?' ok':'');
+    el.textContent = msg;
+    wrap.appendChild(el);
+    requestAnimationFrame(function(){ el.classList.add('show'); });
+    setTimeout(function(){
+      el.classList.remove('show');
+      setTimeout(function(){ el.remove(); }, 300);
+    }, 3200);
+  }
+
+  function setNativeValue(el, value){
+    // React/Vue benzeri "değer takibi" burada yok ama yine de en güvenli yol
+    // native setter'ı çağırıp ardından gerçek bir Event yaymak.
+    el.value = value;
+    el.dispatchEvent(new Event('input', {bubbles:true}));
+    el.dispatchEvent(new Event('change', {bubbles:true}));
+  }
+  // <select> elemanları için: gelen değer tam olarak option value'suna
+  // uymayabilir (ör. LLM "90cw" yerine "sağa döndür" gönderebilir). Önce
+  // value'ya, olmazsa görünen etikete, o da olmazsa içerir/yaklaşık
+  // eşleşmeye bakarak doğru option'ı buluyoruz.
+  function resolveSelectValue(select, raw){
+    if(!select || raw === undefined || raw === null || raw === '') return null;
+    var target = String(raw).trim();
+    var targetLower = target.toLowerCase();
+    var opts = Array.prototype.slice.call(select.options);
+    for(var i=0;i<opts.length;i++){ if(opts[i].value === target) return opts[i].value; }
+    for(var i=0;i<opts.length;i++){ if(opts[i].value.toLowerCase() === targetLower) return opts[i].value; }
+    for(var i=0;i<opts.length;i++){ if(opts[i].textContent.trim().toLowerCase() === targetLower) return opts[i].value; }
+    for(var i=0;i<opts.length;i++){
+      var label = opts[i].textContent.trim().toLowerCase();
+      if(label.indexOf(targetLower) !== -1 || targetLower.indexOf(label) !== -1) return opts[i].value;
+    }
+    for(var i=0;i<opts.length;i++){
+      if(targetLower.indexOf(opts[i].value.toLowerCase()) !== -1) return opts[i].value;
+    }
+    return null;
+  }
+  function setSelectValue(select, raw){
+    var resolved = resolveSelectValue(select, raw);
+    if(resolved === null){
+      bridgeToast('⚠️ "' + raw + '" seçeneği bulunamadı.', 'err');
+      return false;
+    }
+    setNativeValue(select, resolved);
+    return true;
+  }
+  function setChecked(el, checked){
+    if(!el) return false;
+    el.checked = checked;
+    el.dispatchEvent(new Event('input', {bubbles:true}));
+    el.dispatchEvent(new Event('change', {bubbles:true}));
+    return true;
+  }
+  function clickIfEnabled(id, warnMsg){
+    var el = document.getElementById(id);
+    if(!el){ bridgeToast('⚠️ Bu düğme bulunamadı.', 'err'); return false; }
+    if(el.disabled){ bridgeToast(warnMsg || '⚠️ Bu işlem için önce bir dosya açman gerekiyor.', 'err'); return false; }
+    el.click();
+    return true;
+  }
+  function goToTab(name){
+    var btn = document.querySelector('nav.tabs button[data-tab="'+name+'"]');
+    if(btn) btn.click();
+  }
+  function setRadio(name, value){
+    var radios = Array.prototype.slice.call(document.querySelectorAll('input[name="'+name+'"]'));
+    if(!radios.length) return false;
+    var target = String(value || '').trim();
+    var targetLower = target.toLowerCase();
+    var match = radios.find(function(r){ return r.value === target; })
+      || radios.find(function(r){ return r.value.toLowerCase() === targetLower; })
+      || radios.find(function(r){
+           var lbl = r.closest('label');
+           return lbl && lbl.textContent.trim().toLowerCase().indexOf(targetLower) !== -1 && targetLower.length > 1;
+         });
+    if(!match){
+      bridgeToast('⚠️ "' + value + '" seçeneği bulunamadı.', 'err');
+      return false;
+    }
+    return setChecked(match, true);
+  }
+
+  function handleVideoAtolyesiCommand(cmd){
+    var sekme = cmd.sekme || '';
+    var eylem = cmd.eylem || '';
+    var deger = cmd.deger;
+
+    if(sekme === 'editor' || sekme === 'slides' || sekme === 'record'){
+      goToTab(sekme);
+    }
+
+    switch(eylem){
+      /* ---- tema ---- */
+      case 'tema': {
+        var themeSel = document.getElementById('themeSelect');
+        if(themeSel && deger) setSelectValue(themeSel, deger);
+        bridgeToast('🎨 Tema değiştirildi.', 'ok');
+        break;
+      }
+      /* ---- EDİTÖR sekmesi ---- */
+      case 'kirpma_modu':
+        setRadio('trimMode', deger);
+        bridgeToast('✅ Ayarlandı.', 'ok');
+        break;
+      case 'hiz':
+        setSelectValue(document.getElementById('speedSelect'), deger);
+        bridgeToast('🎚️ Hız ayarlandı.', 'ok');
+        break;
+      case 'donus':
+        setSelectValue(document.getElementById('rotateSelect'), deger);
+        bridgeToast('🔄 Döndürme ayarlandı.', 'ok');
+        break;
+      case 'fade_giris':
+        setChecked(document.getElementById('fadeInChk'), deger !== 'false' && deger !== '0');
+        bridgeToast('✅ Ayarlandı.', 'ok');
+        break;
+      case 'fade_cikis':
+        setChecked(document.getElementById('fadeOutChk'), deger !== 'false' && deger !== '0');
+        bridgeToast('✅ Ayarlandı.', 'ok');
+        break;
+      case 'metin':
+        setNativeValue(document.getElementById('overlayTextInput'), deger || '');
+        bridgeToast('✏️ Metin ayarlandı.', 'ok');
+        break;
+      case 'metin_konum':
+        setRadio('textPos', deger);
+        bridgeToast('✅ Ayarlandı.', 'ok');
+        break;
+      case 'kirp_ac_kapa':
+        clickIfEnabled('cropToggleBtn', '⚠️ Önce bir video açman gerekiyor.');
+        break;
+      case 'kirp_sifirla':
+        document.getElementById('cropResetBtn') && document.getElementById('cropResetBtn').click();
+        bridgeToast('↩️ Kırpma sıfırlandı.', 'ok');
+        break;
+      case 'kirp_9_16':
+        clickIfEnabled('presetStoryBtn', '⚠️ Önce bir video açman gerekiyor.');
+        break;
+      case 'kirp_1_1':
+        clickIfEnabled('presetSquareBtn', '⚠️ Önce bir video açman gerekiyor.');
+        break;
+      case 'kirp_16_9':
+        clickIfEnabled('presetWideBtn', '⚠️ Önce bir video açman gerekiyor.');
+        break;
+      case 'disa_aktar':
+        clickIfEnabled('exportTrimBtn', '⚠️ Önce bir video açman gerekiyor.');
+        break;
+      case 'devam_et': {
+        var contBtn = document.getElementById('continueEditingBtn');
+        if(contBtn && !contBtn.classList.contains('hidden')) contBtn.click();
+        else bridgeToast('⚠️ Devam edilecek bir sonuç yok — önce dışa aktarman gerekiyor.', 'err');
+        break;
+      }
+      case 'sikistir_kalite':
+        setSelectValue(document.getElementById('compressQualitySelect'), deger);
+        bridgeToast('✅ Ayarlandı.', 'ok');
+        break;
+      case 'sikistir':
+        clickIfEnabled('compressBtn', '⚠️ Önce bir video açman gerekiyor.');
+        break;
+      case 'ses_ayir':
+        clickIfEnabled('extractAudioBtn', '⚠️ Önce bir video açman gerekiyor.');
+        break;
+      case 'sessiz_indir':
+        clickIfEnabled('muteDownloadBtn', '⚠️ Önce bir video açman gerekiyor.');
+        break;
+      case 'ses_modu':
+        setRadio('audioMode', deger);
+        bridgeToast('✅ Ayarlandı.', 'ok');
+        break;
+      case 'ses_uygula':
+        clickIfEnabled('applyAudioBtn', '⚠️ Önce bir ses dosyası eklemen gerekiyor (dosya seçimini sesle yapamam).');
+        break;
+      case 'kuyruga_ekle':
+        clickIfEnabled('addToQueueBtn', '⚠️ Önce bir video açman gerekiyor.');
+        break;
+      case 'birlestir':
+        clickIfEnabled('mergeBtn', '⚠️ Sıraya önce en az bir video eklemen gerekiyor.');
+        break;
+
+      /* ---- SLAYT sekmesi ---- */
+      case 'slayt_cozunurluk':
+        setSelectValue(document.getElementById('slidesResSelect'), deger);
+        bridgeToast('✅ Ayarlandı.', 'ok');
+        break;
+      case 'slayt_gecis':
+        setChecked(document.getElementById('slidesCrossfadeChk'), deger !== 'false' && deger !== '0');
+        bridgeToast('✅ Ayarlandı.', 'ok');
+        break;
+      case 'slayt_olustur':
+        clickIfEnabled('buildSlidesBtn', '⚠️ Önce görsel eklemen gerekiyor.');
+        break;
+
+      /* ---- KAYIT sekmesi ---- */
+      case 'kayit_modu':
+        setRadio('recMode', deger);
+        bridgeToast('🎛️ Kayıt modu ayarlandı.', 'ok');
+        break;
+      case 'kayit_gecikme':
+        setRadio('recDelay', deger);
+        bridgeToast('✅ Ayarlandı.', 'ok');
+        break;
+      case 'kaynak_sec':
+        // Tarayıcı güvenliği: ekran/kamera izin penceresi gerçek bir kullanıcı
+        // tıklamasını gerektirebilir; bazı tarayıcılarda bu programatik tetikleme
+        // engellenip sessizce başarısız olabilir.
+        document.getElementById('recSelectSourceBtn') && document.getElementById('recSelectSourceBtn').click();
+        break;
+      case 'kaydi_baslat':
+        document.getElementById('recStartBtn') && document.getElementById('recStartBtn').click();
+        break;
+      case 'kaydi_duraklat':
+        document.getElementById('recPauseBtn') && document.getElementById('recPauseBtn').click();
+        break;
+      case 'kaydi_durdur':
+        document.getElementById('recStopBtn') && document.getElementById('recStopBtn').click();
+        break;
+      case 'kayit_vazgec':
+        document.getElementById('recCancelStageBtn') && document.getElementById('recCancelStageBtn').click();
+        break;
+      case 'kamera_ac_kapa':
+        document.getElementById('camToggle') && document.getElementById('camToggle').click();
+        break;
+      case 'mikrofon_ac_kapa':
+        document.getElementById('micToggle') && document.getElementById('micToggle').click();
+        break;
+      case 'kaydi_donustur':
+        document.getElementById('recToMp4Btn') && document.getElementById('recToMp4Btn').click();
+        break;
+      case 'duzenleyiciye_gonder':
+        document.getElementById('recToEditorBtn') && document.getElementById('recToEditorBtn').click();
+        break;
+      case 'kapat':
+        bridgeToast('👋 Kapatılıyor...', 'ok');
+        setTimeout(function(){
+          window.close();
+          bridgeToast('⚠️ Tarayıcı bu sekmeyi otomatik kapatmama izin vermedi - elle kapatman gerekebilir.', 'err');
+        }, 400);
+        break;
+
+      default:
+        bridgeToast('⚠️ Tanınmayan ayar: ' + eylem, 'err');
+    }
+  }
+
+  var vaSocket = null;
+  function vaConnect(){
+    try{
+      vaSocket = new WebSocket('ws://127.0.0.1:8765/');
+      vaSocket.onmessage = function(ev){
+        try{
+          var cmd = JSON.parse(ev.data);
+          if(cmd && cmd.action === 'video_atolyesi_ayar') handleVideoAtolyesiCommand(cmd);
+        }catch(e){ console.error('[YERİNDE köprü]', e); }
+      };
+      vaSocket.onclose = function(){ setTimeout(vaConnect, 2000); };
+      vaSocket.onerror = function(){ try{ vaSocket.close(); }catch(e){} };
+    }catch(e){ setTimeout(vaConnect, 2000); }
+  }
+  vaConnect();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+# Yerinde ANKA GRUB teması (final24.md §1)
+# Krem zemin + koyu yeşil; TEK "yerinde ANKA" lockup background.png içinde
+# (üst-orta, küçük). title-text ve logo.png resmi KALDIRILDI: üstte 3'lü
+# yazı yerine yalnızca 1 lockup görünür.
+# Not: GRUB 2.14 boot_menu'da item_background özelliği yoktur; şerit
+# selected_item_pixmap_style ile çizilir (geçmişte kullanılan
+# selected_item_attr de GRUB tarafından yok sayılıyordu).
+
+desktop-image: "background.png"
+desktop-image-scale-method: "stretch"
+desktop-color: "#F4EFE4"
+
+terminal-font: "Unifont Regular 16"
+terminal-left: "10%"
+terminal-top: "80%"
+terminal-width: "80%"
+terminal-height: "12%"
+
++ boot_menu {
+    left = 18%
+    top = 38%
+    width = 64%
+    height = 36%
+    item_color = "#0B3D2E"
+    selected_item_color = "#C74A1F"
+    item_font = "DejaVu Sans Regular 32"
+    selected_item_font = "DejaVu Sans Regular 32"
+    selected_item_pixmap_style = "select_*.png"
+    item_height = 56
+    item_spacing = 10
+    item_padding = 6
+}

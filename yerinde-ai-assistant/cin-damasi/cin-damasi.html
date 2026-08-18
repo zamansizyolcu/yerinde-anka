@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Çin Daması — YERİNDE</title>
+<style>
+  :root {
+    --bg: #071a13; --panel: #0e241b; --pri: #8ff0cc; --text: #eaf5ee; --dim: #4d6b57;
+    --p1: #df6b32; --p1d: #a84f22; --p2: #4aa8c9; --p2d: #2f7591;
+    --empty: #16332a; --emptystroke: #24473a; --simple: #8ff0cc; --jump: #f6d9a0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", "Noto Sans", sans-serif; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; padding: 18px;
+  }
+  h1 { font-size: 26px; margin: 6px 0 14px; color: var(--pri); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 14px; }
+  button, select {
+    background: #102420; color: var(--text); border: 1px solid var(--dim);
+    border-radius: 8px; padding: 10px 16px; font-size: 15px; cursor: pointer;
+  }
+  button.active { background: var(--pri); color: #06140f; font-weight: bold; border-color: var(--pri); }
+  label { font-size: 15px; display: flex; align-items: center; gap: 6px; }
+  .layout { display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  #boardWrap { width: min(640px, 92vw); }
+  .side-panel { width: 260px; background: #0e241b; border-radius: 10px; padding: 14px; min-height: 200px; }
+  .status { font-size: 18px; margin-bottom: 10px; font-weight: bold; }
+  .status.p1 { color: var(--p1); } .status.p2 { color: var(--p2); }
+  .legend { font-size: 14px; display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .legend span.dotchip { display:inline-block; width:14px; height:14px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .cell { cursor: pointer; }
+  .cell.empty { fill: var(--empty); stroke: var(--emptystroke); stroke-width: 1.5; }
+  .cell.p1 { fill: var(--p1); stroke: var(--p1d); stroke-width: 2; }
+  .cell.p2 { fill: var(--p2); stroke: var(--p2d); stroke-width: 2; }
+  .cell.selected { stroke: #fff; stroke-width: 3; }
+  .target-simple { fill: none; stroke: var(--simple); stroke-width: 3; }
+  .target-jump { fill: none; stroke: var(--jump); stroke-width: 3; stroke-dasharray: 4 3; }
+  .hint { font-size: 13px; opacity: 0.65; margin-top: 10px; }
+</style>
+</head>
+<body>
+<h1>⬡ Çin Daması — YERİNDE</h1>
+
+<div class="toolbar">
+  <button id="mode2p" class="active">İki Kişi</button>
+  <button id="modeai">Yerinde'ye Karşı</button>
+  <button id="newgame">Yeni Oyun</button>
+  <label><input type="checkbox" id="speak"> Sesli anons</label>
+</div>
+
+<div class="layout">
+  <div id="boardWrap"><svg id="svg" width="100%" viewBox="0 0 800 700"></svg></div>
+  <div class="side-panel">
+    <div class="status p1" id="status">Turuncu'nun sırası</div>
+    <div class="legend">
+      <div><span class="dotchip" style="background:var(--p1)"></span> Turuncu (Oyuncu 1)</div>
+      <div><span class="dotchip" style="background:var(--p2)"></span> Mavi (Oyuncu 2)</div>
+    </div>
+    <div class="hint">Bir taşa tıkla; yeşil kenarlı kareler tek adım, altın kenarlı (kesikli) kareler sıçrama ile gidilebilir. Amaç: tüm taşlarını tahtanın karşı köşesine taşımak.</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ===================== ÇİN DAMASI MOTORU (test edildi: 121 hücre, sıçrama zinciri, kazanma kontrolü) ===================== */
+const DIRS = [[1,-1,0],[1,0,-1],[0,1,-1],[-1,1,0],[-1,0,1],[0,-1,1]];
+const R = 4;
+function add(a,b){ return [a[0]+b[0],a[1]+b[1],a[2]+b[2]]; }
+function mul(a,k){ return [a[0]*k,a[1]*k,a[2]*k]; }
+function key(c){ return c[0]+","+c[1]+","+c[2]; }
+
+function buildBoard(){
+  const hexagon=[];
+  for (let x=-R;x<=R;x++) for (let y=-R;y<=R;y++) {
+    const z=-x-y;
+    if (Math.max(Math.abs(x),Math.abs(y),Math.abs(z))<=R) hexagon.push([x,y,z]);
+  }
+  const points=[];
+  for (let i=0;i<6;i++) {
+    const di=DIRS[i], dj=DIRS[(i+1)%6];
+    const pts=[];
+    for (let a=1;a<=4;a++) for (let b=0;b<=4-a;b++) pts.push(add(mul(di,R+a),mul(dj,b)));
+    points.push(pts);
+  }
+  const all = hexagon.concat(...points);
+  const cellSet = new Set(all.map(key));
+  return { hexagon, points, all, cellSet };
+}
+const BOARD = buildBoard();
+function onBoard(c){ return BOARD.cellSet.has(key(c)); }
+function initialGameState(){
+  const cells=new Map();
+  for (const c of BOARD.all) cells.set(key(c),0);
+  for (const c of BOARD.points[0]) cells.set(key(c),1);
+  for (const c of BOARD.points[3]) cells.set(key(c),2);
+  return { cells };
+}
+function get(state,c){ return state.cells.get(key(c)); }
+function movesFrom(state,from){
+  const simple=[];
+  for (const d of DIRS) { const n=add(from,d); if (onBoard(n)&&get(state,n)===0) simple.push(n); }
+  const jumpLandings=new Map();
+  const startKey=key(from);
+  function dfs(pos,visited){
+    for (const d of DIRS) {
+      const mid=add(pos,d), land=add(pos,mul(d,2));
+      if (!onBoard(mid)||!onBoard(land)) continue;
+      if (get(state,mid)===0) continue;
+      if (get(state,land)!==0) continue;
+      const landKey=key(land);
+      if (landKey===startKey||visited.has(landKey)) continue;
+      if (!jumpLandings.has(landKey)) jumpLandings.set(landKey,true);
+      visited.add(landKey);
+      dfs(land,visited);
+    }
+  }
+  dfs(from,new Set());
+  const jumps = Array.from(jumpLandings.keys()).map(k => k.split(",").map(Number));
+  return { simple, jumps };
+}
+function move(state,from,to){
+  const cells=new Map(state.cells);
+  const val=cells.get(key(from));
+  cells.set(key(from),0); cells.set(key(to),val);
+  return { cells };
+}
+function hasWon(state,player){
+  const targetPoints = player===1 ? BOARD.points[3] : BOARD.points[0];
+  return targetPoints.every(c => get(state,c)===player);
+}
+
+/* ===================== BASİT AI (açgözlü ilerleme + biraz çeşitlilik) ===================== */
+function proj(cell,dir){ return cell[0]*dir[0]+cell[1]*dir[1]+cell[2]*dir[2]; }
+function piecesOf(state,player){
+  const out=[];
+  for (const [k,v] of state.cells.entries()) if (v===player) out.push(k.split(",").map(Number));
+  return out;
+}
+function forwardDir(player){
+  // DÜZELTME: DIRS[0], nokta0'ı MERKEZDEN UZAKLAŞTIRAN yöndür — yani nokta3'ün TAM TERSİ.
+  // Önceki sürümde bu ters kurulmuştu; bu yüzden yapay zeka ileri gitmek yerine
+  // amaçsızca ileri-geri gidip kısır döngüye giriyordu.
+  const d = DIRS[0];
+  return player===1 ? d.map(v=>-v) : d;
+}
+const _targetSetCache = {};
+function targetSet(player){
+  if (!_targetSetCache[player]) {
+    const pts = player===1 ? BOARD.points[3] : BOARD.points[0];
+    _targetSetCache[player] = new Set(pts.map(key));
+  }
+  return _targetSetCache[player];
+}
+function inTarget(cell,player){ return targetSet(player).has(key(cell)); }
+// Taş değeri: ilerleme + hedef bölgeye GİRMEK için net, güçlü bir ödül (aksi halde
+// hedefin hemen dışındaki bir kareye "yerleşip" oraya sıkışabiliyordu).
+function cellValue(cell,player){ return proj(cell,forwardDir(player)) + (inTarget(cell,player) ? 100 : 0); }
+function countInTarget(state,player){ return piecesOf(state,player).filter(c=>inTarget(c,player)).length; }
+function myPiecesHash(state,player){ return piecesOf(state,player).map(key).sort().join("|"); }
+
+const aiMemory = { 1: { hist: [], stall: 0, best: -1, last: null }, 2: { hist: [], stall: 0, best: -1, last: null } };
+const AI_HISTORY_LEN = 40;
+const AI_STALL_LIMIT = 20;
+
+function aiChooseMove(state,player){
+  const mem = aiMemory[player];
+  const forceRandom = mem.stall >= AI_STALL_LIMIT;
+  const all = [];
+  for (const from of piecesOf(state,player)) {
+    const { simple, jumps } = movesFrom(state,from);
+    for (const to of simple) all.push({from,to,score:cellValue(to,player)-cellValue(from,player)});
+    for (const to of jumps) all.push({from,to,score:cellValue(to,player)-cellValue(from,player)+2});
+  }
+  if (all.length===0) return null;
+
+  let chosen;
+  if (forceRandom) {
+    // Sıkışma kırıcı: henüz hedefte olmayan taşları rastgele oynat (bitmiş taşları
+    // rastgele oynatmanın faydası yok, sadece boşuna hamle harcar). Yine de kendi
+    // bir önceki hamlesinin tam tersini mümkünse burada da eler.
+    const unfinished = all.filter(c => !inTarget(c.from, player));
+    let pool = unfinished.length>0 ? unfinished : all;
+    if (mem.last) {
+      const notRev = pool.filter(c => !(key(c.from)===key(mem.last.to) && key(c.to)===key(mem.last.from)));
+      if (notRev.length>0) pool = notRev;
+    }
+    chosen = pool[Math.floor(Math.random()*pool.length)];
+  } else {
+    const recentSet = new Set(mem.hist);
+    // 1) Geriye gitmeyen hamleler tercih edilir
+    const nonNegative = all.filter(c => c.score>=0);
+    let pool = nonNegative.length>0 ? nonNegative : all;
+    // 2) Yakın geçmişte görülmüş taş dizilimlerine dönmeyenler tercih edilir
+    const withHash = pool.map(c => ({...c, resultHash: myPiecesHash(move(state,c.from,c.to),player)}));
+    const fresh = withHash.filter(c => !recentSet.has(c.resultHash));
+    let finalPool = fresh.length>0 ? fresh : withHash;
+    // 3) Kendi bir önceki hamlesinin TAM TERSİ olan hamle, başka seçenek varsa elenir
+    //    (en göze batan "bir ileri bir geri" örüntüsünü doğrudan engeller)
+    if (mem.last) {
+      const notReversal = finalPool.filter(c => !(key(c.from)===key(mem.last.to) && key(c.to)===key(mem.last.from)));
+      if (notReversal.length>0) finalPool = notReversal;
+    }
+    finalPool.sort((a,b)=>b.score-a.score);
+    const topScore = finalPool[0].score;
+    const nearTop = finalPool.filter(c => c.score >= topScore-2);
+    chosen = (Math.random()<0.3 && nearTop.length>1) ? nearTop[Math.floor(Math.random()*nearTop.length)] : finalPool[0];
+  }
+
+  const nextState = move(state, chosen.from, chosen.to);
+  mem.hist.push(myPiecesHash(nextState, player));
+  if (mem.hist.length > AI_HISTORY_LEN) mem.hist.shift();
+  const newCount = countInTarget(nextState, player);
+  if (newCount > mem.best) { mem.best = newCount; mem.stall = 0; }
+  else mem.stall++;
+  mem.last = { from: chosen.from, to: chosen.to };
+
+  return chosen;
+}
+
+/* ===================== ARAYÜZ ===================== */
+const SCALE = 26;
+const CELL_R = 13;
+function cubeToXY(c){
+  const [x,,z]=c;
+  const px = Math.sqrt(3) * (x + z/2) * SCALE;
+  const py = 1.5 * z * SCALE;
+  return [px,py];
+}
+let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+const cellPixel = new Map();
+for (const c of BOARD.all) {
+  const [px,py]=cubeToXY(c);
+  cellPixel.set(key(c), [px,py]);
+  minX=Math.min(minX,px); maxX=Math.max(maxX,px);
+  minY=Math.min(minY,py); maxY=Math.max(maxY,py);
+}
+const PAD = 34;
+const offX = -minX + PAD, offY = -minY + PAD;
+const VB_W = (maxX-minX) + PAD*2, VB_H = (maxY-minY) + PAD*2;
+
+let state = initialGameState();
+let mode = "2p";
+let turn = 1;
+let selected = null;
+let targets = { simple: [], jumps: [] };
+let gameOver = false;
+let moveCount = 0;
+const MAX_MOVES_BEFORE_DRAW_OFFER = 500; // gerçekten çok uzarsa (nadir tıkanma) nazikçe bitir
+
+const svg = document.getElementById("svg");
+const statusEl = document.getElementById("status");
+
+function speak(text){
+  if (!document.getElementById("speak").checked) return;
+  try { const u=new SpeechSynthesisUtterance(text); u.lang="tr-TR"; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch(e){}
+}
+
+function render(){
+  svg.setAttribute("viewBox", `0 0 ${VB_W} ${VB_H}`);
+  svg.innerHTML = "";
+  for (const c of BOARD.all) {
+    const k = key(c);
+    const [px,py] = cellPixel.get(k);
+    const cx = px+offX, cy = py+offY;
+    const val = get(state,c);
+    const circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    circle.setAttribute("cx",cx); circle.setAttribute("cy",cy); circle.setAttribute("r",CELL_R);
+    circle.setAttribute("class","cell " + (val===0?"empty":val===1?"p1":"p2"));
+    circle.dataset.cell = k;
+    if (selected && key(selected)===k) circle.classList.add("selected");
+    circle.addEventListener("click", () => onCellClick(c));
+    svg.appendChild(circle);
+  }
+  for (const c of targets.simple) drawTargetRing(c,"target-simple");
+  for (const c of targets.jumps) drawTargetRing(c,"target-jump");
+  updateStatus();
+}
+function drawTargetRing(c,cls){
+  const [px,py]=cellPixel.get(key(c));
+  const ring=document.createElementNS("http://www.w3.org/2000/svg","circle");
+  ring.setAttribute("cx",px+offX); ring.setAttribute("cy",py+offY); ring.setAttribute("r",CELL_R+3);
+  ring.setAttribute("class",cls);
+  ring.style.pointerEvents="none";
+  svg.appendChild(ring);
+}
+function updateStatus(){
+  statusEl.classList.remove("p1","p2");
+  if (gameOver) return;
+  statusEl.classList.add(turn===1?"p1":"p2");
+  statusEl.textContent = (turn===1?"Turuncu":"Mavi") + "'nun sırası" + (mode==="ai"&&turn===2?" (YERİNDE düşünüyor...)":"");
+}
+function onCellClick(c){
+  if (gameOver) return;
+  if (mode==="ai" && turn===2) return;
+  const val = get(state,c);
+  if (selected) {
+    const isSimple = targets.simple.some(t => key(t)===key(c));
+    const isJump = targets.jumps.some(t => key(t)===key(c));
+    if (isSimple || isJump) { doMove(selected, c); return; }
+    if (val===turn) { selectPiece(c); return; }
+    selected=null; targets={simple:[],jumps:[]}; render(); return;
+  }
+  if (val===turn) selectPiece(c);
+}
+function selectPiece(c){
+  selected=c;
+  targets = movesFrom(state, c);
+  render();
+}
+function doMove(from,to){
+  state = move(state, from, to);
+  selected=null; targets={simple:[],jumps:[]};
+  moveCount++;
+  if (hasWon(state, turn)) {
+    gameOver=true;
+    const label = turn===1?"Turuncu":"Mavi";
+    statusEl.textContent = `${label} kazandı! 🎉`;
+    speak(`${label} kazandı!`);
+    render();
+    return;
+  }
+  if (moveCount >= MAX_MOVES_BEFORE_DRAW_OFFER) {
+    gameOver=true;
+    statusEl.textContent = "Bu parti çok uzadı, berabere sayalım — Yeni Oyun ile tekrar başlayabilirsin.";
+    speak("Bu parti çok uzadı, berabere.");
+    render();
+    return;
+  }
+  turn = turn===1?2:1;
+  render();
+  if (mode==="ai" && turn===2) setTimeout(runAiTurn, 250);
+}
+function runAiTurn(){
+  const mv = aiChooseMove(state,2);
+  if (!mv) { turn=1; render(); return; }
+  doMove(mv.from, mv.to);
+}
+function newGame(){
+  state = initialGameState();
+  turn=1; selected=null; targets={simple:[],jumps:[]}; gameOver=false; moveCount=0;
+  aiMemory[1] = { hist: [], stall: 0, best: -1, last: null };
+  aiMemory[2] = { hist: [], stall: 0, best: -1, last: null };
+  render();
+}
+document.getElementById("mode2p").onclick = () => {
+  mode="2p"; document.getElementById("mode2p").classList.add("active"); document.getElementById("modeai").classList.remove("active"); newGame();
+};
+document.getElementById("modeai").onclick = () => {
+  mode="ai"; document.getElementById("modeai").classList.add("active"); document.getElementById("mode2p").classList.remove("active"); newGame();
+};
+document.getElementById("newgame").onclick = newGame;
+
+window.__debug = { getState: () => state, getTurn: () => turn, movesFrom, BOARD, key };
+
+newGame();
+
+/* ---------- YERİNDE sesli kapatma köprüsü ---------- */
+(function(){
+  function connect(){
+    try {
+      var ws = new WebSocket("ws://127.0.0.1:8765/");
+      ws.onmessage = function(ev){
+        try {
+          var cmd = JSON.parse(ev.data);
+          if (cmd && cmd.action === "close_tool") { window.close(); }
+        } catch(e) {}
+      };
+      ws.onclose = function(){ setTimeout(connect, 2500); };
+      ws.onerror = function(){ try{ ws.close(); }catch(e){} };
+    } catch(e) {
+      setTimeout(connect, 2500);
+    }
+  }
+  connect();
+})();
+
+</script>
+</body>
+</html>

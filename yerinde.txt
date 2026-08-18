@@ -1,0 +1,8 @@
+[21:38:37] ERROR: ERR: Konuşma tanıma başlatılamadı — Ne Whisper ne Vosk yüklenebildi (No module named 'faster_whisper'). Kur: pip install faster-whisper ya da vosk modelini proje klasörüne koy.. Kur: pip install faster-whisper sounddevice numpy
+[21:38:37] ERROR: ERR: Mikrofon/STT — Ne Whisper ne Vosk yüklenebildi (No module named 'faster_whisper'). Kur: pip install faster-whisper ya da vosk modelini proje klasörüne koy.
+[21:38:47] ERROR: ERR: Ses listesi alınamadı — 'str' object has no attribute 'get'
+[21:38:48] ERROR: ERR: Ses listesi alınamadı — 'str' object has no attribute 'get'
+[21:38:53] ERROR: ERR: Beklenmedik hata (uygulama açık kalıyor) — [Errno 13] Permission denied: '/opt/yerinde-ai-assistant/config/api_keys.json'
+[21:38:54] ERROR: ERR: Beklenmedik hata (uygulama açık kalıyor) — [Errno 13] Permission denied: '/opt/yerinde-ai-assistant/config/api_keys.json'
+[21:38:54] ERROR: ERR: Beklenmedik hata (uygulama açık kalıyor) — [Errno 13] Permission denied: '/opt/yerinde-ai-assistant/config/api_keys.json'
+[21:38:56] ERROR: ERR: Beklenmedik hata (uygulama açık kalıyor) — [Errno 13] Permission denied: '/opt/yerinde-ai-assistant/config/api_keys.json'

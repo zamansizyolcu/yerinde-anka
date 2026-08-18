@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>YERİNDE — Algoritma ve Akış Şeması</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Segoe UI", Arial, sans-serif;
+    background: #0d1f18; color: #e8f5ee; height: 100vh; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  header {
+    background: #123527; padding: 10px 16px; display: flex; align-items: center;
+    gap: 10px; flex-wrap: wrap; border-bottom: 2px solid #1f7a6f;
+  }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; color: #8ff0cc; white-space: nowrap; }
+  button {
+    background: #1f7a6f; color: #fff; border: none; border-radius: 6px;
+    padding: 8px 12px; cursor: pointer; font-size: 13px; font-weight: 600;
+    transition: background .15s;
+  }
+  button:hover { background: #29a08f; }
+  button.active { background: #e8a13f; color: #1a1a1a; }
+  button.danger { background: #b5443c; }
+  button.danger:hover { background: #d1544a; }
+  .sep { width: 1px; background: #2a5747; align-self: stretch; margin: 0 4px; }
+  main { flex: 1; display: flex; overflow: hidden; }
+  #canvasWrap { flex: 1; overflow: auto; background: #f4efe4; position: relative; }
+  svg#canvas { display: block; cursor: default; }
+  .shape-rect { fill: #ffffff; stroke: #1f7a6f; stroke-width: 2; }
+  .shape-rect.karar { fill: #fff4de; stroke: #e8a13f; }
+  .shape-rect.io { fill: #e6f3ff; stroke: #3a6ea5; }
+  .shape-rect.baslat { fill: #dff5e8; stroke: #2e8b57; }
+  .shape-rect.bitir { fill: #fbe3e1; stroke: #b5443c; }
+  .shape-rect.active { stroke: #e8a13f; stroke-width: 4; filter: drop-shadow(0 0 6px #e8a13f); }
+  .shape-text {
+    font-size: 13px; fill: #1a1a1a; text-anchor: middle; dominant-baseline: middle;
+    pointer-events: none; user-select: none;
+  }
+  .conn-line { stroke: #4a4a4a; stroke-width: 2; fill: none; }
+  .conn-label {
+    font-size: 11px; fill: #b5443c; font-weight: 700; text-anchor: middle;
+    paint-order: stroke; stroke: #f4efe4; stroke-width: 3px;
+  }
+  #sidePanel {
+    width: 320px; background: #123527; border-left: 2px solid #1f7a6f;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .panel-tabs { display: flex; border-bottom: 1px solid #2a5747; }
+  .panel-tabs button { flex: 1; border-radius: 0; background: #0d1f18; }
+  .panel-tabs button.active { background: #1f7a6f; }
+  .panel-body { flex: 1; overflow: auto; padding: 12px; font-size: 13px; }
+  .var-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #2a5747; }
+  .var-name { color: #8ff0cc; font-weight: 600; }
+  .var-val { color: #f3c877; font-family: monospace; }
+  #consoleBox { white-space: pre-wrap; font-family: monospace; font-size: 12px; color: #dff5e8; }
+  #pythonBox { white-space: pre-wrap; font-family: "Consolas", monospace; font-size: 12.5px; color: #f3c877; background: #0d1f18; padding: 8px; border-radius: 6px; }
+  .hint { color: #9db8ac; font-size: 12px; padding: 8px 12px; }
+  input.inline-edit {
+    position: absolute; font-size: 13px; padding: 4px; border: 2px solid #e8a13f;
+    border-radius: 4px; text-align: center;
+  }
+  #inputModal {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none;
+    align-items: center; justify-content: center; z-index: 50;
+  }
+  #inputModal .box {
+    background: #123527; padding: 20px 24px; border-radius: 10px; border: 2px solid #1f7a6f;
+    min-width: 260px; text-align: center;
+  }
+  #inputModal input { padding: 8px; width: 100%; font-size: 14px; border-radius: 6px; border: none; margin: 10px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧩 Algoritma ve Akış Şeması</h1>
+  <button data-shape="baslat">▶ Başla</button>
+  <button data-shape="bitir">⏹ Bitir</button>
+  <button data-shape="islem">▭ İşlem</button>
+  <button data-shape="karar">◇ Karar</button>
+  <button data-shape="giris">▱ Giriş</button>
+  <button data-shape="cikis">▱ Çıkış</button>
+  <div class="sep"></div>
+  <button id="connectBtn">🔗 Bağla</button>
+  <button id="deleteBtn" class="danger">✕ Sil Modu</button>
+  <div class="sep"></div>
+  <button id="runBtn" style="background:#2e8b57">▶▶ Çalıştır</button>
+  <button id="pythonBtn" style="background:#3a6ea5">🐍 Python Kodu</button>
+  <button id="clearBtn" class="danger">🗑 Temizle</button>
+</header>
+
+<main>
+  <div id="canvasWrap">
+    <svg id="canvas" width="1600" height="1400">
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L9,3 z" fill="#4a4a4a"/>
+        </marker>
+      </defs>
+      <g id="connLayer"></g>
+      <g id="shapeLayer"></g>
+    </svg>
+  </div>
+  <div id="sidePanel">
+    <div class="panel-tabs">
+      <button class="tab-btn active" data-tab="vars">Değişkenler</button>
+      <button class="tab-btn" data-tab="console">Ekran</button>
+      <button class="tab-btn" data-tab="python">Python</button>
+    </div>
+    <div class="panel-body">
+      <div id="varsTab"><p class="hint">Çalıştırınca değişkenler burada görünür.</p></div>
+      <div id="consoleTab" style="display:none"><div id="consoleBox"></div></div>
+      <div id="pythonTab" style="display:none"><div id="pythonBox">— henüz üretilmedi —</div></div>
+    </div>
+  </div>
+</main>
+
+<div id="inputModal">
+  <div class="box">
+    <div id="inputModalLabel">Değer gir:</div>
+    <input type="text" id="inputModalField" autofocus>
+    <button id="inputModalOk">Tamam</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+// ══ Veri modeli ══════════════════════════════════════════════════════════
+var shapes = [];       // {id, type, x, y, w, h, text}
+var connections = [];  // {id, from, to, label}
+var nextId = 1;
+var mode = "idle";     // idle | placing | connecting | deleting
+var placingType = null;
+var connectFrom = null;
+var selectedShape = null;
+var variables = {};
+
+const SHAPE_LABELS = {
+  baslat: "Başla", bitir: "Bitir", islem: "İşlem",
+  karar: "Karar", giris: "Giriş", cikis: "Çıkış"
+};
+const DEFAULT_TEXT = {
+  baslat: "Başla", bitir: "Bitir", islem: "x = x + 1",
+  karar: "x > 10", giris: "x", cikis: "x"
+};
+
+const svgNS = "http://www.w3.org/2000/svg";
+const canvas = document.getElementById("canvas");
+const shapeLayer = document.getElementById("shapeLayer");
+const connLayer = document.getElementById("connLayer");
+
+function uid() { return "s" + (nextId++); }
+
+// ══ Şekil ekleme ═════════════════════════════════════════════════════════
+document.querySelectorAll("header button[data-shape]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    mode = "placing";
+    placingType = btn.dataset.shape;
+    setActiveToolButton(btn);
+  });
+});
+
+function setActiveToolButton(activeBtn) {
+  document.querySelectorAll("header button").forEach(b => b.classList.remove("active"));
+  if (activeBtn) activeBtn.classList.add("active");
+}
+
+canvas.addEventListener("click", (e) => {
+  if (mode !== "placing") return;
+  const pt = getSvgPoint(e);
+  addShape(placingType, pt.x, pt.y);
+  mode = "idle";
+  setActiveToolButton(null);
+});
+
+function getSvgPoint(evt) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+}
+
+function addShape(type, x, y) {
+  const s = {
+    id: uid(), type, x, y,
+    w: (type === "karar") ? 120 : (type === "giris" || type === "cikis") ? 130 : 130,
+    h: (type === "karar") ? 90 : 56,
+    text: DEFAULT_TEXT[type] || ""
+  };
+  shapes.push(s);
+  render();
+}
+
+// ══ Bağlama modu ═════════════════════════════════════════════════════════
+document.getElementById("connectBtn").addEventListener("click", (e) => {
+  mode = (mode === "connecting") ? "idle" : "connecting";
+  connectFrom = null;
+  setActiveToolButton(mode === "connecting" ? e.target : null);
+});
+
+document.getElementById("deleteBtn").addEventListener("click", (e) => {
+  mode = (mode === "deleting") ? "idle" : "deleting";
+  setActiveToolButton(mode === "deleting" ? e.target : null);
+});
+
+function onShapeClick(shape, evt) {
+  evt.stopPropagation();
+  if (mode === "deleting") {
+    shapes = shapes.filter(s => s.id !== shape.id);
+    connections = connections.filter(c => c.from !== shape.id && c.to !== shape.id);
+    render();
+    return;
+  }
+  if (mode === "connecting") {
+    if (!connectFrom) {
+      connectFrom = shape.id;
+    } else {
+      let label = null;
+      const fromShape = shapes.find(s => s.id === connectFrom);
+      if (fromShape && fromShape.type === "karar") {
+        label = prompt("Bu bağlantı hangi durumda izlenir? 'evet' ya da 'hayır' yaz:", "evet");
+        if (label) label = label.trim().toLowerCase().startsWith("h") ? "Hayır" : "Evet";
+        else label = "Evet";
+      }
+      connections.push({ id: uid(), from: connectFrom, to: shape.id, label });
+      connectFrom = null;
+    }
+    render();
+    return;
+  }
+  // Serbest mod: çift tıkla düzenle, tek tıkla seç/taşı
+  selectedShape = shape;
+}
+
+function onShapeDblClick(shape, evt) {
+  evt.stopPropagation();
+  const yeni = prompt("Bu kutunun içeriğini yaz:", shape.text);
+  if (yeni !== null) { shape.text = yeni; render(); }
+}
+
+// Basit sürükleme (taşıma)
+var dragging = null, dragOffset = {x:0, y:0};
+function onShapeMouseDown(shape, evt) {
+  if (mode !== "idle") return;
+  dragging = shape;
+  const pt = getSvgPoint(evt);
+  dragOffset = { x: pt.x - shape.x, y: pt.y - shape.y };
+}
+canvas.addEventListener("mousemove", (e) => {
+  if (!dragging) return;
+  const pt = getSvgPoint(e);
+  dragging.x = pt.x - dragOffset.x;
+  dragging.y = pt.y - dragOffset.y;
+  render();
+});
+canvas.addEventListener("mouseup", () => { dragging = null; });
+canvas.addEventListener("mouseleave", () => { dragging = null; });
+
+// ══ Çizim ════════════════════════════════════════════════════════════════
+function render() {
+  shapeLayer.innerHTML = "";
+  connLayer.innerHTML = "";
+
+  connections.forEach(c => {
+    const a = shapes.find(s => s.id === c.from);
+    const b = shapes.find(s => s.id === c.to);
+    if (!a || !b) return;
+    const x1 = a.x, y1 = a.y, x2 = b.x, y2 = b.y;
+    const path = document.createElementNS(svgNS, "path");
+    const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
+    path.setAttribute("d", `M${x1},${y1} Q${midX},${midY} ${x2},${y2}`);
+    path.setAttribute("class", "conn-line");
+    path.setAttribute("marker-end", "url(#arrow)");
+    connLayer.appendChild(path);
+    if (c.label) {
+      const t = document.createElementNS(svgNS, "text");
+      t.setAttribute("x", midX); t.setAttribute("y", midY - 6);
+      t.setAttribute("class", "conn-label");
+      t.textContent = c.label;
+      connLayer.appendChild(t);
+    }
+  });
+
+  shapes.forEach(s => {
+    const g = document.createElementNS(svgNS, "g");
+    g.setAttribute("transform", `translate(${s.x - s.w/2}, ${s.y - s.h/2})`);
+    g.style.cursor = "pointer";
+
+    let shapeEl;
+    if (s.type === "karar") {
+      shapeEl = document.createElementNS(svgNS, "polygon");
+      const w = s.w, h = s.h;
+      shapeEl.setAttribute("points", `${w/2},0 ${w},${h/2} ${w/2},${h} 0,${h/2}`);
+      shapeEl.setAttribute("class", "shape-rect karar");
+    } else if (s.type === "giris" || s.type === "cikis") {
+      shapeEl = document.createElementNS(svgNS, "polygon");
+      const w = s.w, h = s.h, skew = 18;
+      shapeEl.setAttribute("points", `${skew},0 ${w},0 ${w-skew},${h} 0,${h}`);
+      shapeEl.setAttribute("class", "shape-rect io");
+    } else if (s.type === "baslat" || s.type === "bitir") {
+      shapeEl = document.createElementNS(svgNS, "rect");
+      shapeEl.setAttribute("width", s.w); shapeEl.setAttribute("height", s.h);
+      shapeEl.setAttribute("rx", s.h/2); shapeEl.setAttribute("ry", s.h/2);
+      shapeEl.setAttribute("class", "shape-rect " + s.type);
+    } else {
+      shapeEl = document.createElementNS(svgNS, "rect");
+      shapeEl.setAttribute("width", s.w); shapeEl.setAttribute("height", s.h);
+      shapeEl.setAttribute("class", "shape-rect");
+    }
+    if (s.id === window._activeShapeId) shapeEl.classList.add("active");
+    g.appendChild(shapeEl);
+
+    const label = document.createElementNS(svgNS, "text");
+    label.setAttribute("x", s.w/2); label.setAttribute("y", s.h/2);
+    label.setAttribute("class", "shape-text");
+    label.textContent = (s.type === "giris" ? "Oku: " : s.type === "cikis" ? "Yaz: " : "") + s.text;
+    g.appendChild(label);
+
+    g.addEventListener("click", (e) => onShapeClick(s, e));
+    g.addEventListener("dblclick", (e) => onShapeDblClick(s, e));
+    g.addEventListener("mousedown", (e) => onShapeMouseDown(s, e));
+
+    shapeLayer.appendChild(g);
+  });
+}
+
+// ══ Temizle ══════════════════════════════════════════════════════════════
+document.getElementById("clearBtn").addEventListener("click", () => {
+  if (!confirm("Tüm şemayı silmek istediğine emin misin?")) return;
+  shapes = []; connections = []; render();
+});
+
+// ══ İfade değerlendirme (güvenli, yerel — sadece tanımlı değişkenlerle) ════
+function evalExpression(expr) {
+  const names = Object.keys(variables);
+  const vals = names.map(n => variables[n]);
+  // eslint-disable-next-line no-new-func
+  const fn = new Function(...names, "return (" + expr + ");");
+  return fn(...vals);
+}
+function evalAssignment(stmt) {
+  const m = stmt.match(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$/);
+  if (!m) throw new Error("Geçersiz işlem ifadesi: " + stmt);
+  variables[m[1]] = evalExpression(m[2]);
+}
+
+// ══ Değişken/konsol paneli ═══════════════════════════════════════════════
+function updateVarsPanel() {
+  const el = document.getElementById("varsTab");
+  const names = Object.keys(variables);
+  if (!names.length) { el.innerHTML = '<p class="hint">Henüz değişken yok.</p>'; return; }
+  el.innerHTML = names.map(n =>
+    `<div class="var-row"><span class="var-name">${n}</span><span class="var-val">${JSON.stringify(variables[n])}</span></div>`
+  ).join("");
+}
+function logConsole(text) {
+  const box = document.getElementById("consoleBox");
+  box.textContent += text + "\n";
+  box.scrollTop = box.scrollHeight;
+}
+function clearConsole() { document.getElementById("consoleBox").textContent = ""; }
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function nextShape(fromId, label) {
+  const conn = connections.find(c => c.from === fromId &&
+    (label === null || label === undefined || c.label === label || !c.label));
+  return conn ? shapes.find(s => s.id === conn.to) : null;
+}
+
+// ══ Kullanıcıdan giriş almak için basit modal ═══════════════════════════
+function askInput(varName) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("inputModal");
+    const label = document.getElementById("inputModalLabel");
+    const field = document.getElementById("inputModalField");
+    const okBtn = document.getElementById("inputModalOk");
+    label.textContent = `'${varName}' için bir değer gir:`;
+    field.value = "";
+    modal.style.display = "flex";
+    field.focus();
+    function done() {
+      modal.style.display = "none";
+      okBtn.removeEventListener("click", done);
+      field.removeEventListener("keydown", onKey);
+      resolve(field.value);
+    }
+    function onKey(e) { if (e.key === "Enter") done(); }
+    okBtn.addEventListener("click", done);
+    field.addEventListener("keydown", onKey);
+  });
+}
+
+// ══ ÇALIŞTIRMA (simülasyon) ══════════════════════════════════════════════
+async function runFlowchart() {
+  const start = shapes.find(s => s.type === "baslat");
+  if (!start) { alert("Bir 'Başla' kutusu eklemelisin!"); return; }
+  switchTab("console");
+  clearConsole();
+  variables = {};
+  updateVarsPanel();
+
+  let current = nextShape(start.id, null);
+  let steps = 0;
+  const MAX_STEPS = 2000;
+
+  while (current && steps < MAX_STEPS) {
+    window._activeShapeId = current.id;
+    render();
+    await sleep(550);
+
+    if (current.type === "bitir") {
+      logConsole("✅ Program bitti.");
+      break;
+    } else if (current.type === "islem") {
+      try { evalAssignment(current.text); }
+      catch (e) { logConsole("❌ Hata (İşlem): " + e.message); break; }
+      current = nextShape(current.id, null);
+    } else if (current.type === "giris") {
+      const varName = current.text.trim();
+      const raw = await askInput(varName);
+      const num = Number(raw);
+      variables[varName] = isNaN(num) ? raw : num;
+      current = nextShape(current.id, null);
+    } else if (current.type === "cikis") {
+      try {
+        const val = evalExpression(current.text);
+        logConsole(String(val));
+      } catch (e) { logConsole("❌ Hata (Çıkış): " + e.message); break; }
+      current = nextShape(current.id, null);
+    } else if (current.type === "karar") {
+      let sonuc;
+      try { sonuc = !!evalExpression(current.text); }
+      catch (e) { logConsole("❌ Hata (Karar): " + e.message); break; }
+      current = nextShape(current.id, sonuc ? "Evet" : "Hayır");
+    } else {
+      current = nextShape(current.id, null);
+    }
+    updateVarsPanel();
+    steps++;
+  }
+  if (steps >= MAX_STEPS) {
+    logConsole("⚠️ Çok fazla adım atıldı — sonsuz döngü olabilir, durduruldu.");
+  }
+  window._activeShapeId = null;
+  render();
+}
+document.getElementById("runBtn").addEventListener("click", runFlowchart);
+
+// ══ PYTHON KODU ÜRETİMİ (basit yapılandırılmış dönüşüm) ═════════════════
+function generatePython() {
+  const start = shapes.find(s => s.type === "baslat");
+  if (!start) return "# Bir 'Başla' kutusu eklemelisin.";
+  const first = nextShape(start.id, null);
+  try {
+    const body = emitSequence(first, null, new Set(), 0);
+    return body || "# (boş program)";
+  } catch (e) {
+    return "# Bu şema otomatik Python koduna çevrilemedi:\n# " + e.message +
+           "\n# İpucu: Karar kutularının 'Evet'/'Hayır' yollarının doğru " +
+           "bağlandığından ve döngülerin başa döndüğünden emin ol.";
+  }
+}
+
+function canReachBack(node, targetId, outerStopId, visited) {
+  // targetId'ye geri dönen bir yol var mı? İÇ İÇE kararları da (her iki
+  // dalını da) doğru şekilde dolaşarak arar. outerStopId, bizi ÇAĞIRAN
+  // emitSequence'in sınırıdır — bu sınırı AŞMAYIZ, yoksa bir DIŞ döngünün
+  // geri-kenarı, İÇ bir kararın KENDİ döngüsü sanılabilir (gerçek test
+  // senaryosunda bulunan hata buydu: döngü içindeki bir "eğer" kutusu,
+  // dıştaki döngünün kendisini de bir döngü sanıyordu).
+  if (!node) return false;
+  if (node.id === targetId) return true;
+  if (outerStopId && node.id === outerStopId && node.id !== targetId) return false;
+  if (visited.has(node.id)) return false;   // bu ARAMANIN kendi döngüsüne girme
+  visited.add(node.id);
+  if (node.type === "bitir") return false;
+  if (node.type === "karar") {
+    const evet = nextShape(node.id, "Evet");
+    const hayir = nextShape(node.id, "Hayır");
+    return canReachBack(evet, targetId, outerStopId, new Set(visited)) ||
+           canReachBack(hayir, targetId, outerStopId, new Set(visited));
+  }
+  return canReachBack(nextShape(node.id, null), targetId, outerStopId, visited);
+}
+
+function findLoopBack(kararNode, outerStopId) {
+  for (const [label, other] of [["Evet", "Hayır"], ["Hayır", "Evet"]]) {
+    const branchStart = nextShape(kararNode.id, label);
+    if (canReachBack(branchStart, kararNode.id, outerStopId, new Set())) {
+      return { loopLabel: label, exitLabel: other };
+    }
+  }
+  return null;
+}
+
+function reachableWithDistance(startNode, outerStopId) {
+  // {nodeId: en_kısa_mesafe} — İÇ İÇE kararların HER İKİ dalını da dolaşır.
+  // outerStopId sınırının ÖTESİNE geçmez (aynı gerekçeyle: dış döngü
+  // geri-kenarının iç bir birleşme noktasıyla karışmaması için).
+  const dist = new Map();
+  const queue = [[startNode, 0]];
+  while (queue.length) {
+    const [node, d] = queue.shift();
+    if (!node) continue;
+    if (dist.has(node.id) && dist.get(node.id) <= d) continue;
+    dist.set(node.id, d);
+    if (outerStopId && node.id === outerStopId) continue;
+    if (node.type === "bitir") continue;
+    if (node.type === "karar") {
+      queue.push([nextShape(node.id, "Evet"), d + 1]);
+      queue.push([nextShape(node.id, "Hayır"), d + 1]);
+    } else {
+      queue.push([nextShape(node.id, null), d + 1]);
+    }
+  }
+  return dist;
+}
+
+function findMergePoint(kararNode, outerStopId) {
+  const evetNode = nextShape(kararNode.id, "Evet");
+  const hayirNode = nextShape(kararNode.id, "Hayır");
+  if (!evetNode || !hayirNode) return null;
+  const evetDist = reachableWithDistance(evetNode, outerStopId);
+  const hayirDist = reachableWithDistance(hayirNode, outerStopId);
+  // İki daldan da erişilebilen, TOPLAM mesafesi en kısa olan ilk düğüm —
+  // genelde bu, akış şemasının gerçek "birleşme" noktasıdır.
+  let best = null, bestDist = Infinity;
+  for (const [id, d1] of evetDist) {
+    if (hayirDist.has(id)) {
+      const total = d1 + hayirDist.get(id);
+      if (total < bestDist) { bestDist = total; best = id; }
+    }
+  }
+  return best ? shapes.find(s => s.id === best) : null;
+}
+
+function emitSequence(node, stopId, visited, indent) {
+  const pad = "    ".repeat(indent);
+  let code = "";
+  let guard = 0;
+  while (node && node.id !== stopId && guard < 1000) {
+    guard++;
+    if (node.type === "bitir") { break; }
+
+    if (node.type === "islem") {
+      code += pad + node.text.trim() + "\n";
+      node = nextShape(node.id, null);
+
+    } else if (node.type === "giris") {
+      const v = node.text.trim();
+      code += pad + `${v} = float(input("${v}: "))\n`;
+      node = nextShape(node.id, null);
+
+    } else if (node.type === "cikis") {
+      code += pad + `print(${node.text.trim()})\n`;
+      node = nextShape(node.id, null);
+
+    } else if (node.type === "karar") {
+      if (visited.has(node.id)) {
+        throw new Error("Aynı Karar kutusuna birden fazla yoldan ulaşılıyor (desteklenmeyen şema).");
+      }
+      const loopInfo = findLoopBack(node, stopId);
+      if (loopInfo) {
+        const cond = loopInfo.loopLabel === "Evet" ? node.text.trim()
+                                                   : `not (${node.text.trim()})`;
+        code += pad + `while ${cond}:\n`;
+        const newVisited = new Set(visited); newVisited.add(node.id);
+        const bodyStart = nextShape(node.id, loopInfo.loopLabel);
+        const bodyCode = emitSequence(bodyStart, node.id, newVisited, indent + 1);
+        code += bodyCode || (pad + "    pass\n");
+        node = nextShape(node.id, loopInfo.exitLabel);
+      } else {
+        const merge = findMergePoint(node, stopId);
+        code += pad + `if ${node.text.trim()}:\n`;
+        const newVisited = new Set(visited); newVisited.add(node.id);
+        const yesStart = nextShape(node.id, "Evet");
+        const yesCode = emitSequence(yesStart, merge ? merge.id : null, newVisited, indent + 1);
+        code += yesCode || (pad + "    pass\n");
+        const noStart = nextShape(node.id, "Hayır");
+        if (noStart && (!merge || noStart.id !== merge.id)) {
+          code += pad + "else:\n";
+          const noCode = emitSequence(noStart, merge ? merge.id : null, newVisited, indent + 1);
+          code += noCode || (pad + "    pass\n");
+        }
+        node = merge;
+      }
+    } else {
+      node = nextShape(node.id, null);
+    }
+  }
+  return code;
+}
+
+document.getElementById("pythonBtn").addEventListener("click", () => {
+  const code = generatePython();
+  document.getElementById("pythonBox").textContent = code;
+  switchTab("python");
+});
+
+// ══ Sekme geçişleri ══════════════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  document.getElementById("varsTab").style.display = name === "vars" ? "block" : "none";
+  document.getElementById("consoleTab").style.display = name === "console" ? "block" : "none";
+  document.getElementById("pythonTab").style.display = name === "python" ? "block" : "none";
+}
+document.querySelectorAll(".tab-btn").forEach(b => {
+  b.addEventListener("click", () => switchTab(b.dataset.tab));
+});
+
+render();
+
+/* ---------- YERİNDE sesli kapatma köprüsü ---------- */
+(function(){
+  function connect(){
+    try {
+      var ws = new WebSocket("ws://127.0.0.1:8765/");
+      ws.onmessage = function(ev){
+        try {
+          var cmd = JSON.parse(ev.data);
+          if (cmd && cmd.action === "close_tool") { window.close(); }
+        } catch(e) {}
+      };
+      ws.onclose = function(){ setTimeout(connect, 2500); };
+      ws.onerror = function(){ try{ ws.close(); }catch(e){} };
+    } catch(e) {
+      setTimeout(connect, 2500);
+    }
+  }
+  connect();
+})();
+
+</script>
+</body>
+</html>

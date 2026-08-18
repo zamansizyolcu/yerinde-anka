@@ -1,0 +1,2 @@
+# YERINDE — wheel grubuna tam sudo
+%wheel ALL=(ALL) ALL

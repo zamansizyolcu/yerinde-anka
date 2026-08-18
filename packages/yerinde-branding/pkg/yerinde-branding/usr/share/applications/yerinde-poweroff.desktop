@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Bilgisayarı Kapat
+Name[tr]=Bilgisayarı Kapat
+Comment=Bilgisayarı kapatır
+Comment[tr]=Bilgisayarı kapatır
+Exec=systemctl poweroff
+Icon=system-shutdown
+Terminal=false
+Categories=KDE;
+OnlyShowIn=KDE

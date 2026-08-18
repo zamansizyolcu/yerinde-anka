@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=YERINDE Asistanı Kur (Tıkla-Çalıştır)
+Exec=/usr/local/bin/yerinde-asistan-kur
+Terminal=true
+Icon=yerinde
+Categories=Utility;

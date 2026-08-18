@@ -1,0 +1,60 @@
+# YERINDE CachyOS — Gerekli paketler
+# Kurulum:  ./kurulum.sh   (ya da elle: pip install -r requirements.txt)
+
+google-genai          # Gemini Live API (ses + araç çağrıları)
+selenium              # Blockly Games (Labirent vb.) tarayıcı otomasyonu — Chrome kurulu olmalı
+webdriver-manager     # Chrome sürücüsünü OTOMATİK indirir — elle chromedriver kurmana gerek yok
+# pyaudio -> sistemden: python-pyaudio  (venv --system-site-packages ile
+#   görünür; pip'ten kurulursa portaudio başlıkları ister ve derlemeye düşer)
+psutil                # Sistem bilgisi (pil, CPU, RAM, disk)
+Pillow                # Görüntü işleme (ekran + webcam analizi)
+requests              # Hava durumu, YouTube API, YouTube arama
+mss                   # Ekran görüntüsü yakalama (analyze_screen)
+opencv-python         # Webcam canlı akışı (toggle_webcam)
+pyperclip             # Pano kopyalama (WhatsApp otomasyonu)
+pyautogui             # WhatsApp Web otomatik gönderim + sesle yazma (type_text)
+websocket-client      # OBS Studio ekran kaydı kontrolü (obs-websocket v5 protokolü)
+
+# ── Çevrimdışı mod (Ollama) — opsiyonel ─────────────────────────────────────
+# Gemini yerine yerel Ollama modeliyle, internet KAPALIYKEN de çalışmak
+# istersen bunlar gerekir. Ollama'nın kendisi ayrıca kurulmalı: https://ollama.com
+sounddevice           # Mikrofon yakalama (Ollama modu için)
+numpy>=2               # Ses verisi işleme (STT için) — final24: eski <2 pininin
+                      # yeni Python'da wheel'i yok (kaynak derleme → gcc hatası);
+                      # Yerinde ANKA'da sistem paketi python-numpy önceliklidir
+faster-whisper        # Çevrimdışı konuşma tanıma (Türkçe, önerilen — daha doğru)
+vosk                  # Çevrimdışı konuşma tanıma (yedek, daha hafif)
+#
+piper-tts             # Doğal Türkçe TTS sesi — pip ile OTOMATİK kurulur, "piper"
+                      # komutunu venv/bin içine koyar (bu, CachyOS/Linux için
+                      # doğru yöntemdir; "yay -S piper-tts-bin" ile de kurulabilir
+                      # ama bu paket kurulum.sh ile zaten otomatik gelir).
+                      # Piper kurulu değilse/bulunamazsa YERINDE otomatik olarak
+                      # espeak-ng'ye düşer (kurulum.sh bunu pacman ile zaten kurar).
+                      # Ekstra: bir Türkçe ses modeli (.onnx + .json) indirip
+                      # "voices" klasörüne koyman gerekir, örn:
+                      # https://huggingface.co/rhasspy/piper-voices/tree/main/tr/tr_TR
+
+# ── Belge analizi (PDF/Word/PowerPoint/Excel yükleyip analiz ettirme) ───────
+pdfplumber            # PDF metin çıkarma (sesli PDF okuma için de kullanılır)
+python-docx           # Word (.docx) dosyalarını okuma
+python-pptx           # PowerPoint (.pptx) dosyalarını okuma
+openpyxl              # Excel (.xlsx) dosyalarını okuma
+
+# ── V3 çekirdek (wake-word + yönlendirici + görü) ─────────────────
+vosk                  # "Yerinde" tetikleme kelimesi (küçük TR modeli gerekir)
+sounddevice           # mikrofon akışı (wake + STT kaydı)
+# İsteğe bağlı — kurulmazsa ilgili özellik zarifçe devre dışı kalır:
+#   ultralytics       # YOLO11 canlı nesne takibi (KAMERA)
+#   ChatTTS soundfile # doğal sohbet sesi (SES: chattts)
+#   coqui-tts         # ses klonlama (SES: KENDİ SESİM) — in-process, sunucu YOK
+#     Ayrıca gerekir: pip install torch torchaudio
+#     BİLİNEN SORUN: coqui-tts, transformers 5.x ile uyumsuz ('isin_mps_friendly'
+#     kaldırıldı) — sorun çıkarsa:  pip install "transformers==4.57.6"
+# Yönlendirici modeller: ollama pull gemma2 qwen2.5-coder qwen2-vl
+
+# ── Bahçe kamerası (Yoosee / DVRIP) ───────────────────────────────────────
+dvrip                 # DVRIP protokolü — bahçe kamerasını uyandırma + PTZ
+av                    # PyAV — DVRIP (garden_camera_frame) ses+video paket çözme
+# Kurulmazsa BAHÇE KAMERA düğmesi zarifçe "kütüphane eksik" mesajı verir,
+# uygulamanın geri kalanı normal çalışır.

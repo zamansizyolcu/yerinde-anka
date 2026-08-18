@@ -1,0 +1,6 @@
+#!/bin/bash
+CONF="$HOME/.config/plasma-org.kde.plasma.desktop-appletsrc"
+if grep -q "backgrounds/yerinde/default.png" "$CONF" 2>/dev/null; then
+    exit 0
+fi
+/usr/bin/plasma-apply-wallpaperimage /usr/share/backgrounds/yerinde/default.png

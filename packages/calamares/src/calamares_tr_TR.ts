@@ -1,0 +1,1 @@
+/home/yerinde/yerinde-project/packages/calamares/calamares_tr_TR.ts

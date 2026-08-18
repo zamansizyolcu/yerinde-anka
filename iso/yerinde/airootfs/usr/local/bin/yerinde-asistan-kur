@@ -1,0 +1,144 @@
+#!/bin/bash
+# final25.md: YERINDE Asistanı kurucu — akıllı mesaj + 3 erişim yolu:
+#   1) pacman [yerinde] repo (LAN: host'ta 'python -m http.server')
+#   2) yerel klasör (İndirilenler, imza bazlı)
+#   3) git clone (kamu GitHub kaynağı; internet VARSA)
+# NOT: set -e YOK — her adım kendi hatasını yönetir.
+
+echo "======================================"
+echo "  YERINDE Asistanı Kur (Tıkla-Çalıştır)"
+echo "======================================"
+
+# 1) Zaten kurulu mu?
+if pacman -Qi yerinde-ai-assistant >/dev/null 2>&1; then
+    echo "Yerinde AI Asistanı zaten kurulu."
+    if command -v yerinde >/dev/null 2>&1; then
+        echo "Başlatılıyor..."
+        nohup yerinde >/dev/null 2>&1 &
+    fi
+    read -rp "Kapatmak için Enter'a basın..."
+    exit 0
+fi
+
+KURULDU=0
+PACMAN_HATA=""
+YEREL_SONUC="yerel klasör bulunamadı"
+GIT_SONUC=""
+
+# 2) İnternet durumu — AYRI satır (final25.md §1)
+if ping -c1 -W3 8.8.8.8 >/dev/null 2>&1; then
+    INTERNET="VAR"
+else
+    INTERNET="YOK"
+fi
+echo
+echo "İnternet: $INTERNET"
+
+# 3) İnternet VARSA: [yerinde] repo otomatik tanım + pacman kur (final25.md §2)
+if [ "$INTERNET" = "VAR" ]; then
+    echo "[*] Pacman ile kuruluyor..."
+    if ! grep -q '^\[yerinde\]' /etc/pacman.conf 2>/dev/null; then
+        sudo tee -a /etc/pacman.conf >/dev/null <<'EOF'
+
+[yerinde]
+SigLevel = Never
+Server = http://10.0.2.2:8000
+EOF
+    fi
+    sudo pacman -Sy >/dev/null 2>&1
+    PACMAN_LOG=$(mktemp)
+    set -o pipefail
+    if sudo pacman -S --needed --noconfirm yerinde-ai-assistant 2>&1 | tee "$PACMAN_LOG"; then
+        KURULDU=1
+    else
+        if grep -qi "hedef bulunamadı\|target not found" "$PACMAN_LOG"; then
+            PACMAN_HATA="[yerinde] reposu pacman.conf'ta yok veya yayında değil"
+        else
+            PACMAN_HATA="pacman başarısız (LAN sunucusu 10.0.2.2:8000 erişilemedi mi?)"
+        fi
+    fi
+    rm -f "$PACMAN_LOG"
+    set +o pipefail
+    [ "$KURULDU" -eq 1 ] || echo "Pacman: $PACMAN_HATA"
+fi
+
+# 4) Yerel arama (imza bazlı; klasör adı önemsiz) — sonucu AYRI satır
+if [ "$KURULDU" -eq 0 ]; then
+    echo "[*] Yerel asistan klasörü aranıyor (İndirilenler / ana dizin)..."
+    BUL=""
+    for d in "$HOME/İndirilenler"/*/ "$HOME/Downloads"/*/ "$HOME"/*/; do
+        [ -d "$d" ] || continue
+        if [ -f "$d/kurulum.sh" ] || { [ -f "$d/main.py" ] && [ -f "$d/ui.py" ]; }; then
+            if grep -qi "yerinde" "$d/kurulum.sh" "$d/main.py" 2>/dev/null; then
+                BUL="$d"
+                break
+            fi
+        fi
+    done
+    if [ -n "$BUL" ]; then
+        echo "Yerel arama: bulundu → $BUL"
+        cd "$BUL" || true
+        chmod +x kurulum.sh 2>/dev/null
+        if ./kurulum.sh; then
+            KURULDU=1
+        else
+            YEREL_SONUC="kurulum.sh hata verdi ($BUL)"
+            echo "Yerel arama: $YEREL_SONUC"
+        fi
+    else
+        echo "Yerel arama: $YEREL_SONUC"
+    fi
+fi
+
+# 5) Git clone fallback: internet VAR + pacman/yerel YOKSA (final25.md §3)
+if [ "$KURULDU" -eq 0 ] && [ "$INTERNET" = "VAR" ]; then
+    echo "[*] Kamu kaynağından kuruluyor (git clone)..."
+    if command -v git >/dev/null 2>&1; then
+        KLON_DIZIN="$HOME/yerinde-ai-assistant"
+        rm -rf "$KLON_DIZIN"
+        if git clone https://github.com/zamansizyolcu/yerinde-ai-assistant "$KLON_DIZIN"; then
+            if cd "$KLON_DIZIN" && ./kurulum.sh; then
+                KURULDU=1
+            else
+                GIT_SONUC="kurulum.sh hata verdi"
+            fi
+        else
+            GIT_SONUC="git clone başarısız (repo erişilemez)"
+        fi
+    else
+        GIT_SONUC="git kurulu değil"
+    fi
+    [ "$KURULDU" -eq 1 ] || echo "Git: $GIT_SONUC"
+fi
+
+# 6) Hiçbiri tutmadıysa: gerçek durumların birleşimi (final25.md §1)
+if [ "$KURULDU" -eq 0 ]; then
+    echo
+    echo "HATA: Kurulum başarısız — durum özeti:"
+    echo " - İnternet: $INTERNET"
+    [ -n "$PACMAN_HATA" ] && echo " - Pacman: $PACMAN_HATA"
+    echo " - Yerel arama: $YEREL_SONUC"
+    [ -n "$GIT_SONUC" ] && echo " - Git: $GIT_SONUC"
+    echo "Öneri: host LAN'da repo dizininde 'python -m http.server' çalıştır"
+    echo "veya asistan klasörünü İndirilenler'e koy ve tekrar çalıştır."
+    read -rp "Kapatmak için Enter'a basın..."
+    exit 1
+fi
+
+# 7) Çevrimdışı modeller (opsiyonel)
+echo
+read -rp "Çevrimdışı modeller kurulsun mu? (e/h): " CEVAP
+if [ "$CEVAP" = "e" ] || [ "$CEVAP" = "E" ]; then
+    sudo systemctl enable --now ollama 2>/dev/null || true
+    ollama pull llama3.1 || true
+    ollama pull qwen2.5-coder:1.5b || true
+fi
+
+# 8) Başlat
+echo
+read -rp "Başlatmak için Enter'a basın..."
+if command -v yerinde >/dev/null 2>&1; then
+    nohup yerinde >/dev/null 2>&1 &
+    disown 2>/dev/null
+fi
+exit 0

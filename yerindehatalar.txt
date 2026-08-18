@@ -1,0 +1,10 @@
+ERR: HTTPConnectionPool(host='localhost', port=11434): Max retries exceeded with url: /api/chat (Caused by NewConnectionError("HTTPConnection(host='localhost', port=11434): Failed to establish a new connection: [Errno 111] Connection refused"))
+kurulmadan ollama açılmıyor ollama list komutu
+Error: could not connect to ollama server, run 'ollama serve' to start it
+
+kurulduktan sonra ollama modunla açılmıyor
+ERR: Ollama 404: model 'llama3.1' not found
+[yerinde@yerinde-virtualbox ~]$ ollama list
+NAME    ID    SIZE    MODIFIED
+kurulduktan sonra gemini moduna geçmeye çalışınca
+ERR: Beklenmedik hata (uygulama açık kalıyor) — [Errno 13] Permission denied: '/opt/yerinde-ai-assistant/config/api_keys.json'

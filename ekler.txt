@@ -1,0 +1,4 @@
+- rm -f ${ROOT}/etc/xdg/autostart/calamares.desktop
+- rm -f ${ROOT}/etc/sddm.conf.d/yerinde-autologin.conf
+- systemctl disable sshd livecd 2>/dev/null || true
+- systemctl enable NetworkManager sddm

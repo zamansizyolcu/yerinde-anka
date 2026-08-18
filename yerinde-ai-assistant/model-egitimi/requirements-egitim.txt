@@ -1,0 +1,18 @@
+# YERİNDE — Kendi Modelini Eğitme (LoRA + GGUF) için gerekli kütüphaneler
+#
+# Kurulum:
+#   pip install -r requirements-egitim.txt
+#
+# NOT (ekran kartı/GPU sahipleri için): Aşağıdaki komut torch'un CPU
+# sürümünü kurar. NVIDIA ekran kartın varsa, BUNU çalıştırmadan ÖNCE
+# https://pytorch.org/get-started/locally/ adresinden kendi CUDA
+# sürümüne uygun torch kurulum komutunu çalıştır — çok daha hızlı eğitim
+# sağlar. Ekran kartın yoksa (ya da emin değilsen) direkt bu dosyayı
+# kullanabilirsin, sadece CPU'da daha yavaş çalışır.
+
+torch>=2.2.0
+transformers>=4.44.0
+peft>=0.11.0
+datasets>=2.19.0
+accelerate>=0.30.0
+sentencepiece>=0.1.99

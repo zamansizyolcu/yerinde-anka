@@ -1,0 +1,11 @@
+[Plymouth Theme]
+Name=Yerinde
+Description=Yerinde ANKA önyükleme ekranı
+ModuleName=two-step
+
+[two-step]
+UseFirmwareBackground=ifexists
+ImageDir=/usr/share/plymouth/themes/yerinde
+HorizontalAlignment=.5
+VerticalAlignment=.5
+WatermarkAlignment=bottom-center

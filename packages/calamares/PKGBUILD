@@ -1,0 +1,127 @@
+# Maintainer:
+# Contributor: Rustmilian Rustmilian@proton.me
+
+_pkgname="calamares"
+pkgname="$_pkgname"
+pkgver=3.4.2
+pkgrel=4
+pkgdesc="Distribution-independent installer framework"
+url="https://codeberg.org/Calamares/calamares"
+license=("GPL-3.0-or-later")
+arch=('i686' 'x86_64')
+
+depends=(
+  'kcoreaddons'
+  'kpmcore'
+  'libpwquality'
+  'qt6-declarative'
+  'qt6-svg'
+  'yaml-cpp'
+)
+makedepends=(
+  'extra-cmake-modules'
+  'libglvnd'
+  'ninja'
+  'qt6-tools'
+  'qt6-translations'
+)
+
+_pkgext="tar.gz"
+source=("$_pkgname-$pkgver.$_pkgext"::"$url/releases/download/v$pkgver/$_pkgname-$pkgver.$_pkgext"
+        'calamares_tr_TR.ts')
+sha256sums=('733bbbb00dc9f84874bd5c22960952f317ea2537565431179fa2152b2fbfdccc'
+            'SKIP')
+
+prepare() {
+  # final18.md §3: Türkçe çevirideki "Calamares" hedefleri "Yerinde ANKA"
+  # markasıyla değiştirilir; welcome başlığı "Yerinde ANKA Kurulum Sihirbazına
+  # hoş geldiniz" olur. lrelease (calamares_qrc_translations) bunu calamares
+  # -i18n QRC kaynağına derleyip ikiliye gömer — harici .qm yüklenmediği için
+  # kaynak .ts düzenlenip yeniden derlemek zorunludur.
+  cd "$srcdir/$_pkgname-$pkgver"
+  cp -f "$srcdir/calamares_tr_TR.ts" lang/calamares_tr_TR.ts
+  # Doğrulama: gömülecek .ts'nin hedeflerinde Calamares kalmamış olmalı.
+  if ! python3 - <<'PY'
+import re,sys
+s=open('lang/calamares_tr_TR.ts',encoding='utf-8').read()
+pat=re.compile(r'(<translation(?:\s[^>]*)?>)(.*?)(</translation>)',re.S)
+left=sum(m.group(2).count('Calamares') for m in pat.finditer(s))
+sys.exit(0 if left==0 else 1)
+PY
+  then
+    echo "CALAMARES TR FAIL: hedef çeviride hâlâ Calamares var -> build FAIL" >&2
+    exit 1
+  fi
+  echo "CALAMARES TR OK: lang/calamares_tr_TR.ts Yerinde markasıyla değiştirildi, hedeflerde Calamares YOK"
+}
+
+build() {
+  local _skip_modules=(
+    dracut
+    dracutlukscfg
+    dummycpp
+    dummyprocess
+    dummypython
+    dummypythonqt
+    initramfs
+    initramfscfg
+    interactiveterminal
+    packagechooser
+    packagechooserq
+    services-openrc
+  )
+
+  # Correct source directory (inside src/)
+  local _pkgsrc_dir="$srcdir/$_pkgname-$pkgver"
+
+  local _cmake_options=(
+    -B build
+    -S "$_pkgsrc_dir"
+    -G Ninja
+    -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_INSTALL_PREFIX='/usr'
+    -DCMAKE_INSTALL_LIBDIR='lib'
+    -DWITH_QT6=ON
+    -DINSTALL_CONFIG=ON
+    -DSKIP_MODULES="${_skip_modules[*]}"
+    -DBUILD_TESTING=OFF
+
+    # Explicit KDE install dirs to suppress warnings
+    -DKDE_INSTALL_BINDIR=/usr/bin
+    -DKDE_INSTALL_SBINDIR=/usr/sbin
+    -DKDE_INSTALL_LIBDIR=/usr/lib
+    -DKDE_INSTALL_LIBEXECDIR=/usr/libexec
+    -DKDE_INSTALL_INCLUDEDIR=/usr/include
+    -DKDE_INSTALL_LOCALSTATEDIR=/var
+    -DKDE_INSTALL_SHAREDSTATEDIR=/usr/share
+    -DKDE_INSTALL_DATAROOTDIR=/usr/share
+    -DKDE_INSTALL_DATADIR=/usr/share
+    -DKDE_INSTALL_LOCALEDIR=/usr/share/locale
+    -DKDE_INSTALL_MANDIR=/usr/share/man
+    -DKDE_INSTALL_INFODIR=/usr/share/info
+    -DKDE_INSTALL_SYSCONFDIR=/etc
+
+    -Wno-dev
+  )
+
+  cmake "${_cmake_options[@]}"
+  cmake --build build
+}
+
+package() {
+  # final24.md §2: çeviriler ikiliye gömülmeden paketlenmesin —
+  # -3 derlemesinde lrelease bulunamamış, qrc BOŞ kalmıştı (binary'de
+  # hiç Türkçe yoktu). Gömülme kanıtı: build/lang/*.qm üretilmiş olmalı.
+  local _qm="$srcdir/build/lang/calamares_tr_TR.qm"
+  [ -f "$_qm" ] || { echo "CALAMARES I18N FAIL: $_qm üretilmemiş (lrelease/qt6-tools kurulu mu?) -> build FAIL" >&2; exit 1; }
+  if ! python3 -c "
+data=open('$_qm','rb').read()
+t='Yerinde ANKA Kurulum Sihirbazına hoş geldiniz'
+encs=('utf-16-le','utf-16-be','utf-8')
+import sys; sys.exit(0 if any(t.encode(e) in data for e in encs) else 1)"; then
+    echo "CALAMARES I18N FAIL: qm içinde ANKA karşılama metni yok -> build FAIL" >&2
+    exit 1
+  fi
+  echo "CALAMARES I18N OK: calamares_tr_TR.qm üretildi + ANKA karşılama gömülü ($(stat -c%s "$_qm") bayt)"
+  DESTDIR="$pkgdir" cmake --install build
+}

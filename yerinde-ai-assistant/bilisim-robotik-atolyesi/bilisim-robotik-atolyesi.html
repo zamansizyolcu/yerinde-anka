@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bilişim ve Robotik Atölyesi · 5-6. Sınıf</title>
+<style>
+  :root{
+    /* KREM (default) tema */
+    --paper:#F3EAD9;
+    --paper-line:#E7D9BB;
+    --card:#FFFFFF;
+    --border:#E6D8BE;
+    --surface:#FAF3E4;
+    --ink:#43301F;
+    --ink-soft:#8A7256;
+    --accent:#B5652F;
+    --accent-dark:#8F4E22;
+    --accent-light:#F0DAB8;
+    --success:#3FA34D;
+    --success-glow: rgba(63,163,77,.45);
+    --success-bg:#E6F5E8;
+    --success-text:#1D6B2C;
+    --danger:#C0453B;
+    --danger-bg:#FBE2DF;
+    --danger-text:#8A2A22;
+    --info:#2E7DA8;
+    --info-bg:#DDEEF6;
+    --info-text:#124F6E;
+    --header-bg-1:#F6EEDF;
+    --header-bg-2:#EADFC5;
+    --header-text:#4A3320;
+    --header-text-soft:#8A7256;
+    --header-chip-bg:#FFFFFF;
+    --header-border: rgba(0,0,0,.08);
+    --radius:8px;
+    --mono: Consolas, 'SF Mono', 'Cascadia Mono', 'Courier New', monospace;
+    --sans: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --shadow: 0 2px 0 rgba(67,48,31,.06), 0 8px 20px -12px rgba(67,48,31,.25);
+  }
+  html[data-theme="mavi"]{
+    --paper:#0E1A2C;
+    --paper-line:#16263F;
+    --card:#13233B;
+    --border:#22385A;
+    --surface:#0F2036;
+    --ink:#E7F0FA;
+    --ink-soft:#93AEC9;
+    --accent:#3FA9E8;
+    --accent-dark:#2381B8;
+    --accent-light:#1B3A57;
+    --success:#3FCB77;
+    --success-glow: rgba(63,203,119,.45);
+    --success-bg: rgba(63,203,119,.16);
+    --success-text:#9CF0BB;
+    --danger:#FF6B60;
+    --danger-bg: rgba(255,107,96,.16);
+    --danger-text:#FFB3AC;
+    --info:#3FA9E8;
+    --info-bg: rgba(63,169,232,.16);
+    --info-text:#BFE2FA;
+    --header-bg-1:#0A1526;
+    --header-bg-2:#0C1D33;
+    --header-text:#EAF4FF;
+    --header-text-soft:#8FB0CF;
+    --header-chip-bg:#0A1526;
+    --header-border: rgba(255,255,255,.1);
+    --shadow: 0 2px 0 rgba(0,0,0,.3), 0 8px 20px -12px rgba(0,0,0,.6);
+  }
+  html[data-theme="yesil"]{
+    --paper:#0E1B14;
+    --paper-line:#16291D;
+    --card:#13251B;
+    --border:#22402C;
+    --surface:#0F2016;
+    --ink:#E7F7EC;
+    --ink-soft:#8FC7A4;
+    --accent:#3FCB6B;
+    --accent-dark:#249A4B;
+    --accent-light:#1B3B26;
+    --success:#4FE07E;
+    --success-glow: rgba(79,224,126,.45);
+    --success-bg: rgba(79,224,126,.16);
+    --success-text:#9CF0BB;
+    --danger:#FF6B60;
+    --danger-bg: rgba(255,107,96,.16);
+    --danger-text:#FFB3AC;
+    --info:#3FCB6B;
+    --info-bg: rgba(63,203,107,.16);
+    --info-text:#BFEFD0;
+    --header-bg-1:#0A170F;
+    --header-bg-2:#0D2116;
+    --header-text:#EAFFF0;
+    --header-text-soft:#8FCBA4;
+    --header-chip-bg:#0A170F;
+    --header-border: rgba(255,255,255,.1);
+    --shadow: 0 2px 0 rgba(0,0,0,.3), 0 8px 20px -12px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  html{transition:background-color .2s;}
+  body{
+    font-family:var(--sans);
+    color:var(--ink);
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 27px, var(--paper-line) 27px, var(--paper-line) 28px),
+      repeating-linear-gradient(90deg, transparent, transparent 27px, var(--paper-line) 27px, var(--paper-line) 28px),
+      var(--paper);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    transition:background .2s, color .2s;
+  }
+  a{color:var(--info);}
+  button{font-family:var(--sans);cursor:pointer;}
+  .skip-link{position:absolute;left:-999px;top:0;background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:0 0 8px 0;z-index:999;}
+  .skip-link:focus{left:0;}
+
+  /* ---------- Header / circuit rail ---------- */
+  header.top{
+    position:sticky; top:0; z-index:50;
+    background:linear-gradient(180deg, var(--header-bg-1) 0%, var(--header-bg-2) 100%);
+    color:var(--header-text);
+    box-shadow:0 4px 14px -6px rgba(0,0,0,.35);
+    transition:background .2s;
+    border-bottom:1px solid var(--header-border);
+  }
+  .top-inner{max-width:1180px;margin:0 auto;padding:14px 20px 10px;}
+  .brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;}
+  .brand-left{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .brand h1{
+    font-family:var(--mono);
+    font-size:1.15rem;
+    letter-spacing:.5px;
+    margin:0;
+    color:var(--header-text);
+    display:flex;align-items:center;gap:10px;
+  }
+  .brand h1 .chip{
+    width:30px;height:22px;border:2px solid var(--accent);border-radius:4px;
+    display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;background:var(--header-chip-bg);
+  }
+  .brand .tagline{font-size:.78rem;color:var(--header-text-soft);font-family:var(--mono);}
+  .grade-badge{
+    font-family:var(--mono); font-size:.72rem; letter-spacing:.5px;
+    background:var(--accent-dark); color:#fff; padding:4px 10px; border-radius:20px; font-weight:700;
+  }
+
+  /* ---------- Theme switcher ---------- */
+  .theme-switch{display:flex;gap:6px;align-items:center;}
+  .theme-btn{
+    display:flex;align-items:center;gap:6px;background:transparent;border:1.5px solid var(--header-border);
+    color:var(--header-text-soft);border-radius:20px;padding:4px 10px 4px 6px;font-family:var(--mono);font-size:.7rem;
+    transition:.15s;
+  }
+  .theme-btn .dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:1.5px solid rgba(255,255,255,.5);}
+  .theme-btn .dot-krem{background:#B5652F;}
+  .theme-btn .dot-mavi{background:#3FA9E8;}
+  .theme-btn .dot-yesil{background:#3FCB6B;}
+  .theme-btn:hover{color:var(--header-text);border-color:var(--header-text-soft);}
+  .theme-btn.active{color:var(--header-text);border-color:var(--accent);background:rgba(255,255,255,.06);font-weight:700;}
+
+  /* circuit progress rail */
+  .rail-wrap{margin-top:12px;overflow-x:auto; padding-bottom:4px;}
+  .rail{display:flex;align-items:center;min-width:max-content;}
+  .rail-node{
+    position:relative; display:flex; flex-direction:column; align-items:center; gap:6px;
+    background:none;border:none;color:var(--header-text-soft);padding:0 14px; font-family:var(--mono); font-size:.68rem;
+  }
+  .rail-node .led{
+    width:16px;height:16px;border-radius:50%;
+    background:var(--border);
+    border:2px solid var(--header-border);
+    transition:background .25s, box-shadow .25s;
+  }
+  .rail-node.done .led{background:var(--success); box-shadow:0 0 10px 2px var(--success-glow); border-color:var(--success);}
+  .rail-node.active .led{border-color:var(--accent);}
+  .rail-node .lbl{white-space:nowrap; opacity:.85;}
+  .rail-node.active .lbl{color:var(--header-text); opacity:1; font-weight:700;}
+  .rail-track{
+    height:2px;width:26px;background:repeating-linear-gradient(90deg,var(--accent) 0 4px, transparent 4px 8px);
+    flex-shrink:0; opacity:.55;
+  }
+  .rail-node:hover .lbl{color:var(--header-text);}
+
+  /* ---------- Layout ---------- */
+  main{max-width:1180px;margin:0 auto;padding:26px 20px 80px;}
+  .panel{display:none;animation:fade .35s ease;}
+  .panel.active{display:block;}
+  @keyframes fade{from{opacity:0; transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .unit-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:22px;flex-wrap:wrap;}
+  .unit-head .num{
+    font-family:var(--mono);font-weight:700;font-size:1.9rem;color:var(--accent);
+    background:var(--card); border:2px solid var(--accent-light); border-radius:var(--radius);
+    padding:6px 14px; box-shadow:var(--shadow); flex-shrink:0;
+  }
+  .unit-head h2{margin:0 0 4px; font-size:1.55rem; font-family:var(--mono); letter-spacing:.3px;}
+  .unit-head p.desc{margin:0;color:var(--ink-soft);max-width:640px; font-size:.98rem;}
+
+  .card{
+    background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:20px 22px; margin-bottom:22px; border:1px solid var(--border);
+  }
+  .card h3{
+    font-family:var(--mono); font-size:1.02rem; margin:0 0 10px; color:var(--accent-dark);
+    display:flex; align-items:center; gap:8px;
+  }
+  .card h3 .tagnum{background:var(--accent-light);color:var(--accent-dark);border-radius:5px;padding:1px 7px;font-size:.78rem;}
+  .card p{line-height:1.65;margin:0 0 12px;}
+  .card ul{line-height:1.7;margin:0 0 12px;padding-left:22px;}
+  .lead-note{
+    background:var(--info-bg); border-left:4px solid var(--info); border-radius:6px;
+    padding:10px 14px; font-size:.9rem; color:var(--info-text); margin:0 0 14px;
+  }
+  .callout{
+    background:linear-gradient(135deg, var(--surface), var(--accent-light)); border:1.5px dashed var(--accent);
+    border-radius:var(--radius); padding:18px 20px; margin:20px 0;
+  }
+  .callout h4{margin:0 0 6px; font-family:var(--mono); color:var(--accent-dark);}
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; border:none; border-radius:7px;
+    background:var(--accent); color:#fff; font-weight:700; padding:10px 18px; font-size:.92rem;
+    box-shadow:0 3px 0 var(--accent-dark); transition:transform .08s;
+  }
+  .btn:hover{transform:translateY(-1px);}
+  .btn:active{transform:translateY(1px); box-shadow:0 1px 0 var(--accent-dark);}
+  .btn.secondary{background:var(--info); box-shadow:0 3px 0 var(--info-text);}
+  .btn.ghost{background:transparent;color:var(--accent-dark);border:2px solid var(--accent);box-shadow:none;padding:8px 16px;}
+  .btn.small{padding:6px 12px;font-size:.8rem;box-shadow:0 2px 0 var(--accent-dark);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;transform:none;}
+
+  /* ---------- Nav (unit tabs) already covered by rail; section intra-nav for quiz results ---------- */
+  .badge{display:inline-block;font-family:var(--mono);font-size:.75rem;background:var(--accent-light);color:var(--accent-dark);padding:3px 9px;border-radius:12px;}
+
+  /* ---------- Flip cards ---------- */
+  .flip-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;}
+  .flip-card{perspective:900px;height:130px;}
+  .flip-inner{position:relative;width:100%;height:100%;transition:transform .5s;transform-style:preserve-3d;cursor:pointer;}
+  .flip-card.flipped .flip-inner{transform:rotateY(180deg);}
+  .flip-face{position:absolute;inset:0;border-radius:8px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;backface-visibility:hidden;font-size:.92rem;box-shadow:var(--shadow);}
+  .flip-front{background:var(--ink);color:var(--paper);font-family:var(--mono);font-weight:700;}
+  .flip-back{background:var(--accent-light);color:var(--ink);transform:rotateY(180deg);font-size:.82rem;line-height:1.4;}
+
+  /* ---------- Match game ---------- */
+  .match-wrap{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  @media (max-width:620px){.match-wrap{grid-template-columns:1fr;}}
+  .match-col .m-item{
+    background:var(--card); border:2px solid var(--border); border-radius:7px; padding:10px 14px; margin-bottom:9px;
+    font-size:.9rem; transition:.15s; color:var(--ink);
+  }
+  .match-col .m-item.selected{border-color:var(--accent); background:var(--accent-light);}
+  .match-col .m-item.correct{border-color:var(--success); background:var(--success-bg); color:var(--success-text); font-weight:600;}
+  .match-col .m-item.wrong{animation:shake .3s;}
+  @keyframes shake{25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+  .match-col h4{font-family:var(--mono);font-size:.78rem;color:var(--ink-soft);margin:0 0 8px;text-transform:uppercase;letter-spacing:.5px;}
+
+  /* ---------- Sort / classify game ---------- */
+  .sort-pool{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;min-height:44px;}
+  .sort-item{
+    background:var(--ink); color:var(--paper); padding:8px 14px; border-radius:20px; font-size:.85rem;
+    border:2px solid transparent;
+  }
+  .sort-item.picked{outline:2px solid var(--accent);}
+  .sort-buckets{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+  .sort-bucket{
+    border:2px dashed var(--border); border-radius:8px; padding:10px; min-height:90px; background:var(--surface);
+  }
+  .sort-bucket h5{margin:0 0 8px;font-family:var(--mono);font-size:.8rem;color:var(--ink-soft);}
+  .sort-bucket .sort-item{display:inline-block;margin:3px;background:var(--accent);color:#fff;}
+
+  /* ---------- Order (sequencing) game ---------- */
+  .order-list{list-style:none;margin:0 0 14px;padding:0;max-width:520px;}
+  .order-list li{
+    background:var(--card);border:2px solid var(--border);border-radius:7px;padding:9px 12px;margin-bottom:7px;
+    display:flex;align-items:center;gap:10px;font-size:.9rem;
+  }
+  .order-list li .ord-num{font-family:var(--mono);font-weight:700;color:var(--accent);min-width:20px;}
+  .order-list li .ord-btns{margin-left:auto;display:flex;gap:4px;}
+  .order-list li button{border:1px solid var(--border);background:var(--card);color:var(--ink);border-radius:5px;font-size:.8rem;padding:2px 8px;}
+  .order-list li button:hover{background:var(--accent-light);}
+
+  /* ---------- Maze / coding puzzle ---------- */
+  .maze-wrap{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;}
+  .maze-grid{display:grid; gap:2px; background:#101E30; padding:6px; border-radius:8px; box-shadow:var(--shadow);}
+  .maze-cell{width:44px;height:44px;background:#EAF1F4;display:flex;align-items:center;justify-content:center;font-size:1.3rem;border-radius:3px;position:relative;}
+  .maze-cell.wall{background:#4C647A;}
+  .maze-cell.goal{background:#FCEEDD;}
+  .maze-cell.goal::after{content:"🏁";position:absolute;font-size:1.3rem;}
+  .maze-cell.robot span{display:inline-block;transition:transform .25s;}
+  .maze-controls{min-width:230px;}
+  .cmd-btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .cmd-btns button{border:2px solid var(--accent); color:var(--accent-dark); background:var(--card); border-radius:7px; padding:8px 12px; font-size:.85rem; font-family:var(--mono);}
+  .cmd-btns button:hover{background:var(--accent);color:#fff;}
+  .program-list{list-style:none;margin:0 0 12px;padding:0;min-height:40px;border:2px dashed var(--border);border-radius:7px;padding:8px;background:var(--surface);display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;}
+  .program-list li{background:var(--accent);color:#fff;font-family:var(--mono);font-size:.78rem;padding:4px 9px;border-radius:5px;}
+  .loop-toggle{display:flex;align-items:center;gap:8px;margin:10px 0;font-size:.85rem;background:var(--accent-light);color:var(--ink);padding:8px 10px;border-radius:6px;}
+  .maze-msg{font-weight:700;margin-top:8px;font-size:.9rem;min-height:1.3em;}
+  .maze-msg.ok{color:var(--success);}
+  .maze-msg.fail{color:var(--danger);}
+
+  /* ---------- HTML sandbox ---------- */
+  .code-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:760px){.code-wrap{grid-template-columns:1fr;}}
+  .code-wrap textarea{
+    width:100%;height:260px;font-family:var(--mono);font-size:.82rem;padding:12px;border-radius:7px;
+    border:2px solid #16324B;background:#0F2536;color:#DDE9EF;resize:vertical;line-height:1.5;
+  }
+  .code-wrap iframe{width:100%;height:260px;border-radius:7px;border:2px solid var(--border);background:#fff;}
+  .snippet-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .snippet-btns button{font-size:.75rem;padding:5px 9px;border-radius:5px;border:1px solid var(--accent);background:var(--card);color:var(--accent-dark);}
+  .code-col h5, .preview-col h5{font-family:var(--mono);font-size:.78rem;color:var(--ink-soft);margin:0 0 6px;}
+
+  /* ---------- Password checker ---------- */
+  .pw-wrap input{width:100%;max-width:360px;font-size:1rem;padding:10px 12px;border-radius:7px;border:2px solid var(--border);font-family:var(--mono);background:var(--card);color:var(--ink);}
+  .pw-bar{height:10px;border-radius:5px;background:var(--border);margin:10px 0;overflow:hidden;max-width:360px;}
+  .pw-bar-fill{height:100%;width:0%;background:var(--danger);transition:width .25s, background .25s;}
+  .pw-tips{list-style:none;padding:0;margin:8px 0 0;font-size:.85rem;}
+  .pw-tips li{padding:2px 0;color:var(--ink-soft);}
+  .pw-tips li.ok{color:var(--success);}
+  .pw-tips li::before{content:"○ ";}
+  .pw-tips li.ok::before{content:"● ";}
+
+  /* ---------- Robot hotspot diagram ---------- */
+  .robot-diagram{display:flex;gap:22px;flex-wrap:wrap;align-items:center;}
+  .robot-svg-wrap{flex-shrink:0;}
+  .hotspot-info{flex:1;min-width:220px;background:var(--surface);border:2px solid var(--border);border-radius:8px;padding:14px 16px;min-height:120px;}
+  .hotspot-info h5{margin:0 0 6px;font-family:var(--mono);color:var(--accent-dark);}
+  .hs{cursor:pointer;}
+  .hs:hover{stroke:var(--ink) !important;stroke-width:3;}
+  .hs-sensor{fill:var(--info);}
+  .hs-brain{fill:var(--accent);}
+  .hs-motion{fill:var(--success);}
+  .robot-label{fill:var(--ink);}
+  .robot-body{fill:var(--surface);stroke:var(--ink);}
+
+  /* ---------- Quiz ---------- */
+  .quiz-q{margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+  .quiz-q:last-child{border-bottom:none;}
+  .quiz-q p.qtext{font-weight:600;margin:0 0 10px;}
+  .quiz-opts{display:flex;flex-direction:column;gap:8px;}
+  .quiz-opt{
+    text-align:left;background:var(--card);color:var(--ink);border:2px solid var(--border);border-radius:7px;padding:9px 13px;font-size:.9rem;
+  }
+  .quiz-opt:hover{border-color:var(--accent);}
+  .quiz-opt.correct{background:var(--success-bg);border-color:var(--success);color:var(--success-text);font-weight:700;}
+  .quiz-opt.wrong{background:var(--danger-bg);border-color:var(--danger);color:var(--danger-text);}
+  .quiz-opt:disabled{cursor:default;}
+  .quiz-result{margin-top:16px;padding:14px 16px;border-radius:8px;font-weight:700;display:none;}
+  .quiz-result.show{display:block;}
+  .quiz-result.pass{background:var(--success-bg);color:var(--success-text);}
+  .quiz-result.fail{background:var(--danger-bg);color:var(--danger-text);}
+
+  /* ---------- Footer / resources ---------- */
+  .res-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;}
+  .res-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;box-shadow:var(--shadow);}
+  .res-card h4{margin:0 0 6px;font-family:var(--mono);font-size:.95rem;color:var(--accent-dark);}
+  .res-card a{word-break:break-all;font-size:.85rem;}
+
+  footer.site-foot{text-align:center;color:var(--ink-soft);font-size:.8rem;padding:30px 20px 50px;font-family:var(--mono);}
+
+  /* Certificate */
+  .cert{background:var(--card);border:6px double var(--accent);border-radius:10px;padding:34px;text-align:center;max-width:640px;margin:20px auto;}
+  .cert h2{font-family:var(--mono);color:var(--accent-dark);margin-bottom:4px;}
+  .cert .cert-name{font-size:1.4rem;font-weight:700;margin:14px 0;border-bottom:2px solid var(--ink);display:inline-block;padding:0 10px 4px;min-width:260px;}
+  @media print{ header.top, nav, .no-print{display:none !important;} main{padding:0;} }
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+  }
+  #yerindeStatus{
+    position:fixed; top:8px; left:8px; z-index:9999;
+    background:rgba(0,0,0,.5); color:#fff; padding:4px 10px;
+    border-radius:20px; font-size:11px; font-family:var(--sans);
+    pointer-events:none;
+  }
+  #yerindeStatus.connected{ background:rgba(63,163,77,.55); }
+  .yerinde-toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:var(--card); color:var(--ink); border:1px solid var(--accent);
+    padding:10px 18px; border-radius:8px; font-size:13px; z-index:99999;
+    box-shadow:var(--shadow); font-family:var(--sans);
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main-content">İçeriğe geç</a>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <div class="brand-left">
+        <h1><span class="chip">⚡</span> YERİNDE · Bilişim ve Robotik Atölyesi</h1>
+        <span class="grade-badge">5-6. SINIF</span>
+      </div>
+      <div class="theme-switch" role="group" aria-label="Tema seç">
+        <button class="theme-btn" data-theme-btn="krem" onclick="setTheme('krem')"><span class="dot dot-krem"></span>Krem</button>
+        <button class="theme-btn" data-theme-btn="mavi" onclick="setTheme('mavi')"><span class="dot dot-mavi"></span>Mavi</button>
+        <button class="theme-btn" data-theme-btn="yesil" onclick="setTheme('yesil')"><span class="dot dot-yesil"></span>Yeşil</button>
+      </div>
+      <div id="yerindeStatus">⚪ YERİNDE bağlı değil</div>
+    </div>
+    <div class="tagline">Çevrimdışı çalışır · İnternet gerekmez · Defterine not almayı unutma 📓</div>
+    <div class="rail-wrap">
+      <nav class="rail" id="rail" aria-label="Üniteler arası gezinme"></nav>
+    </div>
+  </div>
+</header>
+
+<main id="main-content">
+
+<section class="panel active" id="panel-intro" data-title="Giriş">
+  <div class="unit-head">
+    <div class="num">👋</div>
+    <div>
+      <h2>Hoş geldin!</h2>
+      <p class="desc">Bu defter, Bilişim Teknolojileri ve Yazılım dersindeki konuları senin için etkileşimli oyunlar ve
+      küçük görevlerle anlatır. İnternete ihtiyacın yok — hepsi bu dosyanın içinde!</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📓 Bu atölyede neler var?</h3>
+    <ul>
+      <li><strong>Ünite 1 — Bilgi ve Teknoloji:</strong> Bilişim nedir, bilgisayarın parçaları, işletim sistemleri, zararlı yazılımlar ve güvenli kullanım.</li>
+      <li><strong>Ünite 2 — Robotlar ve Hayatımız:</strong> Robotlar, algoritma, kodlama bulmacası ve yapay zekâ.</li>
+      <li><strong>Ünite 3 — Web Tasarımının Temelleri:</strong> Web sayfası nedir, kendi mini HTML sayfanı yaz ve anında gör.</li>
+      <li><strong>Ünite 4 — Çevrimiçi Ortamlar ve Ortak Çalışma:</strong> Bulut, e-posta ve birlikte çalışma araçları.</li>
+      <li><strong>Ünite 5 — Dijital İçerik Üretimi:</strong> Metin, görsel, ses ve video içerikleri tanıma ve üretim adımları.</li>
+      <li><strong>Genel Değerlendirme:</strong> Tüm üniteleri kapsayan final sınavı ve katılım belgen.</li>
+      <li><strong>Kaynaklar:</strong> Daha fazla öğrenmek isteyenler için ek bağlantılar.</li>
+    </ul>
+    <div class="lead-note">💡 Üstteki devre hattındaki ışıklar (LED) her ünitenin testini geçtiğinde yeşile döner.
+    İstediğin üniteye tıklayarak doğrudan oraya atlayabilirsin. Sağ üstteki <strong>Krem / Mavi / Yeşil</strong>
+    düğmeleriyle de temayı istediğin gibi değiştirebilirsin.</div>
+    <button class="btn" onclick="goTo('u1')">Başlayalım → Ünite 1</button>
+  </div>
+</section>
+
+<section class="panel" id="panel-u1" data-title="Ünite 1">
+  <div class="unit-head">
+    <div class="num">1</div>
+    <div>
+      <h2>Bilgi ve Teknoloji</h2>
+      <p class="desc">Bilişimin ne olduğunu, bilgisayarın parçalarını ve teknolojiyi güvenle kullanmayı öğreniyoruz.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">1.1</span> Temel kavramlar: Bilgi, İletişim, Teknoloji</h3>
+    <p><strong>Bilgi</strong>, öğrendiğimiz ve bildiğimiz her şeydir. <strong>İletişim</strong>, bilgiyi başkalarıyla
+    paylaşmak, yani bir şekilde "konuşmak"tır — sözle, yazıyla, resimle olabilir. <strong>Teknoloji</strong> ise
+    insanların hayatını kolaylaştırmak için ürettiği araç ve gereçlerdir; illa elektronik olması gerekmez, bir kalem
+    de bir teknolojidir. Bu üçü bir araya gelince <strong>bilişim teknolojileri</strong> ortaya çıkar: bize bilgiye
+    ulaşmamızı ve iletişim kurmamızı sağlayan araçlar — telefon, bilgisayar, hatta kitap ve gazete bile birer örnektir.</p>
+    <p>Kartları çevirerek kavramları tekrar edelim, sonra da eşleştirme oyunuyla pekiştirelim:</p>
+    <div class="flip-grid" id="flip-1-1"></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">1.1</span> Kavram eşleştirme</h3>
+    <p>Soldaki kavramı, sağdaki doğru açıklamayla eşleştirmek için önce birine, sonra diğerine tıkla.</p>
+    <div class="match-wrap" id="match-1-1"></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">1.2</span> Bilgisayarın parçaları: Donanım ve Yazılım</h3>
+    <p><strong>Donanım</strong>, bilgisayarın elle tutulup gözle görülen fiziksel parçalarıdır. Donanımlar göreve göre
+    üçe ayrılır:</p>
+    <ul>
+      <li><strong>Giriş birimleri</strong> — bilgisayara bilgi/komut gönderir. Örnek: klavye, fare, mikrofon, kamera.</li>
+      <li><strong>Çıkış birimleri</strong> — bilgisayarın sonucu bize gösterir. Örnek: ekran, hoparlör, yazıcı.</li>
+      <li><strong>Depolama birimleri</strong> — bilgiyi saklar. Örnek: SSD/sabit disk, USB bellek, hafıza kartı.</li>
+    </ul>
+    <p><strong>Yazılım</strong> ise elle tutulamayan, sadece ekranda çalışırken gördüğümüz programlardır — bir oyun,
+    bir tarayıcı ya da işletim sisteminin kendisi gibi.</p>
+    <p>Aşağıdaki cihazları doğru kutuya yerleştir: önce cihaza, sonra ait olduğu kutuya tıkla.</p>
+    <div class="sort-pool" id="sort-1-1-pool"></div>
+    <div class="sort-buckets" id="sort-1-1-buckets"></div>
+    <div class="maze-msg" id="sort-1-1-msg"></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">1.3</span> İşletim sistemleri</h3>
+    <p>Bir bilgisayarı açtığımızda ilk çalışan ve en önemli yazılım <strong>işletim sistemidir</strong>. İşletim sistemi,
+    donanımı yönetir, diğer programların çalışmasına imkân tanır ve dosyalarımızı düzenlememizi sağlar — kısacası
+    bilgisayarla bizim aramızdaki "çevirmen"dir. Bilgisayarlarda ve telefonlarda farklı işletim sistemleri kullanılır:</p>
+    <ul>
+      <li><strong>Masaüstü işletim sistemleri</strong> — bilgisayarlarda çalışır. Örnek: Windows, macOS, Linux.</li>
+      <li><strong>Mobil işletim sistemleri</strong> — telefon ve tabletlerde çalışır. Örnek: Android, iOS.</li>
+    </ul>
+    <p>Aşağıdaki işletim sistemlerini doğru kutuya yerleştir: önce isme, sonra ait olduğu kutuya tıkla.</p>
+    <div class="sort-pool" id="sort-1-3-pool"></div>
+    <div class="sort-buckets" id="sort-1-3-buckets"></div>
+    <div class="maze-msg" id="sort-1-3-msg"></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">1.4</span> Zararlı yazılımlar ve korunma yolları</h3>
+    <p><strong>Zararlı yazılım (malware)</strong>, bilgisayarımıza, telefonumuza ya da bilgilerimize zarar vermek
+    amacıyla üretilen programlardır. Başlıca türleri şunlardır:</p>
+    <ul>
+      <li><strong>Virüs</strong> — kendini diğer dosyalara ekleyerek yayılır ve onlara zarar verir.</li>
+      <li><strong>Solucan (Worm)</strong> — ağlar üzerinden kendi kendine, hiçbir dosyaya ihtiyaç duymadan yayılabilir.</li>
+      <li><strong>Truva atı (Trojan)</strong> — faydalı bir program gibi görünüp arka planda zarar verir.</li>
+      <li><strong>Casus yazılım (Spyware)</strong> — kullanıcıya fark ettirmeden bilgilerini toplar.</li>
+      <li><strong>Fidye yazılımı (Ransomware)</strong> — dosyalarımızı kilitleyip açmak için para ister.</li>
+      <li><strong>Oltalama (Phishing)</strong> — sahte e-posta ya da mesajlarla kişisel bilgi çalmaya çalışan bir yöntemdir.</li>
+    </ul>
+    <p>Önce zararlı yazılım türünü, sonra doğru açıklamayı seçerek eşleştir:</p>
+    <div class="match-wrap" id="match-1-4"></div>
+    <p style="margin-top:16px;"><strong>Korunma yolları:</strong> güvenlik yazılımı (antivirüs) kullan, işletim sistemini
+    ve programları güncel tut, tanımadığın dosya ve bağlantıları açma, önemli dosyalarını yedekle ve güçlü şifreler kullan.</p>
+    <div id="quiz-1-4"></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">1.5</span> Bilişim teknolojileri günlük hayatımızda</h3>
+    <p>Bilişim teknolojilerini fark etmeden her gün onlarca kez kullanırız: markette kartla ödeme yaparken, otobüs
+    kartını okuturken, hava durumuna bakarken, doktor randevusu alırken ya da ders çalışırken bir uygulama açarken...
+    Aşağıdaki doğru/yanlış sorularıyla ne kadar farkında olduğunu test et.</p>
+    <div id="quiz-1-2"></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">1.6</span> Güvenli ve bilinçli kullanım</h3>
+    <p>Bilişim araçlarını kullanırken dikkat etmemiz gereken bazı kurallar vardır: kişisel bilgilerini (adres, telefon,
+    okul) tanımadığın kişilerle paylaşma, ekran başında geçirdiğin süreye dikkat et, tanımadığın bağlantılara (link)
+    tıklama ve güçlü şifreler kullan. Güçlü bir şifre; uzun olur, büyük-küçük harf, rakam ve sembol içerir ve
+    tahmin edilmesi kolay bilgiler (doğum tarihi, isim gibi) barındırmaz.</p>
+    <div class="lead-note">🔒 Aşağıya gerçek şifreni <strong>yazma</strong>! Sadece örnek/deneme bir şifreyle dene.</div>
+    <div class="pw-wrap">
+      <input type="text" id="pw-input" placeholder="Örnek bir şifre dene: kedi123" autocomplete="off">
+      <div class="pw-bar"><div class="pw-bar-fill" id="pw-bar-fill"></div></div>
+      <ul class="pw-tips" id="pw-tips"></ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🧠 Ünite 1 Testi</h3>
+    <p>Öğrendiklerini kontrol etmenin zamanı geldi. En az %70 doğru cevapla ünite ışığın yeşile dönsün.</p>
+    <div id="quiz-u1"></div>
+  </div>
+</section>
+
+<section class="panel" id="panel-u2" data-title="Ünite 2">
+  <div class="unit-head">
+    <div class="num">2</div>
+    <div>
+      <h2>Robotlar ve Hayatımız</h2>
+      <p class="desc">Robotların nasıl "düşündüğünü", algoritma ve kodlamayı, yapay zekâyı keşfediyoruz.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">2.1</span> Robot nedir?</h3>
+    <p>Bir <strong>robot</strong>, çevresini algılayabilen, bu bilgiyi işleyebilen ve buna göre hareket edebilen bir
+    makinedir. Her robotta genelde üç temel parça bulunur. Aşağıdaki şemadaki noktalara tıklayarak her birinin ne işe
+    yaradığını öğren.</p>
+    <div class="robot-diagram">
+      <div class="robot-svg-wrap" id="robot-svg"></div>
+      <div class="hotspot-info" id="robot-info">👆 Bir noktaya tıkla ve ne olduğunu öğren.</div>
+    </div>
+    <p style="margin-top:14px;">Robotları hayatımızda pek çok yerde görürüz: fabrikalarda araba parçalarını birleştiren
+    kollar, evlerde toz alan süpürge robotları, ameliyatta doktora yardım eden robot kollar, hatta bir maket arabanın
+    ışıklı ve sesli devresi bile birer robotun küçük bir parçası sayılabilir!</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">2.2</span> Algoritma ve kodlama nedir?</h3>
+    <p>Bir işi yapmak için izlenmesi gereken sıralı adımlara <strong>algoritma</strong> denir — tarif kitabındaki bir
+    yemek tarifi gibi. Bu adımları bir bilgisayarın veya robotun anlayacağı bir dile çevirmeye de
+    <strong>kodlama (programlama)</strong> denir. Kodlamada üç temel yapı taşı vardır:</p>
+    <ul>
+      <li><strong>Sıralama:</strong> Komutların doğru sırayla, birer birer çalıştırılması.</li>
+      <li><strong>Tekrar (döngü):</strong> Aynı adımların birden çok kez tekrarlanması.</li>
+      <li><strong>Karar (koşul):</strong> Bir duruma göre farklı seçenekler arasından seçim yapılması.</li>
+    </ul>
+    <p>Şimdi sıra sende! Aşağıdaki komut bloklarını sırayla ekleyerek küçük robotu bayrağa ulaştır.</p>
+
+    <h4 style="font-family:var(--mono);font-size:.85rem;color:var(--ink-soft);margin:18px 0 6px;">🧩 Bulmaca 1 — Sıralama</h4>
+    <div class="maze-wrap" id="maze-1"></div>
+
+    <h4 style="font-family:var(--mono);font-size:.85rem;color:var(--ink-soft);margin:22px 0 6px;">🔁 Bulmaca 2 — Döngü (Tekrar)</h4>
+    <p style="font-size:.88rem;">Bu bulmacada yol, aynı hareketlerin <strong>tekrarıyla</strong> çiziliyor. Az sayıda
+    komutla, "tekrarla" seçeneğini kullanarak hedefe ulaşmayı dene.</p>
+    <div class="maze-wrap" id="maze-2"></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">2.3</span> Yapay zekâ nedir?</h3>
+    <p><strong>Yapay zekâ</strong>, bilgisayarların insan gibi öğrenme, tahmin etme ve karar verme becerilerini taklit
+    etmesidir. Telefon sesli asistanların seni anlaması, bir uygulamanın izleyebileceğin bir sonraki videoyu önermesi,
+    fotoğraftaki bir kediyi tanıması gibi örnekler yapay zekâ sayesindedir. Yapay zekâ çok yetenekli olsa da her zaman
+    doğru karar vermez ve <strong>insan denetimine</strong> ihtiyaç duyar — bu yüzden gördüğümüz her bilgiyi sorgulamalıyız.</p>
+    <div id="quiz-2-3"></div>
+  </div>
+
+  <div class="card">
+    <h3>🧠 Ünite 2 Testi</h3>
+    <div id="quiz-u2"></div>
+  </div>
+</section>
+
+<section class="panel" id="panel-u3" data-title="Ünite 3">
+  <div class="unit-head">
+    <div class="num">3</div>
+    <div>
+      <h2>Web Tasarımının Temelleri</h2>
+      <p class="desc">Bir web sayfasının nelerden oluştuğunu öğrenip kendi mini sayfanı kodluyoruz.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">3.1</span> Web sayfası nedir?</h3>
+    <p>Tarayıcıda (Chrome, Edge, Safari gibi) açtığımız her sayfa aslında <strong>HTML</strong> adı verilen bir dille
+    yazılmıştır. HTML, sayfadaki başlıkları, paragrafları, resimleri ve bağlantıları <strong>etiketler</strong>
+    (<code>&lt;...&gt;</code>) ile tarayıcıya tarif eder. Birden çok web sayfası bir araya gelince bir
+    <strong>web sitesi</strong> oluşur.</p>
+    <ul>
+      <li><code>&lt;h1&gt;</code> → büyük başlık</li>
+      <li><code>&lt;p&gt;</code> → paragraf (normal yazı)</li>
+      <li><code>&lt;img&gt;</code> → resim</li>
+      <li><code>&lt;a&gt;</code> → başka bir sayfaya bağlantı (link)</li>
+    </ul>
+    <p>Aşağıda kendi mini web sayfanı yazabileceğin bir kod alanı var. Sol tarafa HTML yaz, sağ tarafta anında
+    sonucunu gör!</p>
+    <div class="snippet-btns">
+      <button onclick="insertSnippetKey('h1')">+ Başlık</button>
+      <button onclick="insertSnippetKey('p')">+ Paragraf</button>
+      <button onclick="insertSnippetKey('img')">+ Resim yeri</button>
+      <button onclick="insertSnippetKey('a')">+ Bağlantı</button>
+      <button onclick="insertSnippetKey('ul')">+ Liste</button>
+    </div>
+    <div class="code-wrap">
+      <div class="code-col">
+        <h5>KODUN</h5>
+        <textarea id="html-editor" spellcheck="false"></textarea>
+      </div>
+      <div class="preview-col">
+        <h5>ANLIK GÖRÜNÜM</h5>
+        <iframe id="html-preview" title="Önizleme" sandbox=""></iframe>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">3.2</span> Web sayfası oluşturma araçları</h3>
+    <p>Bir web sayfası oluşturmanın birkaç yolu vardır: <strong>kod editörleri</strong> ile doğrudan HTML/CSS yazmak
+    (biraz önce yaptığın gibi), <strong>sürükle-bırak site oluşturucular</strong> ile hazır bloklardan sayfa
+    tasarlamak, ya da hazır <strong>şablonlar</strong> üzerinde küçük değişiklikler yapmak. Hangisini seçersek
+    seçelim, iyi bir web sayfasında sade bir tasarım, okunaklı yazı tipi ve kolay gezinme (menü) bulunmalıdır.</p>
+    <div id="quiz-u3"></div>
+  </div>
+</section>
+
+<section class="panel" id="panel-u4" data-title="Ünite 4">
+  <div class="unit-head">
+    <div class="num">4</div>
+    <div>
+      <h2>Çevrimiçi Ortamlar ve Ortak Çalışma</h2>
+      <p class="desc">İnternet üzerindeki ortamları ve birlikte çalışmayı kolaylaştıran araçları tanıyoruz.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">4.1</span> Çevrimiçi ortamlar</h3>
+    <p><strong>Çevrimiçi (online)</strong> olmak, bir cihazın internete bağlı olması demektir. İnternete bağlandığımızda
+    e-posta gönderebilir, bir <strong>bulut (cloud)</strong> alanına dosya yükleyip her yerden erişebilir, forumlarda
+    soru sorabilir ya da sosyal medyada paylaşım yapabiliriz. Bulut depolama sayesinde dosyalarımız internetteki
+    güvenli sunucularda saklanır; böylece telefonumuz kaybolsa bile fotoğraflarımız kaybolmaz.</p>
+    <div class="lead-note">🌐 Bu bölümdeki bazı örnekler internet gerektirir; şimdilik kavramları öğrenip, sınıfta
+    öğretmeninle birlikte internete bağlıyken deneyebilirsin.</div>
+    <div id="quiz-4-1"></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">4.2</span> Ortak çalışma araçları</h3>
+    <p>Bir proje üzerinde başka insanlarla aynı anda, hatta farklı şehirlerden çalışmayı sağlayan araçlar vardır.
+    Aşağıda birkaç araç türü ve ne işe yaradığı var — önce aracı, sonra doğru açıklamayı seçerek eşleştir.</p>
+    <div class="match-wrap" id="match-4-2"></div>
+  </div>
+
+  <div class="card">
+    <h3>🧠 Ünite 4 Testi</h3>
+    <div id="quiz-u4"></div>
+  </div>
+</section>
+
+<section class="panel" id="panel-u5" data-title="Ünite 5">
+  <div class="unit-head">
+    <div class="num">5</div>
+    <div>
+      <h2>Dijital İçerik Üretimi</h2>
+      <p class="desc">Dijital içerik türlerini tanıyor, bir içeriği üretirken izlenecek adımları öğreniyoruz.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">5.1</span> Dijital içerik türleri</h3>
+    <p><strong>Dijital içerik</strong>, bir bilgisayar veya telefon aracılığıyla oluşturduğumuz ve paylaştığımız her
+    şeydir: yazılar, fotoğraflar, sesler, videolar ve animasyonlar. Aşağıdaki örnekleri doğru içerik türüne
+    yerleştir: önce örneğe, sonra türüne tıkla.</p>
+    <div class="sort-pool" id="sort-5-1-pool"></div>
+    <div class="sort-buckets" id="sort-5-1-buckets"></div>
+    <div class="maze-msg" id="sort-5-1-msg"></div>
+  </div>
+
+  <div class="card">
+    <h3><span class="tagnum">5.2</span> Dijital içerik üretim süreci</h3>
+    <p>İyi bir dijital içerik üretmek genelde belli bir sırayla ilerler. Aşağıdaki adımları, ok tuşlarını kullanarak
+    doğru sıraya diz, sonra "Kontrol Et" butonuna bas.</p>
+    <ul class="order-list" id="order-5-2"></ul>
+    <button class="btn small" onclick="checkOrder('order-5-2', ORDER_5_2, 'order-5-2-msg')">Kontrol Et</button>
+    <div class="maze-msg" id="order-5-2-msg"></div>
+  </div>
+
+  <div class="card">
+    <h3>🧠 Ünite 5 Testi</h3>
+    <div id="quiz-u5"></div>
+  </div>
+</section>
+
+<section class="panel" id="panel-final" data-title="Genel Sınav">
+  <div class="unit-head">
+    <div class="num">🏆</div>
+    <div>
+      <h2>Genel Değerlendirme</h2>
+      <p class="desc">Tüm ünitelerden karışık sorular. %70 ve üzeri başarıyla bitirirsen belgen hazır olacak!</p>
+    </div>
+  </div>
+  <div class="card">
+    <div id="quiz-final"></div>
+  </div>
+  <div id="cert-area"></div>
+</section>
+
+<section class="panel" id="panel-kaynak" data-title="Kaynaklar">
+  <div class="unit-head">
+    <div class="num">📚</div>
+    <div>
+      <h2>Ek Kaynaklar</h2>
+      <p class="desc">Daha derinlemesine öğrenmek isteyenler için (internet bağlantısı gerekir).</p>
+    </div>
+  </div>
+  <div class="res-grid">
+    <div class="res-card">
+      <h4>🖥️ Bilgisayarın Minik Elleri</h4>
+      <p>Öğretmen notları, algoritma, Scratch, Python ve daha fazlası için ders sitesi.</p>
+      <a href="https://sites.google.com/view/bilgisayarinminikelleri/ana-sayfa" target="_blank" rel="noopener">sites.google.com/view/bilgisayarinminikelleri</a>
+    </div>
+    <div class="res-card">
+      <h4>▶️ YouTube Kanalı</h4>
+      <p>Konu anlatım videoları için @BilgisayarinMinikElleri kanalını ziyaret edebilirsin.</p>
+      <a href="https://www.youtube.com/@BilgisayarinMinikElleri" target="_blank" rel="noopener">youtube.com/@BilgisayarinMinikElleri</a>
+    </div>
+    <div class="res-card">
+      <h4>📖 Ders Kitabı</h4>
+      <p>Bu atölye, Bilişim Teknolojileri ve Yazılım dersi 5-6. sınıf kazanımları temel alınarak hazırlanmıştır.
+      Konuların ayrıntısı için ders kitabına ve öğretmenine başvurabilirsin.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:22px;">
+    <h3>🔄 Başka bir öğrenci mi kullanacak?</h3>
+    <p style="font-size:.9rem;">Devre hattındaki ışıklar bu tarayıcıda kaydedilir. Dosyayı başka bir öğrenci için
+    sıfırdan kullanmak istersen ilerlemeyi temizleyebilirsin.</p>
+    <button class="btn ghost" onclick="resetProgress()">İlerlemeyi Sıfırla</button>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-foot">YERİNDE V2 ekosistemi · Bilişim Teknolojileri ve Yazılım dersi 5-6. sınıf kazanımlarına göre hazırlanmıştır.</footer>
+
+<script>
+/* Small safety polyfill so this works even on very old browsers */
+if (window.NodeList && !NodeList.prototype.forEach) {
+  NodeList.prototype.forEach = Array.prototype.forEach;
+}
+
+/* ==================== DATA ==================== */
+const RAIL_ITEMS = [
+  {id:'intro', label:'Giriş', trackable:false},
+  {id:'u1', label:'Ü1 · Bilgi', trackable:true},
+  {id:'u2', label:'Ü2 · Robot', trackable:true},
+  {id:'u3', label:'Ü3 · Web', trackable:true},
+  {id:'u4', label:'Ü4 · Çevrimiçi', trackable:true},
+  {id:'u5', label:'Ü5 · İçerik', trackable:true},
+  {id:'final', label:'🏆 Sınav', trackable:true},
+  {id:'kaynak', label:'Kaynaklar', trackable:false}
+];
+
+const FLIP_1_1 = [
+  {term:"Bilgi", def:"Öğrendiğimiz ve bildiğimiz her şey."},
+  {term:"İletişim", def:"Bilgiyi başkalarıyla paylaşma; bir şekilde 'konuşma'."},
+  {term:"Teknoloji", def:"İnsan hayatını kolaylaştırmak için üretilmiş her türlü araç ve gereç."},
+  {term:"Bilişim Teknolojileri", def:"Bilgiye ulaşmamızı ve iletişim kurmamızı sağlayan araçlar: telefon, bilgisayar, kitap, gazete..."}
+];
+
+const MATCH_1_1 = [
+  {id:'a', term:'Bilgi', def:'Öğrendiğimiz ve bildiğimiz her şey.'},
+  {id:'b', term:'İletişim', def:"Bilgiyi paylaşmak, bir şekilde 'konuşmak'."},
+  {id:'c', term:'Teknoloji', def:'Hayatı kolaylaştıran araç ve gereçler.'},
+  {id:'d', term:'Bilişim Teknolojileri', def:'Bilgiye ulaşmamızı ve iletişim kurmamızı sağlayan araçlar.'}
+];
+
+const SORT_1_3 = {
+  buckets: ['Masaüstü İşletim Sistemi','Mobil İşletim Sistemi'],
+  items: [
+    {label:'Windows', bucket:'Masaüstü İşletim Sistemi'},
+    {label:'macOS', bucket:'Masaüstü İşletim Sistemi'},
+    {label:'Linux', bucket:'Masaüstü İşletim Sistemi'},
+    {label:'Android', bucket:'Mobil İşletim Sistemi'},
+    {label:'iOS', bucket:'Mobil İşletim Sistemi'}
+  ]
+};
+
+const MATCH_1_4 = [
+  {id:'a', term:'Virüs', def:'Kendini diğer dosyalara ekleyerek yayılır ve onlara zarar verir.'},
+  {id:'b', term:'Solucan (Worm)', def:'Ağlar üzerinden, bir dosyaya ihtiyaç duymadan kendi kendine yayılır.'},
+  {id:'c', term:'Truva Atı (Trojan)', def:'Faydalı bir program gibi görünüp arka planda zarar verir.'},
+  {id:'d', term:'Casus Yazılım (Spyware)', def:'Kullanıcıya fark ettirmeden bilgilerini toplar.'},
+  {id:'e', term:'Fidye Yazılımı (Ransomware)', def:'Dosyaları kilitleyip açmak için para ister.'},
+  {id:'f', term:'Oltalama (Phishing)', def:'Sahte e-posta ya da mesajlarla kişisel bilgi çalmaya çalışan bir yöntemdir.'}
+];
+
+const QUIZ_1_4 = [
+  {q:'Bilinmeyen bir e-postadaki bağlantıya tıklamak güvenlidir.', options:['Doğru','Yanlış'], correct:1},
+  {q:'Güvenlik yazılımı (antivirüs), bilgisayarı zararlı yazılımlardan korumaya yardımcı olur.', options:['Doğru','Yanlış'], correct:0},
+  {q:'Fidye yazılımı, dosyalarımızı kilitleyip para isteyebilir.', options:['Doğru','Yanlış'], correct:0},
+  {q:'Programları ve işletim sistemini güncel tutmak gereksizdir.', options:['Doğru','Yanlış'], correct:1}
+];
+
+const SORT_1_1 = {
+  buckets: ['Giriş Birimi','Çıkış Birimi','Depolama Birimi'],
+  items: [
+    {label:'Klavye', bucket:'Giriş Birimi'},
+    {label:'Fare', bucket:'Giriş Birimi'},
+    {label:'Mikrofon', bucket:'Giriş Birimi'},
+    {label:'Ekran', bucket:'Çıkış Birimi'},
+    {label:'Yazıcı', bucket:'Çıkış Birimi'},
+    {label:'Hoparlör', bucket:'Çıkış Birimi'},
+    {label:'SSD Disk', bucket:'Depolama Birimi'},
+    {label:'USB Bellek', bucket:'Depolama Birimi'},
+    {label:'Hafıza Kartı', bucket:'Depolama Birimi'}
+  ]
+};
+
+const QUIZ_1_2 = [
+  {q:'Markette kartla ödeme yapmak bir bilişim teknolojisi kullanmaktır.', options:['Doğru','Yanlış'], correct:0},
+  {q:'Otobüse binerken kartını okutmanın bilişim teknolojisiyle ilgisi yoktur.', options:['Doğru','Yanlış'], correct:1},
+  {q:'Hava durumu uygulamasını kullanmak bir bilişim teknolojisi örneğidir.', options:['Doğru','Yanlış'], correct:0},
+  {q:'Bilişim teknolojileri sadece okulda kullanılır.', options:['Doğru','Yanlış'], correct:1},
+  {q:'Doktordan çevrimiçi randevu almak bilişim teknolojilerinin bir kullanım alanıdır.', options:['Doğru','Yanlış'], correct:0}
+];
+
+const QUIZ_2_3 = [
+  {q:'Aşağıdakilerden hangisi bir yapay zekâ örneğidir?', options:['Sesli asistanın sorunu anlayıp cevap vermesi','Bir kalemle yazı yazmak','Kitap okumak','Bisiklete binmek'], correct:0},
+  {q:'Yapay zekâ her zaman doğru karar verir mi?', options:['Evet, her zaman doğrudur','Hayır, bazen hata yapabilir; bu yüzden insan kontrolü gerekir','Sadece geceleri hata yapar','Yapay zekâ hiç kullanılmaz'], correct:1},
+  {q:'Bir uygulamanın izlediğin videolara bakıp yeni video önermesi hangi teknolojiye örnektir?', options:['Yapay zekâ','Yazıcı','Klavye','Mikrofon'], correct:0}
+];
+
+const ROBOT_HOTSPOTS = [
+  {id:'sensor', x:70, y:55, label:'Sensör', info:'Çevreyi algılar: ışığı, sesi, mesafeyi ya da dokunmayı fark eder. Örnek: ışık sensörü, ultrasonik mesafe sensörü.'},
+  {id:'beyin', x:70, y:110, label:'Kontrol Kartı (Beyin)', info:'Sensörlerden gelen bilgiyi işler ve ne yapılması gerektiğine karar verir. Örnek: küçük bilgisayar kartları ve devre kartları.'},
+  {id:'hareket', x:70, y:165, label:'Hareket Birimi', info:'Kontrol kartının verdiği komutla harekete geçer. Örnek: motor, servo motor, buzzer, LED.'}
+];
+
+const MAZE_1 = {
+  key:'maze-1', rows:5, cols:5,
+  start:{r:4, c:0, dir:'N'}, goal:{r:2, c:2},
+  maxBlocks:null, showRepeat:false,
+  hint:'İpucu: Önce yukarı ilerle, sonra sağa dön ve bayrağa kadar ilerle.'
+};
+const MAZE_2 = {
+  key:'maze-2', rows:7, cols:3,
+  start:{r:6, c:1, dir:'N'}, goal:{r:0, c:1},
+  maxBlocks:2, showRepeat:true,
+  hint:"İpucu: Bu bulmacada en fazla 2 komut ekleyebilirsin. 'İleri, İleri' program yeter — geri kalanını tekrar sayısıyla tamamla!"
+};
+
+const QUIZ_4_1 = [
+  {q:'Bulut depolama ne işe yarar?', options:['Dosyaları internet üzerinden saklamaya ve her yerden erişmeye yarar','Bilgisayarı yavaşlatmaya yarar','Sadece oyun oynamaya yarar','Telefonu şarj etmeye yarar'], correct:0},
+  {q:'Aşağıdakilerden hangisi çevrimiçi bir ortamdır?', options:['E-posta','Kalem','Silgi','Cetvel'], correct:0},
+  {q:'Çevrimiçi ortamlarda kişisel bilgilerini paylaşmak güvenli midir?', options:['Evet, her zaman güvenlidir','Hayır, dikkatli olunmalı ve gereksiz bilgi paylaşılmamalı','Sadece tatildeyken güvenlidir','Hiç fark etmez'], correct:1}
+];
+
+const MATCH_4_2 = [
+  {id:'a', term:'Ortak Belge Düzenleme Araçları', def:'Birden fazla kişinin aynı belge üzerinde aynı anda çalışmasını sağlar.'},
+  {id:'b', term:'Görüntülü Görüşme Programları', def:'Farklı yerlerdeki kişilerin yüz yüzeymiş gibi konuşmasını sağlar.'},
+  {id:'c', term:'Görev/Pano Uygulamaları', def:'Bir proje için yapılacak işleri listeleyip takip etmeyi sağlar.'},
+  {id:'d', term:'Bulut Depolama', def:'Dosyaları internet üzerinden saklayıp paylaşmayı sağlar.'}
+];
+
+const SORT_5_1 = {
+  buckets: ['Metin','Görsel','Ses','Video/Animasyon'],
+  items: [
+    {label:'Yazılan bir hikâye', bucket:'Metin'},
+    {label:'Bir e-posta', bucket:'Metin'},
+    {label:'Çekilen bir fotoğraf', bucket:'Görsel'},
+    {label:'Çizilen bir resim', bucket:'Görsel'},
+    {label:'Kaydedilen bir şarkı', bucket:'Ses'},
+    {label:'Sesli kitap', bucket:'Ses'},
+    {label:'Çizgi film', bucket:'Video/Animasyon'},
+    {label:'Tatil videosu', bucket:'Video/Animasyon'}
+  ]
+};
+
+const ORDER_5_2 = [
+  'Fikrini ve amacını belirle (Ne anlatmak istiyorsun?)',
+  'Gerekli materyalleri topla (fotoğraf, metin, ses vb.)',
+  'İçeriği oluştur / üret',
+  'Gözden geçir ve düzelt',
+  'Paylaş'
+];
+
+const QUIZ_U1 = [
+  {q:"'Bilgiye ulaşmamızı ve iletişim kurmamızı sağlayan araçlara' ne denir?", options:['Bilişim teknolojileri','Sadece yazılım','Sadece donanım','Depolama birimi'], correct:0},
+  {q:'Klavye hangi tür bir donanım birimidir?', options:['Giriş birimi','Çıkış birimi','Depolama birimi','Yazılım'], correct:0},
+  {q:'Aşağıdakilerden hangisi bir yazılımdır?', options:['Bir tarayıcı programı','Fare','Ekran','USB bellek'], correct:0},
+  {q:'Güçlü bir şifre nasıl olmalıdır?', options:['Kısa ve doğum tarihin olmalı','Uzun olmalı, harf-rakam-sembol içermeli','Sadece isminden oluşmalı','Herkesle paylaşılmalı'], correct:1},
+  {q:'Tanımadığın bir bağlantıya (linke) tıklamadan önce ne yapmalısın?', options:['Hemen tıklamalısın','Güvenli olup olmadığını düşünmeli, emin değilsen tıklamamalısın','Şifreni yazmalısın','Arkadaşlarınla paylaşmalısın'], correct:1},
+  {q:'SSD disk hangi tür bir donanım birimidir?', options:['Depolama birimi','Giriş birimi','Yazılım','Çıkış birimi'], correct:0},
+  {q:'Bilgisayarı açtığımızda ilk çalışan, donanımı yöneten yazılıma ne denir?', options:['İşletim sistemi','Tarayıcı','Oyun','Yazıcı'], correct:0},
+  {q:'Aşağıdakilerden hangisi bir mobil işletim sistemidir?', options:['Android','Windows','macOS','Linux'], correct:0},
+  {q:'Kendini diğer dosyalara ekleyerek yayılan zararlı yazılım türüne ne denir?', options:['Virüs','Tarayıcı','İşletim sistemi','Yazıcı'], correct:0},
+  {q:'Dosyalarımızı kilitleyip açmak için para isteyen zararlı yazılıma ne denir?', options:['Fidye yazılımı (Ransomware)','İşletim sistemi','Tarayıcı','Donanım'], correct:0}
+];
+
+const QUIZ_U2 = [
+  {q:'Bir robotta çevreyi algılayan parça hangisidir?', options:['Sensör','Kontrol kartı','Ekran kalemi','Kitap'], correct:0},
+  {q:'Bir işi yapmak için izlenen sıralı adımlara ne denir?', options:['Algoritma','Donanım','Bulut','Tarayıcı'], correct:0},
+  {q:'Aynı komutların birden çok kez tekrarlanmasına ne denir?', options:['Döngü (tekrar)','Karar','Giriş','Depolama'], correct:0},
+  {q:'Bir duruma göre farklı seçenekler arasından seçim yapmaya ne denir?', options:['Karar (koşul)','Sıralama','Döngü','Giriş birimi'], correct:0},
+  {q:'Yapay zekânın verdiği kararlar hakkında ne söylenebilir?', options:['Her zaman kesin doğrudur, kontrol gerekmez','Hatalı olabilir, bu yüzden insan denetimi gerekir','Sadece oyunlarda kullanılır','Hiçbir işe yaramaz'], correct:1}
+];
+
+const QUIZ_U3 = [
+  {q:'Web sayfaları hangi dille tarif edilir?', options:['HTML','Türkçe dil bilgisi','Matematik formülü','Nota'], correct:0},
+  {q:'Büyük bir başlık oluşturmak için hangi etiket kullanılır?', options:['<h1>','<p>','<a>','<img>'], correct:0},
+  {q:'<a> etiketi ne işe yarar?', options:['Başka bir sayfaya bağlantı verir','Resim ekler','Paragraf oluşturur','Listeyi sıralar'], correct:0},
+  {q:'Birden çok web sayfası bir araya gelince ne oluşur?', options:['Bir web sitesi','Bir yazıcı','Bir e-posta','Bir bulut'], correct:0}
+];
+
+const QUIZ_U4 = [
+  {q:'Aynı belge üzerinde birden fazla kişinin aynı anda çalışmasını hangi araç sağlar?', options:['Ortak belge düzenleme aracı','Yazıcı','USB bellek','Hesap makinesi'], correct:0},
+  {q:'Bulut depolamanın faydası nedir?', options:['Dosyaları internetten her yerden erişilebilir saklamak','Bilgisayarı kapatmak','Ekranı temizlemek','Sesi kısmak'], correct:0},
+  {q:'Görüntülü görüşme programları ne işe yarar?', options:['Farklı yerlerdeki kişilerin yüz yüze görüşmesini sağlar','Sadece müzik dinletir','Dosya silmeye yarar','Yazıcıyı çalıştırır'], correct:0}
+];
+
+const QUIZ_U5 = [
+  {q:'Yazılan bir hikâye hangi dijital içerik türüne girer?', options:['Metin','Ses','Video','Donanım'], correct:0},
+  {q:'Bir dijital içerik üretirken ilk yapılması gereken nedir?', options:['Fikrini ve amacını belirlemek','Hemen paylaşmak','Gözden geçirmeden bitirmek','Hiçbir şey yapmamak'], correct:0},
+  {q:'Kaydedilen bir şarkı hangi içerik türüne girer?', options:['Ses','Metin','Görsel','Yazılım'], correct:0},
+  {q:'Bir içeriği paylaşmadan önce hangi adım önerilir?', options:['Gözden geçirip düzeltmek','Hemen silmek','Hiçbir şey yapmamak','Adını değiştirmek'], correct:0}
+];
+
+const SNIPPETS = {
+  h1: '<h1>Başlığım</h1>\n',
+  p: '<p>Buraya bir paragraf yazabilirsin.</p>\n',
+  img: '<p style="font-size:40px">🖼️</p>\n<p><em>(gerçek bir resim eklemek için &lt;img src="..."&gt; etiketini kullanırsın)</em></p>\n',
+  a: '<a href="#">Bir bağlantı</a>\n',
+  ul: '<ul>\n  <li>Birinci madde</li>\n  <li>İkinci madde</li>\n</ul>\n'
+};
+
+const HTML_STARTER = '<h1>Merhaba Dünya! 👋</h1>\n<p>Bu benim ilk web sayfam.</p>\n<p>Yukarıdaki butonlarla yeni parçalar ekleyebilirsin.</p>\n';
+
+const QUIZ_FINAL = QUIZ_U1.slice(0,3)
+  .concat(QUIZ_U2.slice(0,3))
+  .concat(QUIZ_U3.slice(0,2))
+  .concat(QUIZ_U4.slice(0,2))
+  .concat(QUIZ_U5.slice(0,2));
+
+
+/* ==================== ENGINE ==================== */
+/* ---------- Progress ---------- */
+let PROGRESS = {};
+try{
+  const saved = localStorage.getItem('yerinde_bt_progress');
+  if(saved) PROGRESS = JSON.parse(saved);
+}catch(e){ PROGRESS = {}; }
+
+function saveProgress(){
+  try{ localStorage.setItem('yerinde_bt_progress', JSON.stringify(PROGRESS)); }catch(e){ /* ok, in-memory only */ }
+}
+function resetProgress(){
+  if(confirm('Tüm ünite ilerlemen sıfırlanacak. Emin misin?')){
+    PROGRESS = {};
+    saveProgress();
+    updateRailUI();
+    document.getElementById('cert-area').innerHTML = '';
+  }
+}
+function markDone(key){
+  PROGRESS[key] = true;
+  saveProgress();
+  updateRailUI();
+}
+
+/* ---------- Navigation / rail ---------- */
+function renderRail(){
+  const rail = document.getElementById('rail');
+  let html = '';
+  RAIL_ITEMS.forEach((item, i)=>{
+    html += `<button class="rail-node" data-id="${item.id}" onclick="goTo('${item.id}')">
+      <span class="led"></span><span class="lbl">${item.label}</span>
+    </button>`;
+    if(i < RAIL_ITEMS.length - 1) html += '<span class="rail-track"></span>';
+  });
+  rail.innerHTML = html;
+  updateRailUI();
+}
+
+function updateRailUI(){
+  document.querySelectorAll('.rail-node').forEach(btn=>{
+    const id = btn.dataset.id;
+    btn.classList.toggle('done', !!PROGRESS[id]);
+  });
+}
+
+function goTo(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  const target = document.getElementById('panel-' + id);
+  if(target) target.classList.add('active');
+  document.querySelectorAll('.rail-node').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.id === id);
+  });
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+/* ---------- Flip cards ---------- */
+function initFlip(containerId, data){
+  const el = document.getElementById(containerId);
+  el.innerHTML = data.map((c,i)=>`
+    <div class="flip-card" data-i="${i}" onclick="this.classList.toggle('flipped')">
+      <div class="flip-inner">
+        <div class="flip-face flip-front">${c.term}</div>
+        <div class="flip-face flip-back">${c.def}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ---------- Match game (click to pair) ---------- */
+const MATCH_STATE = {};
+function initMatch(containerId, pairs){
+  const el = document.getElementById(containerId);
+  const terms = shuffle(pairs.map(p=>({id:p.id, text:p.term})));
+  const defs = shuffle(pairs.map(p=>({id:p.id, text:p.def})));
+  MATCH_STATE[containerId] = {selection:null, matched:new Set(), total:pairs.length};
+  el.innerHTML = `
+    <div class="match-col"><h4>Kavramlar</h4>${terms.map(t=>
+      `<div class="m-item" data-side="left" data-id="${t.id}" onclick="matchClick('${containerId}', this, 'left', '${t.id}')">${t.text}</div>`).join('')}</div>
+    <div class="match-col"><h4>Açıklamalar</h4>${defs.map(d=>
+      `<div class="m-item" data-side="right" data-id="${d.id}" onclick="matchClick('${containerId}', this, 'right', '${d.id}')">${d.text}</div>`).join('')}</div>
+    <div class="maze-msg" id="${containerId}-msg" style="grid-column:1/-1;"></div>
+  `;
+}
+function matchClick(containerId, elm, side, id){
+  const state = MATCH_STATE[containerId];
+  if(elm.classList.contains('correct')) return;
+  if(!state.selection){
+    document.querySelectorAll(`#${containerId} .m-item.selected`).forEach(x=>x.classList.remove('selected'));
+    elm.classList.add('selected');
+    state.selection = {side, id, elm};
+    return;
+  }
+  if(state.selection.side === side){
+    state.selection.elm.classList.remove('selected');
+    elm.classList.add('selected');
+    state.selection = {side, id, elm};
+    return;
+  }
+  // opposite side clicked -> evaluate
+  const first = state.selection;
+  if(first.id === id){
+    first.elm.classList.remove('selected');
+    first.elm.classList.add('correct');
+    elm.classList.add('correct');
+    state.matched.add(id);
+    state.selection = null;
+    if(state.matched.size === state.total){
+      document.getElementById(containerId+'-msg').innerHTML = '🎉 Harika! Tüm kavramları doğru eşleştirdin.';
+      document.getElementById(containerId+'-msg').className = 'maze-msg ok';
+    }
+  } else {
+    elm.classList.add('wrong');
+    first.elm.classList.add('wrong');
+    setTimeout(()=>{
+      elm.classList.remove('wrong','selected');
+      first.elm.classList.remove('wrong','selected');
+    }, 450);
+    state.selection = null;
+  }
+}
+
+/* ---------- Sort / classify game (click item, then click bucket) ---------- */
+const SORT_STATE = {};
+function initSort(poolId, bucketId, msgId, data){
+  const poolEl = document.getElementById(poolId);
+  const bucketEl = document.getElementById(bucketId);
+  const items = shuffle(data.items.map((it,i)=>Object.assign({}, it, {uid:poolId+'-'+i})));
+  SORT_STATE[poolId] = {selected:null, remaining:items.length};
+  poolEl.innerHTML = items.map(it=>
+    `<span class="sort-item" data-uid="${it.uid}" data-bucket="${it.bucket}" onclick="sortPick('${poolId}','${bucketId}','${msgId}', this)">${it.label}</span>`
+  ).join('');
+  bucketEl.innerHTML = data.buckets.map(b=>
+    `<div class="sort-bucket" data-bucket="${b}" onclick="sortDrop('${poolId}','${bucketId}','${msgId}', '${b}')"><h5>${b}</h5></div>`
+  ).join('');
+}
+function sortPick(poolId, bucketId, msgId, elm){
+  document.querySelectorAll(`#${poolId} .sort-item.picked`).forEach(x=>x.classList.remove('picked'));
+  elm.classList.add('picked');
+  SORT_STATE[poolId].selected = elm;
+}
+function sortDrop(poolId, bucketId, msgId, bucketName){
+  const state = SORT_STATE[poolId];
+  const msg = document.getElementById(msgId);
+  if(!state.selected){
+    msg.textContent = 'Önce yukarıdan bir kart seç, sonra kutuya tıkla.';
+    msg.className = 'maze-msg';
+    return;
+  }
+  const item = state.selected;
+  if(item.dataset.bucket === bucketName){
+    const bucketDiv = document.querySelector(`#${bucketId} .sort-bucket[data-bucket="${bucketName}"]`);
+    item.classList.remove('picked');
+    item.onclick = null;
+    bucketDiv.appendChild(item);
+    state.selected = null;
+    state.remaining--;
+    if(state.remaining === 0){
+      msg.textContent = '🎉 Hepsini doğru yerleştirdin!';
+      msg.className = 'maze-msg ok';
+    } else {
+      msg.textContent = '✅ Doğru!';
+      msg.className = 'maze-msg ok';
+    }
+  } else {
+    msg.textContent = '❌ Bu kutuya ait değil, tekrar dene.';
+    msg.className = 'maze-msg fail';
+  }
+}
+
+/* ---------- Order (sequencing) game ---------- */
+const ORDER_STATE = {};
+function initOrder(listId, correctSteps){
+  const el = document.getElementById(listId);
+  const shuffled = shuffle(correctSteps.map((s,i)=>({text:s, correctIndex:i})));
+  ORDER_STATE[listId] = shuffled;
+  renderOrder(listId);
+}
+function renderOrder(listId){
+  const el = document.getElementById(listId);
+  const arr = ORDER_STATE[listId];
+  el.innerHTML = arr.map((s,i)=>`
+    <li>
+      <span class="ord-num">${i+1}</span>
+      <span>${s.text}</span>
+      <span class="ord-btns">
+        <button onclick="orderMove('${listId}', ${i}, -1)" ${i===0?'disabled':''} aria-label="Yukarı taşı">↑</button>
+        <button onclick="orderMove('${listId}', ${i}, 1)" ${i===arr.length-1?'disabled':''} aria-label="Aşağı taşı">↓</button>
+      </span>
+    </li>`).join('');
+}
+function orderMove(listId, i, dir){
+  const arr = ORDER_STATE[listId];
+  const j = i + dir;
+  if(j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  renderOrder(listId);
+}
+function checkOrder(listId, correctSteps, msgId){
+  const arr = ORDER_STATE[listId];
+  const msg = document.getElementById(msgId);
+  const ok = arr.every((s,i)=> s.correctIndex === i);
+  if(ok){
+    msg.textContent = '🎉 Doğru sıralama bu! Aferin.';
+    msg.className = 'maze-msg ok';
+  } else {
+    msg.textContent = '❌ Sıralama henüz doğru değil, ok tuşlarıyla düzenlemeye devam et.';
+    msg.className = 'maze-msg fail';
+  }
+}
+
+/* ---------- Maze / coding puzzle ---------- */
+const DIR_VEC = {N:{dr:-1,dc:0}, E:{dr:0,dc:1}, S:{dr:1,dc:0}, W:{dr:0,dc:-1}};
+const DIR_ARROW = {N:'▲', E:'►', S:'▼', W:'◄'};
+const TURN_RIGHT = {N:'E', E:'S', S:'W', W:'N'};
+const TURN_LEFT = {N:'W', W:'S', S:'E', E:'N'};
+const MAZE_STATE = {};
+
+function initMaze(containerId, config){
+  const el = document.getElementById(containerId);
+  MAZE_STATE[containerId] = {config:config, program:[], pos:{r:config.start.r, c:config.start.c, dir:config.start.dir}, running:false};
+  el.innerHTML = `
+    <div>
+      <div class="maze-grid" id="${containerId}-grid" style="grid-template-columns:repeat(${config.cols}, 44px);"></div>
+    </div>
+    <div class="maze-controls">
+      <p style="font-size:.82rem;color:var(--ink-soft);margin:0 0 8px;">${config.hint}</p>
+      <div class="cmd-btns">
+        <button onclick="mazeAdd('${containerId}','F')">⬆️ İleri</button>
+        <button onclick="mazeAdd('${containerId}','R')">↪️ Sağa Dön</button>
+        <button onclick="mazeAdd('${containerId}','L')">↩️ Sola Dön</button>
+      </div>
+      <ul class="program-list" id="${containerId}-prog"></ul>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn small ghost" onclick="mazeUndo('${containerId}')">Geri Al</button>
+        <button class="btn small ghost" onclick="mazeClear('${containerId}')">Temizle</button>
+      </div>
+      ${config.showRepeat ? `
+      <div class="loop-toggle">
+        🔁 Programı
+        <select id="${containerId}-repeat">
+          <option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option>
+        </select>
+        kez tekrarla
+      </div>` : ''}
+      <button class="btn" style="margin-top:8px;" onclick="mazeRun('${containerId}')">▶️ Çalıştır</button>
+      <div class="maze-msg" id="${containerId}-msg"></div>
+    </div>
+  `;
+  renderMazeGrid(containerId);
+  renderMazeProgram(containerId);
+}
+
+function renderMazeGrid(containerId){
+  const state = MAZE_STATE[containerId];
+  const {config, pos} = state;
+  const grid = document.getElementById(containerId + '-grid');
+  let html = '';
+  for(let r=0; r<config.rows; r++){
+    for(let c=0; c<config.cols; c++){
+      let cls = 'maze-cell';
+      let content = '';
+      if(r === config.goal.r && c === config.goal.c) cls += ' goal';
+      if(r === pos.r && c === pos.c){
+        cls += ' robot';
+        content = `<span>🤖${DIR_ARROW[pos.dir]}</span>`;
+      }
+      html += `<div class="${cls}">${content}</div>`;
+    }
+  }
+  grid.innerHTML = html;
+}
+
+function renderMazeProgram(containerId){
+  const state = MAZE_STATE[containerId];
+  const label = {F:'İleri', R:'Sağa Dön', L:'Sola Dön'};
+  const list = document.getElementById(containerId + '-prog');
+  list.innerHTML = state.program.map(cmd => `<li>${label[cmd]}</li>`).join('') ||
+    '<li style="background:transparent;color:var(--ink-soft);border:none;">Henüz komut eklemedin.</li>';
+}
+
+function mazeAdd(containerId, cmd){
+  const state = MAZE_STATE[containerId];
+  if(state.running) return;
+  if(state.config.maxBlocks && state.program.length >= state.config.maxBlocks){
+    const msg = document.getElementById(containerId+'-msg');
+    msg.textContent = `Bu bulmacada en fazla ${state.config.maxBlocks} komut ekleyebilirsin — kalanını tekrar sayısıyla tamamla!`;
+    msg.className = 'maze-msg fail';
+    return;
+  }
+  state.program.push(cmd);
+  renderMazeProgram(containerId);
+}
+function mazeUndo(containerId){
+  const state = MAZE_STATE[containerId];
+  if(state.running) return;
+  state.program.pop();
+  renderMazeProgram(containerId);
+}
+function mazeClear(containerId){
+  const state = MAZE_STATE[containerId];
+  if(state.running) return;
+  state.program = [];
+  renderMazeProgram(containerId);
+  document.getElementById(containerId+'-msg').textContent = '';
+}
+
+function mazeRun(containerId){
+  const state = MAZE_STATE[containerId];
+  if(state.running || state.program.length === 0) return;
+  let repeatCount = 1;
+  if(state.config.showRepeat){
+    repeatCount = parseInt(document.getElementById(containerId+'-repeat').value, 10) || 1;
+  }
+  let sequence = [];
+  for(let i=0;i<repeatCount;i++) sequence = sequence.concat(state.program);
+
+  state.running = true;
+  state.pos = {r:state.config.start.r, c:state.config.start.c, dir:state.config.start.dir};
+  renderMazeGrid(containerId);
+  const msg = document.getElementById(containerId+'-msg');
+  msg.textContent = '';
+  msg.className = 'maze-msg';
+
+  let step = 0;
+  const timer = setInterval(()=>{
+    if(step >= sequence.length){
+      clearInterval(timer);
+      state.running = false;
+      const {config, pos} = state;
+      if(pos.r === config.goal.r && pos.c === config.goal.c){
+        msg.textContent = '🎉 Başardın! Robot bayrağa ulaştı.';
+        msg.className = 'maze-msg ok';
+      } else {
+        msg.textContent = '❌ Robot hedefe ulaşamadı, programını düzenleyip tekrar dene.';
+        msg.className = 'maze-msg fail';
+      }
+      return;
+    }
+    const cmd = sequence[step];
+    if(cmd === 'R') state.pos.dir = TURN_RIGHT[state.pos.dir];
+    else if(cmd === 'L') state.pos.dir = TURN_LEFT[state.pos.dir];
+    else if(cmd === 'F'){
+      const v = DIR_VEC[state.pos.dir];
+      const nr = state.pos.r + v.dr, nc = state.pos.c + v.dc;
+      if(nr >= 0 && nr < state.config.rows && nc >= 0 && nc < state.config.cols){
+        state.pos.r = nr; state.pos.c = nc;
+      }
+    }
+    renderMazeGrid(containerId);
+    step++;
+  }, 450);
+}
+
+/* ---------- HTML sandbox editor ---------- */
+function updatePreview(){
+  const code = document.getElementById('html-editor').value;
+  document.getElementById('html-preview').srcdoc = code;
+}
+function insertSnippetKey(key){
+  const ta = document.getElementById('html-editor');
+  const snippet = SNIPPETS[key] || '';
+  const start = (ta.selectionStart !== null && ta.selectionStart !== undefined) ? ta.selectionStart : ta.value.length;
+  const end = (ta.selectionEnd !== null && ta.selectionEnd !== undefined) ? ta.selectionEnd : ta.value.length;
+  ta.value = ta.value.slice(0, start) + snippet + ta.value.slice(end);
+  ta.focus();
+  const newPos = start + snippet.length;
+  ta.setSelectionRange(newPos, newPos);
+  updatePreview();
+}
+
+/* ---------- Password strength checker ---------- */
+function initPasswordChecker(){
+  const input = document.getElementById('pw-input');
+  const fill = document.getElementById('pw-bar-fill');
+  const tipsEl = document.getElementById('pw-tips');
+  const rules = [
+    {test:v => v.length >= 8, label:'En az 8 karakter'},
+    {test:v => /[a-zçğıöşü]/.test(v), label:'Küçük harf içeriyor'},
+    {test:v => /[A-ZÇĞİÖŞÜ]/.test(v), label:'Büyük harf içeriyor'},
+    {test:v => /[0-9]/.test(v), label:'Rakam içeriyor'},
+    {test:v => /[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ]/.test(v), label:'Sembol içeriyor (! ? _ vb.)'}
+  ];
+  tipsEl.innerHTML = rules.map(r => `<li>${r.label}</li>`).join('');
+  input.addEventListener('input', ()=>{
+    const v = input.value;
+    let score = 0;
+    const items = tipsEl.querySelectorAll('li');
+    rules.forEach((r,i)=>{
+      const ok = v.length > 0 && r.test(v);
+      items[i].classList.toggle('ok', ok);
+      if(ok) score++;
+    });
+    const pct = (score/rules.length)*100;
+    fill.style.width = pct + '%';
+    fill.style.background = score <= 2 ? 'var(--danger)' : (score === 3 ? '#E0A72E' : 'var(--success)');
+  });
+}
+
+/* ---------- Quiz engine ---------- */
+const QUIZ_STATE = {};
+function initQuiz(containerId, questions, opts){
+  opts = opts || {};
+  const el = document.getElementById(containerId);
+  const qs = shuffle(questions.slice());
+  QUIZ_STATE[containerId] = {answered:0, correct:0, total:qs.length};
+  el.innerHTML = qs.map((q,i)=>`
+    <div class="quiz-q" data-qi="${i}">
+      <p class="qtext">${i+1}. ${q.q}</p>
+      <div class="quiz-opts">
+        ${q.options.map((opt,oi)=>`<button class="quiz-opt" onclick="quizAnswer('${containerId}', this, ${oi}, ${q.correct})">${opt}</button>`).join('')}
+      </div>
+    </div>`).join('') + `<div class="quiz-result" id="${containerId}-result"></div>`;
+  if(opts.passKey) el.dataset.passKey = opts.passKey;
+}
+function quizAnswer(containerId, btn, chosen, correctIdx){
+  const qBlock = btn.closest('.quiz-q');
+  qBlock.querySelectorAll('.quiz-opt').forEach(b=>b.disabled = true);
+  if(chosen === correctIdx){
+    btn.classList.add('correct');
+    QUIZ_STATE[containerId].correct++;
+  } else {
+    btn.classList.add('wrong');
+    qBlock.querySelectorAll('.quiz-opt')[correctIdx].classList.add('correct');
+  }
+  QUIZ_STATE[containerId].answered++;
+  const st = QUIZ_STATE[containerId];
+  if(st.answered === st.total){
+    finishQuiz(containerId);
+  }
+}
+function finishQuiz(containerId){
+  const st = QUIZ_STATE[containerId];
+  const pct = Math.round((st.correct/st.total)*100);
+  const resultEl = document.getElementById(containerId + '-result');
+  const passed = pct >= 70;
+  resultEl.classList.add('show', passed ? 'pass' : 'fail');
+  const el = document.getElementById(containerId);
+  const passKey = el.dataset.passKey;
+  if(passed){
+    resultEl.innerHTML = `🎉 ${st.correct}/${st.total} doğru (%${pct}) — Tebrikler, geçtin!`;
+    if(passKey) markDone(passKey);
+    if(containerId === 'quiz-final') showCertificate();
+  } else {
+    resultEl.innerHTML = `${st.correct}/${st.total} doğru (%${pct}) — %70'e ulaşamadın, tekrar dene!
+      <br><button class="btn small secondary" style="margin-top:10px;" onclick="retryQuiz('${containerId}')">Tekrar Dene</button>`;
+  }
+}
+function retryQuiz(containerId){
+  const map = {
+    'quiz-1-2':[QUIZ_1_2,null], 'quiz-1-4':[QUIZ_1_4,null], 'quiz-2-3':[QUIZ_2_3,null], 'quiz-4-1':[QUIZ_4_1,null],
+    'quiz-u1':[QUIZ_U1,'u1'], 'quiz-u2':[QUIZ_U2,'u2'], 'quiz-u3':[QUIZ_U3,'u3'],
+    'quiz-u4':[QUIZ_U4,'u4'], 'quiz-u5':[QUIZ_U5,'u5'], 'quiz-final':[QUIZ_FINAL,'final']
+  };
+  const [qs, passKey] = map[containerId];
+  initQuiz(containerId, qs, {passKey});
+}
+
+/* ---------- Certificate ---------- */
+function showCertificate(){
+  const area = document.getElementById('cert-area');
+  area.innerHTML = `
+    <div class="cert">
+      <h2>🏆 KATILIM BELGESİ</h2>
+      <p>Bu belge, Bilişim ve Robotik Atölyesi'ni başarıyla tamamlayan</p>
+      <div class="cert-name" contenteditable="true">İsmini buraya yaz</div>
+      <p>adlı öğrenciye verilmiştir.</p>
+      <p style="margin-top:18px;font-size:.85rem;color:var(--ink-soft);">YERİNDE V2 · Bilişim Teknolojileri ve Yazılım Dersi</p>
+      <button class="btn no-print" style="margin-top:16px;" onclick="window.print()">🖨️ Yazdır</button>
+    </div>`;
+}
+
+/* ---------- Robot hotspot diagram ---------- */
+function initRobotDiagram(){
+  const wrap = document.getElementById('robot-svg');
+  const info = document.getElementById('robot-info');
+  const svg = `
+    <svg width="180" height="220" viewBox="0 0 180 220" xmlns="http://www.w3.org/2000/svg">
+      <rect class="robot-body" x="45" y="30" width="90" height="160" rx="14" stroke-width="2"/>
+      <rect class="hs-brain" x="60" y="45" width="60" height="26" rx="4" opacity="0.2"/>
+      <circle class="hs hs-sensor" data-id="sensor" cx="70" cy="55" r="12" stroke="var(--ink)" stroke-width="2"/>
+      <circle class="hs hs-brain" data-id="beyin" cx="70" cy="110" r="12" stroke="var(--ink)" stroke-width="2"/>
+      <circle class="hs hs-motion" data-id="hareket" cx="70" cy="165" r="12" stroke="var(--ink)" stroke-width="2"/>
+      <text class="robot-label" x="90" y="59" font-family="Consolas,monospace" font-size="11">Sensör</text>
+      <text class="robot-label" x="90" y="114" font-family="Consolas,monospace" font-size="11">Beyin</text>
+      <text class="robot-label" x="90" y="169" font-family="Consolas,monospace" font-size="11">Hareket</text>
+    </svg>`;
+  wrap.innerHTML = svg;
+  wrap.querySelectorAll('.hs').forEach(node=>{
+    node.addEventListener('click', ()=>{
+      const hs = ROBOT_HOTSPOTS.find(h=>h.id === node.dataset.id);
+      info.innerHTML = `<h5>${hs.label}</h5><p style="margin:0;font-size:.88rem;line-height:1.5;">${hs.info}</p>`;
+    });
+  });
+}
+
+/* ---------- Theme switcher ---------- */
+function setTheme(name){
+  document.documentElement.setAttribute('data-theme', name === 'krem' ? 'krem' : name);
+  try{ localStorage.setItem('yerinde_bt_theme', name); }catch(e){ /* in-memory only */ }
+  document.querySelectorAll('.theme-btn').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.themeBtn === name);
+  });
+}
+function initTheme(){
+  let saved = 'krem';
+  try{
+    const s = localStorage.getItem('yerinde_bt_theme');
+    if(s) saved = s;
+  }catch(e){ /* default */ }
+  setTheme(saved);
+}
+
+/* ---------- Utilities ---------- */
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+/* ---------- Init everything ---------- */
+document.addEventListener('DOMContentLoaded', ()=>{
+  initTheme();
+  renderRail();
+  goTo('intro');
+
+  initFlip('flip-1-1', FLIP_1_1);
+  initMatch('match-1-1', MATCH_1_1);
+  initSort('sort-1-1-pool', 'sort-1-1-buckets', 'sort-1-1-msg', SORT_1_1);
+  initSort('sort-1-3-pool', 'sort-1-3-buckets', 'sort-1-3-msg', SORT_1_3);
+  initMatch('match-1-4', MATCH_1_4);
+  initQuiz('quiz-1-4', QUIZ_1_4);
+  initQuiz('quiz-1-2', QUIZ_1_2);
+  initPasswordChecker();
+  initQuiz('quiz-u1', QUIZ_U1, {passKey:'u1'});
+
+  initRobotDiagram();
+  initMaze('maze-1', MAZE_1);
+  initMaze('maze-2', MAZE_2);
+  initQuiz('quiz-2-3', QUIZ_2_3);
+  initQuiz('quiz-u2', QUIZ_U2, {passKey:'u2'});
+
+  document.getElementById('html-editor').value = HTML_STARTER;
+  document.getElementById('html-editor').addEventListener('input', updatePreview);
+  updatePreview();
+  initQuiz('quiz-u3', QUIZ_U3, {passKey:'u3'});
+
+  initQuiz('quiz-4-1', QUIZ_4_1);
+  initMatch('match-4-2', MATCH_4_2);
+  initQuiz('quiz-u4', QUIZ_U4, {passKey:'u4'});
+
+  initSort('sort-5-1-pool', 'sort-5-1-buckets', 'sort-5-1-msg', SORT_5_1);
+  initOrder('order-5-2', ORDER_5_2);
+  initQuiz('quiz-u5', QUIZ_U5, {passKey:'u5'});
+
+  initQuiz('quiz-final', QUIZ_FINAL, {passKey:'final'});
+});
+/* ---------------------------------------------------------------------
+   YERİNDE SESLİ KOMUT KÖPRÜSÜ (WebSocket istemcisi)
+   --------------------------------------------------------------------- */
+const yerindeStatusEl = document.getElementById("yerindeStatus");
+let yerindeSocket = null;
+
+function setYerindeStatus(connected){
+  if(!yerindeStatusEl) return;
+  yerindeStatusEl.textContent = connected ? "🟢 YERİNDE bağlı" : "⚪ YERİNDE bağlı değil";
+  yerindeStatusEl.classList.toggle("connected", connected);
+}
+function showYerindeToast(msg){
+  const t = document.createElement("div");
+  t.className = "yerinde-toast";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2400);
+}
+
+function handleYerindeCommand(cmd){
+  const action = cmd && cmd.action;
+  if(!action) return;
+
+  if(action === "maze_add" || action === "maze_run" || action === "maze_undo" || action === "maze_clear"){
+    const containerId = "maze-" + (cmd.mazeNum || "1");
+    if(!MAZE_STATE[containerId]){
+      showYerindeToast("⚠️ Labirent bulunamadı (maze-" + (cmd.mazeNum || "1") + ").");
+      return;
+    }
+    if(action === "maze_add"){
+      mazeAdd(containerId, cmd.cmd);
+      showYerindeToast("🤖 Komut eklendi.");
+    } else if(action === "maze_run"){
+      mazeRun(containerId);
+      showYerindeToast("▶️ Program çalıştırılıyor.");
+    } else if(action === "maze_undo"){
+      mazeUndo(containerId);
+      showYerindeToast("↩️ Son komut geri alındı.");
+    } else if(action === "maze_clear"){
+      mazeClear(containerId);
+      showYerindeToast("🗑️ Program temizlendi.");
+    }
+    return;
+  }
+
+  if(action === "reset_progress"){
+    resetProgress();
+    showYerindeToast("🔄 İlerleme sıfırlandı.");
+    return;
+  }
+
+  if(action === "insert_html_snippet"){
+    try{
+      insertSnippetKey(cmd.key);
+      showYerindeToast("✅ Eklendi.");
+    }catch(e){
+      showYerindeToast("⚠️ Eklenemedi — Web ünitesinde olduğundan emin ol.");
+    }
+    return;
+  }
+
+  if(action === "flip_card"){
+    const activePanel = document.querySelector(".panel.active");
+    if(!activePanel){ showYerindeToast("⚠️ Aktif bir panel yok."); return; }
+    const cards = activePanel.querySelectorAll(".flip-card");
+    if(!cards.length){ showYerindeToast("⚠️ Bu ünitede çevrilecek kart yok."); return; }
+    let target = null;
+    if(cmd.cardNum){
+      target = cards[parseInt(cmd.cardNum, 10) - 1];
+    } else {
+      target = Array.from(cards).find(c => !c.classList.contains("flipped")) || cards[0];
+    }
+    if(target){
+      target.classList.toggle("flipped");
+      showYerindeToast("🔄 Kart çevrildi.");
+    } else {
+      showYerindeToast("⚠️ Kart bulunamadı.");
+    }
+    return;
+  }
+
+  if(action === "quiz_answer"){
+    const activePanel = document.querySelector(".panel.active");
+    if(!activePanel){ showYerindeToast("⚠️ Aktif bir panel yok."); return; }
+    const qBlocks = activePanel.querySelectorAll(".quiz-q");
+    let targetBlock = null;
+    for(const qb of qBlocks){
+      if(qb.querySelector(".quiz-opt:not([disabled])")){ targetBlock = qb; break; }
+    }
+    if(!targetBlock){ showYerindeToast("⚠️ Cevaplanacak bir soru bulunamadı."); return; }
+    const opts = targetBlock.querySelectorAll(".quiz-opt");
+    const idx = (typeof cmd.optionIdx === "number") ? cmd.optionIdx : 0;
+    if(opts[idx]){
+      opts[idx].click();
+      showYerindeToast("✅ Cevap seçildi.");
+    } else {
+      showYerindeToast("⚠️ Seçenek bulunamadı.");
+    }
+    return;
+  }
+
+  if(action === "go_to_unit"){
+    const validIds = RAIL_ITEMS.map(i=>i.id);
+    if(!validIds.includes(cmd.unitId)){
+      showYerindeToast("⚠️ Tanımadığım bir ünite.");
+      return;
+    }
+    goTo(cmd.unitId);
+    const item = RAIL_ITEMS.find(i=>i.id === cmd.unitId);
+    showYerindeToast("📖 " + (item ? item.label : cmd.unitId) + " ünitesine geçiliyor.");
+    return;
+  }
+
+  if(action === "set_theme"){
+    if(["krem","mavi","yesil"].includes(cmd.theme)) setTheme(cmd.theme);
+    return;
+  }
+
+  if(action === "close_tool"){
+    showYerindeToast("👋 Kapatılıyor...");
+    setTimeout(()=>{
+      window.close();
+      showYerindeToast("⚠️ Tarayıcın bu sekmeyi otomatik kapatmama izin vermedi - elle kapatman gerekebilir.");
+    }, 400);
+    return;
+  }
+}
+
+function connectYerindeBridge(){
+  let socket;
+  try{
+    socket = new WebSocket("ws://127.0.0.1:8765/");
+  }catch(e){
+    setTimeout(connectYerindeBridge, 2500);
+    return;
+  }
+  yerindeSocket = socket;
+  socket.onopen = ()=> setYerindeStatus(true);
+  socket.onclose = ()=>{
+    setYerindeStatus(false);
+    if(yerindeSocket === socket) yerindeSocket = null;
+    setTimeout(connectYerindeBridge, 2500);
+  };
+  socket.onerror = ()=>{ try{ socket.close(); }catch(e){} };
+  socket.onmessage = (ev)=>{
+    try{ handleYerindeCommand(JSON.parse(ev.data)); }
+    catch(e){ console.warn("YERİNDE köprüsü: geçersiz komut", ev.data); }
+  };
+}
+connectYerindeBridge();
+</script>
+</body>
+</html>

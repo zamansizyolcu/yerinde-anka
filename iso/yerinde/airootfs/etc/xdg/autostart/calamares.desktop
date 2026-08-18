@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Yerinde ANKA Kurulumu
+Name[tr]=Yerinde ANKA Kurulumu
+Comment=Yerinde ANKA kurulum sihirbazını başlatır
+Comment[tr]=Yerinde ANKA kurulum sihirbazını başlatır
+Exec=calamares
+Terminal=false
+X-GNOME-Autostart-enabled=true
