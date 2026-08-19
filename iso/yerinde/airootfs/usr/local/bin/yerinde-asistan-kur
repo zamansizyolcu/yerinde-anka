@@ -154,7 +154,7 @@ if [ "$CEVAP" = "e" ] || [ "$CEVAP" = "E" ]; then
         # Sıralı model indirme: qwen hızlı (72MB), llama ağır (4.7GB)
         MODELS=(
             "qwen2.5-coder:1.5b"
-            "llama3.1"
+            "llama3.1:8b"
         )
         for MODEL in "${MODELS[@]}"; do
             # Zaten indirilmiş mi?
