@@ -3,6 +3,8 @@ work/
 out/
 *.iso
 repo/x86_64/*.pkg.tar.zst
+packages/*/*.pkg.tar.zst
+packages/*/pkg/
 *.gguf
 .ollama-staging.*/
 # GİZLİ — API anahtarları ASLA repoya girmez

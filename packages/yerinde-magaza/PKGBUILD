@@ -1,0 +1,29 @@
+# Maintainer: Yerinde Project
+
+pkgname=yerinde-magaza
+pkgver=1.0.0
+pkgrel=2
+pkgdesc="Yerinde ANKA paket magazasi — pacman + flatpak + AUR arayuzu"
+arch=('any')
+url="https://yerinde.example.com"
+license=('GPL')
+depends=('python' 'pacman' 'flatpak' 'polkit')
+optdepends=('yay: AUR destegi')
+source=('yerinde-magaza')
+sha256sums=('SKIP')
+
+package() {
+  install -Dm755 "$srcdir/yerinde-magaza" "$pkgdir/usr/bin/yerinde-magaza"
+
+  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/yerinde-magaza.desktop" <<'EOF'
+[Desktop Entry]
+Name=Yerinde Magazasi
+Comment=Yerinde ANKA paket magazasi
+Exec=/usr/bin/yerinde-magaza
+Icon=yerinde
+Terminal=false
+Type=Application
+Categories=System;PackageManager;
+StartupNotify=true
+EOF
+}

@@ -56,10 +56,10 @@ verify_sources() {
   # final27.md §2: ydotool + git de eklendi (cacyhos paritesi — sesli
   # fare/klavye + tıkla-kur git clone yolu). Asistan PAKETİ + ollama
   # hâlâ YASAK (yalnızca ARAÇLAR geldi).
-  if rg -q '^(yerinde-ai-assistant|ollama|python-psutil|ffmpeg)$' "$PK"; then
+  if rg -q '^(yerinde-ai-assistant|ollama|ffmpeg)$' "$PK"; then
     fail "final18 §1 FAIL: packages.x86_64'te asistan/ollama paketi hâlâ listeli"
   fi
-  echo "PKGS OK: asistan/ollama/python-psutil/ffmpeg YOK (numpy+pillow final24; ydotool+git final27)"
+  echo "PKGS OK: asistan/ollama/ffmpeg YOK (python-psutil final42 gerekli; numpy+pillow final24; ydotool+git final27)"
 
   # final27.md §2: asistan çalışma zamanı paketleri pozitif kontrol
   for p in python-pyaudio portaudio ydotool git xdotool; do
@@ -334,6 +334,46 @@ verify_sources() {
   rg -q 'GRUB_THEME="/boot/grub/themes/anka/theme\.txt"' "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
     || fail "final37 §2 FAIL: finalize.sh GRUB_THEME anka ayarlamıyor"
   echo "UEFI-GRUB OK (final37 §2/§3): uefi.grub + yeşil ANKA teması + anka-tr Türkçe font + Türkçe menü"
+
+  # final42 §1+§2+§3: Yerinde ozel uygulamalari + Waydroid packages.x86_64'ta
+  for p in yerinde-magaza yerinde-gorev-yoneticisi yerinde-waydroid python-psutil; do
+    rg -q "^$p$" "$PK" || fail "final42 FAIL: packages.x86_64'te $p yok"
+  done
+  echo "PKGS OK (final42 §1+§2+§3): yerinde-magaza + yerinde-gorev-yoneticisi + yerinde-waydroid + python-psutil (python-tk: python'a dahil)"
+
+  # final42 §4: NVIDIA paketleri packages.x86_64'ta
+  for p in nvidia-utils nvidia-settings lib32-nvidia-utils libva-nvidia-driver; do
+    rg -q "^$p$" "$PK" || fail "final42 §4 FAIL: packages.x86_64'te $p yok"
+  done
+  echo "PKGS OK (final42 §4): NVIDIA ailesi packages.x86_64'te (nvidia meta-paket Artik yok → finalize halleder)"
+
+  # final47 §4: OBS + LibreOffice packages.x86_64'ta
+  for p in obs-studio libreoffice-fresh; do
+    rg -q "^$p$" "$PK" || fail "final47 §4 FAIL: packages.x86_64'te $p yok"
+  done
+  echo "PKGS OK (final47 §4): obs-studio + libreoffice-fresh packages.x86_64'te"
+
+  # final42 §4: finalize.sh icinde NVIDIA tespit kodu
+  rg -q 'lspci.*grep -qi nvidia' "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
+    || fail "final42 §4 FAIL: finalize.sh NVIDIA tespit kodu yok"
+  rg -q 'nvidia-drm.modeset' "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
+    || fail "final42 §4 FAIL: finalize.sh nvidia-drm.modeset yok"
+  echo "FINALIZE OK (final42 §4): NVIDIA tespit + mkinitcpio + GRUB nvidia-drm"
+
+  # final42 §3 + final43: Waydroid GUI (.desktop Terminal=false) + TTY yedek
+  [ -f "$AIROOTFS/usr/share/applications/yerinde-waydroid.desktop" ] 2>/dev/null \
+    || [ -f "$PROJ/packages/yerinde-waydroid/yerinde-waydroid.desktop" ] \
+    || fail "final43 FAIL: yerinde-waydroid.desktop yok"
+  echo "WAYDROID OK (final42 §3 + final43): yerinde-waydroid GUI + yerinde-waydroid-tty"
+
+  # final43: Waydroid GUI komutu dosyasi (script)
+  [ -f "$PROJ/packages/yerinde-waydroid/yerinde-waydroid" ] \
+    || fail "final43 FAIL: packages/yerinde-waydroid/yerinde-waydroid script yok"
+  bash -n "$PROJ/packages/yerinde-waydroid/yerinde-waydroid-tty" \
+    || fail "final43 FAIL: yerinde-waydroid-tty bash -n hatasi"
+  python3 -m py_compile "$PROJ/packages/yerinde-waydroid/yerinde-waydroid" 2>/dev/null \
+    || fail "final43 FAIL: yerinde-waydroid Python soz dizim hatasi"
+  echo "WAYDROID SCRIPTS OK (final43): GUI (py_compile) + TTY (bash -n)"
 }
 
 # --- SDDM QML testi (VM'siz, offscreen) ---
@@ -648,6 +688,82 @@ verify_post() {
     || fail "POSTFAIL (final33): canlı polkit kuralı ISO'da yok"
   echo "POST OK (final33): calamares pkexec + polkit kuralı ISO'da (unpackfs yetki düzeltmesi)"
   sudo ls -l "$WA/etc/polkit-1/rules.d/" | sed 's/^/    /'
+
+  # final42 §1+§2 POST: yerinde-magaza + yerinde-gorev-yoneticisi .desktop ISO'da
+  for d in yerinde-magaza yerinde-gorev-yoneticisi; do
+    [ -f "$WA/usr/share/applications/$d.desktop" ] \
+      || fail "POSTFAIL (final42): /usr/share/applications/$d.desktop yok"
+  done
+  [ -x "$WA/usr/bin/yerinde-magaza" ] \
+    || fail "POSTFAIL (final42): /usr/bin/yerinde-magaza yok"
+  [ -x "$WA/usr/bin/yerinde-gorev-yoneticisi" ] \
+    || fail "POSTFAIL (final42): /usr/bin/yerinde-gorev-yoneticisi yok"
+  echo "POST OK (final42 §1+§2): yerinde-magaza + yerinde-gorev-yoneticisi ISO'da"
+  ls -l "$WA/usr/share/applications/yerinde-magaza.desktop" \
+        "$WA/usr/share/applications/yerinde-gorev-yoneticisi.desktop" 2>/dev/null | sed 's/^/    /'
+
+  # final42 §3 + final43 POST: yerinde-waydroid GUI (Terminal=false)
+  [ -x "$WA/usr/bin/yerinde-waydroid" ] \
+    || fail "POSTFAIL (final43): /usr/bin/yerinde-waydroid yok"
+  [ -x "$WA/usr/bin/yerinde-waydroid-tty" ] \
+    || fail "POSTFAIL (final43): /usr/bin/yerinde-waydroid-tty yok"
+  [ -f "$WA/usr/share/applications/yerinde-waydroid.desktop" ] \
+    || fail "POSTFAIL (final43): yerinde-waydroid.desktop yok"
+  rg -q 'Terminal=false' "$WA/usr/share/applications/yerinde-waydroid.desktop" \
+    || fail "POSTFAIL (final43): yerinde-waydroid.desktop Terminal=false yok"
+  sudo python3 -m py_compile "$WA/usr/bin/yerinde-waydroid" 2>/dev/null \
+    || fail "POSTFAIL (final43): yerinde-waydroid py_compile hatasi"
+  echo "POST OK (final42 §3 + final43): yerinde-waydroid GUI + TTY ISO'da"
+
+  # final46 §2: binder_linux modülü + waydroid-container servisi
+  [ -f "$WA/etc/modules-load.d/binder_linux.conf" ] \
+    || fail "POSTFAIL (final46 §2): binder_linux.conf yok"
+  rg -q 'binder_linux' "$WA/etc/modules-load.d/binder_linux.conf" \
+    || fail "POSTFAIL (final46 §2): binder_linux.conf içinde binder_linux yok"
+  echo "POST OK (final46 §2): binder_linux modülü modules-load'da"
+
+  # final42 §4 POST: finalize.sh icinde NVIDIA tespit kodu
+  rg -q 'lspci.*grep -qi nvidia' "$WA/usr/local/bin/yerinde-finalize.sh" \
+    || fail "POSTFAIL (final42 §4): finalize.sh NVIDIA tespit kodu yok"
+  echo "POST OK (final42 §4): finalize.sh NVIDIA otomatik tespit"
+
+  # final46 §3: discover + packagekit + appstream ISO'da (Kullanıcı isteği)
+  for p in discover packagekit appstream; do
+    if ! pacman -r "$WA" -Q 2>/dev/null | grep -q "^$p "; then
+      fail "POSTFAIL (final46 §4): $p ISO'da yok"
+    fi
+  done
+  echo "POST OK (final46 §4): discover + packagekit + appstream ISO'da"
+  # final46 §1: plasma-welcome KALDIRILDI (kurulum ekranı kirletir)
+  if pacman -r "$WA" -Q 2>/dev/null | grep -q "^plasma-welcome "; then
+    fail "POSTFAIL (final46 §1): plasma-welcome ISO'da hâlâ var"
+  fi
+  echo "POST OK (final46 §1): plasma-welcome KALDIRILDI"
+
+  # final47 §4: obs-studio + libreoffice-fresh ISO'da (kullanıcı isteği)
+  for p in obs-studio libreoffice-fresh; do
+    if ! pacman -r "$WA" -Q 2>/dev/null | grep -q "^$p "; then
+      fail "POSTFAIL (final47 §4): $p ISO'da yok"
+    fi
+  done
+  echo "POST OK (final47 §4): obs-studio + libreoffice-fresh ISO'da"
+
+  # final47 §2: gorev-yoneticisi wrapper (system python kullanır)
+  [ -x "$WA/usr/bin/yerinde-gorev-yoneticisi-wrapper" ] \
+    || fail "POSTFAIL (final47 §2): yerinde-gorev-yoneticisi-wrapper yok"
+  rg -q 'Exec=/usr/bin/yerinde-gorev-yoneticisi-wrapper' \
+    "$WA/usr/share/applications/yerinde-gorev-yoneticisi.desktop" \
+    || fail "POSTFAIL (final47 §2): gorev-yoneticisi .desktop Exec= wrapper değil"
+  echo "POST OK (final47 §2): gorev-yoneticisi wrapper + .desktop Exec=güncellendi"
+
+  # final47 §3: waydroid binder keşif zinciri (_check_binder 4 katman)
+  sudo python3 -m py_compile "$WA/usr/bin/yerinde-waydroid" 2>/dev/null \
+    || fail "POSTFAIL (final47 §3): yerinde-waydroid py_compile hatası (binder zinciri)"
+  rg -q '_check_binder' "$WA/usr/bin/yerinde-waydroid" \
+    || fail "POSTFAIL (final47 §3): yerinde-waydroid _check_binder fonksiyonu yok"
+  rg -q 'systemd-detect-virt' "$WA/usr/bin/yerinde-waydroid" \
+    || fail "POSTFAIL (final47 §3): yerinde-waydroid VM tespiti yok"
+  echo "POST OK (final47 §3): waydroid binder keşif zinciri + VM software render koruması"
 
   echo "== TÜM POST DOĞRULAMALAR BAŞARILI =="
 }

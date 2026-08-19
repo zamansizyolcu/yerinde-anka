@@ -1,0 +1,111 @@
+#!/bin/bash
+# YERINDE Waydroid Terminal Yoneticisi (yedek — final43'te GUI one cikti).
+# Menuden secenek: GAPPS (Play Store) veya Vanilla kurulumu.
+# /usr/bin/yerinde-waydroid-tty olarak kurulur.
+
+set -euo pipefail
+
+RED='\033[0;31m'
+GRN='\033[0;32m'
+YLW='\033[1;33m'
+NC='\033[0m'
+
+WAYDROID_DIR="/var/lib/waydroid"
+
+log() { echo -e "${GRN}[WAYDROID]${NC} $*"; }
+warn() { echo -e "${YLW}[UYARI]${NC} $*"; }
+err() { echo -e "${RED}[HATA]${NC} $*" >&2; }
+
+check_binder() {
+    if [ ! -d /sys/module/binder_linux ]; then
+        warn "binder_linux modulu yuklu degil."
+        warn "Gercek donanimda kernel 5.18+ ve binder_linux gerekir."
+        warn "VM'de yazilimli render ile calisir (yavas olabilir)."
+        echo ""
+    fi
+}
+
+status() {
+    if [ ! -d "$WAYDROID_DIR" ]; then
+        echo "Durum: Kurulu degil"
+        return
+    fi
+    echo "Durum: Kurulu"
+    waydroid status 2>/dev/null || true
+    if [ -f "$WAYDROID_DIR/waydroid.cfg" ]; then
+        TYPE=$(grep -oP 'session.type=\K.*' "$WAYDROID_DIR/waydroid.cfg" 2>/dev/null || echo "bilinmiyor")
+        echo "Tur: $TYPE"
+    fi
+}
+
+install_gapps() {
+    log "GAPPS (Play Store) kurulumu basliyor..."
+    log "Yaklasik 1-1.5 GB internetten inecek, 5-15 dk surebilir."
+    read -rp "Devam edilsin mi? (e/H): " confirm
+    [ "$confirm" = "e" ] || return 0
+    sudo waydroid init -s GAPPS
+    log "Kurulum tamamlandi. Play Store giris ekrani kullaniciya birakildi."
+    log "Not: Play Store kurulumu 5-10 dk internet hizina baglidir."
+}
+
+install_vanilla() {
+    log "Vanilla kurulumu basliyor..."
+    sudo waydroid init -s VANILLA
+    log "Vanilla kurulumu tamamlandi."
+}
+
+remove_waydroid() {
+    warn "TUM Android goruntusu ve veriler silinecek!"
+    read -rp "Emin misiniz? (e/H): " confirm
+    [ "$confirm" = "e" ] || return 0
+    sudo waydroid container stop 2>/dev/null || true
+    sudo rm -rf "$WAYDROID_DIR"
+    log "Waydroid silindi."
+}
+
+start_waydroid() {
+    waydroid show-full-ui &
+    log "Waydroid baslatildi."
+}
+
+stop_waydroid() {
+    sudo waydroid container stop
+    log "Waydroid durduruldu."
+}
+
+upgrade_waydroid() {
+    log "Waydroid guncelleniyor..."
+    sudo waydroid upgrade
+    log "Guncelleme tamamlandi."
+}
+
+menu() {
+    while true; do
+        echo ""
+        echo "=== YERINDE Waydroid Yoneticisi ==="
+        echo "1) Durum goruntule"
+        echo "2) Kur: GAPPS (Play Store)"
+        echo "3) Kur: Vanilla"
+        echo "4) Sil"
+        echo "5) Baslat"
+        echo "6) Durdur"
+        echo "7) Guncelle"
+        echo "0) Cikis"
+        echo ""
+        read -rp "Secim: " choice
+        case "$choice" in
+            1) status ;;
+            2) install_gapps ;;
+            3) install_vanilla ;;
+            4) remove_waydroid ;;
+            5) start_waydroid ;;
+            6) stop_waydroid ;;
+            7) upgrade_waydroid ;;
+            0) break ;;
+            *) warn "Gecersiz secim" ;;
+        esac
+    done
+}
+
+check_binder
+menu

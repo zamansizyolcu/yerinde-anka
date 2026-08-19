@@ -42,6 +42,8 @@ done
 
 chroot "$R" systemctl disable sshd livecd NetworkManager-wait-online.service systemd-networkd choose-mirror livecd-talk livecd-alsa-unmuter >> /tmp/finalize.log 2>&1 || true
 chroot "$R" systemctl enable NetworkManager sddm >> /tmp/finalize.log 2>&1 || true
+# final46 §2: Waydroid Android ortamı için container servisi
+chroot "$R" systemctl enable waydroid-container >> /tmp/finalize.log 2>&1 || true
 # final18.md §2b: X11 oturumunda kapat/yeniden başlat yetkisi için SDDM PAM'ine
 # açıkça pam_systemd satırı (sistem-login include'u sağlar ama garantiye alınır).
 for _pf in sddm sddm-autologin; do
@@ -96,6 +98,34 @@ chroot "$R" pacman-key --init >> /tmp/finalize.log 2>&1 || true
 chroot "$R" pacman-key --populate archlinux >> /tmp/finalize.log 2>&1 || true
 
 chroot "$R" pacman -Rdd --noconfirm mkinitcpio-archiso >> /tmp/finalize.log 2>&1 || true
+# final46 §1: plasma-welcome kaldır (KDE kurulum sihirbazı — Yerinde ANKA'da istenmez)
+chroot "$R" pacman -Rns --noconfirm plasma-welcome >> /tmp/finalize.log 2>&1 || true
+
+# final42 §4: NVIDIA sahipli driver otomatik tespit
+# Canli ortamda Nouveau acik (her GPU'da Wayland acilir);
+# NVIDIA sahipli driver kurulumdan sonra aktif olur.
+if lspci 2>/dev/null | grep -qi nvidia; then
+  echo "--- NVIDIA tespit edildi: sahipli driver yapilandirmasi" >> /tmp/finalize.log
+  # mkinitcpio.conf MODULES+=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)
+  if [ -f "$R/etc/mkinitcpio.conf" ]; then
+    if ! grep -q 'nvidia_drm' "$R/etc/mkinitcpio.conf"; then
+      sed -i 's/^MODULES=(/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm /' "$R/etc/mkinitcpio.conf"
+      echo "finalize: mkinitcpio.conf MODULES nvidia eklendi" >> /tmp/finalize.log
+    fi
+  fi
+  # GRUB_CMDLINE_LINUX_DEFAULT icine nvidia-drm parametreleri
+  if [ -f "$R/etc/default/grub" ]; then
+    if ! grep -q 'nvidia-drm.modeset' "$R/etc/default/grub"; then
+      sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 nvidia-drm.modeset=1 nvidia-drm.fbdev=1"/' "$R/etc/default/grub"
+      echo "finalize: GRUB nvidia-drm.modeset=1 eklendi" >> /tmp/finalize.log
+    fi
+  fi
+  chroot "$R" mkinitcpio -P >> /tmp/finalize.log 2>&1
+  echo "--- NVIDIA: mkinitcpio + GRUB yapilandirmasi tamamlandi" >> /tmp/finalize.log
+else
+  echo "--- NVIDIA tespit edilmedi: Nouveau kullaniliyor" >> /tmp/finalize.log
+fi
+
 chroot "$R" mkinitcpio -P >> /tmp/finalize.log 2>&1
 
 grep -q ' / ' "$R/etc/fstab" || genfstab -U "$R" >> "$R/etc/fstab"

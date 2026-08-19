@@ -1,0 +1,356 @@
+#!/usr/bin/env python3
+"""YERINDE Gorev Yoneticisi — Yerinde ANKA surec yonetim araci (Tkinter).
+   Sekmeler: Surecler | Kaynaklar | Performans.
+   ANKA paleti: krem zemin #EFE9DC, yesil baslik #0B3D2E, turuncu vurgu #C74A1F.
+"""
+import tkinter as tk
+from tkinter import ttk, messagebox
+import threading, time, os, subprocess
+
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
+CREAM      = "#EFE9DC"
+GREEN_DARK = "#0B3D2E"
+ORANGE     = "#C74A1F"
+WHITE      = "#FFFFFF"
+FG_DARK    = "#222222"
+HEADER_BG  = "#0B3D2E"
+HEADER_FG  = "#EFE9DC"
+BTN_BG     = "#0B3D2E"
+BTN_FG     = "#EFE9DC"
+ROW_ALT    = "#E5DFD0"
+
+
+class GorevYoneticisi:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("YERINDE Gorev Yoneticisi")
+        self.root.geometry("960x640")
+        self.root.minsize(780, 520)
+        self.root.configure(bg=CREAM)
+        self._set_icon()
+        self.cpu_hist = [0.0] * 60
+        self.ram_hist = [0.0] * 60
+        self.swap_hist = [0.0] * 60
+        self.disk_r_hist = [0.0] * 60
+        self.disk_w_hist = [0.0] * 60
+        self.sort_by = "cpu"
+        self.sort_reverse = True
+        self.search_var = tk.StringVar()
+        self._build_ui()
+        self._tick()
+
+    def _set_icon(self):
+        for p in ["/usr/share/yerinde/yerinde-icon-256.png",
+                  "/usr/share/icons/hicolor/256x256/apps/yerinde.png"]:
+            if os.path.exists(p):
+                try:
+                    self.root.iconphoto(True, tk.PhotoImage(file=p))
+                except Exception:
+                    pass
+                break
+
+    def _build_ui(self):
+        hdr = tk.Frame(self.root, bg=HEADER_BG, height=44)
+        hdr.pack(fill=tk.X)
+        hdr.pack_propagate(False)
+        tk.Label(hdr, text="YERINDE Gorev Yoneticisi", bg=HEADER_BG, fg=HEADER_FG,
+                 font=("Sans", 14, "bold")).pack(side=tk.LEFT, padx=12)
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+        self._build_proc_tab()
+        self._build_resource_tab()
+        self._build_perf_tab()
+        self.root.bind("<Control-Alt-Delete>", lambda _: self._kill_selected())
+
+    def _make_btn(self, parent, text, cmd, bg=BTN_BG):
+        b = tk.Button(parent, text=text, command=cmd, bg=bg, fg=BTN_FG,
+                      activebackground=ORANGE, activeforeground=WHITE,
+                      font=("Sans", 9, "bold"), relief=tk.FLAT, padx=8, pady=3,
+                      cursor="hand2")
+        return b
+
+    def _make_entry(self, parent, var, placeholder, width=20):
+        return tk.Entry(parent, textvariable=var, width=width, bg="#D6CEBC",
+                        fg=FG_DARK, insertbackground=FG_DARK, relief=tk.FLAT,
+                        font=("Sans", 10))
+
+    # --- SURECLER ---
+    def _build_proc_tab(self):
+        tab = tk.Frame(self.notebook, bg=CREAM)
+        self.notebook.add(tab, text="  Surecler  ")
+        tb = tk.Frame(tab, bg=CREAM)
+        tb.pack(fill=tk.X, padx=4, pady=4)
+        self._make_entry(tb, self.search_var, "Surec ara...", width=22).pack(side=tk.LEFT, padx=(0, 4))
+        self._make_btn(tb, "Ara", self._filter_procs).pack(side=tk.LEFT, padx=(0, 8))
+        self._make_btn(tb, "Yenile", self._refresh_procs).pack(side=tk.LEFT, padx=(0, 4))
+        self._make_btn(tb, "Oldur", self._kill_selected, bg="#8B0000").pack(side=tk.LEFT, padx=2)
+        self._make_btn(tb, "Yeniden Baslat", self._restart_selected, bg="#2E7D32").pack(side=tk.LEFT, padx=2)
+        self._make_btn(tb, "Dosyalari Ac", self._open_files, bg="#1565C0").pack(side=tk.LEFT, padx=2)
+        cols = ("pid", "name", "cpu", "ram", "user")
+        col_labels = {"pid": "PID", "name": "Ad", "cpu": "CPU %", "ram": "RAM %", "user": "Kullanici"}
+        self.proc_tree = ttk.Treeview(tab, columns=cols, show="headings", selectmode="browse")
+        for c in cols:
+            self.proc_tree.heading(c, text=col_labels.get(c, c.capitalize()),
+                                   command=lambda col=c: self._sort_tree(col))
+        self.proc_tree.column("pid", width=60)
+        self.proc_tree.column("name", width=180)
+        self.proc_tree.column("cpu", width=70)
+        self.proc_tree.column("ram", width=80)
+        self.proc_tree.column("user", width=100)
+        psb = ttk.Scrollbar(tab, orient=tk.VERTICAL, command=self.proc_tree.yview)
+        self.proc_tree.configure(yscrollcommand=psb.set)
+        self.proc_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        psb.pack(side=tk.RIGHT, fill=tk.Y)
+        self.proc_tree.bind("<Button-3>", self._proc_menu)
+        self.procs = []
+
+    def _sort_tree(self, col):
+        if self.sort_by == col:
+            self.sort_reverse = not self.sort_reverse
+        else:
+            self.sort_by = col
+            self.sort_reverse = col in ("cpu", "ram", "pid")
+        self._filter_procs()
+
+    def _filter_procs(self):
+        q = self.search_var.get().strip().lower()
+        items = []
+        for p in self.procs:
+            if q and q not in p["name"].lower() and q not in str(p["pid"]):
+                continue
+            items.append((p["pid"], p["name"], p["cpu"], p["ram"], p["user"]))
+        km = {"pid": 0, "name": 1, "cpu": 2, "ram": 3, "user": 4}
+        ki = km.get(self.sort_by, 2)
+        items.sort(key=lambda x: x[ki], reverse=self.sort_reverse)
+        self.proc_tree.delete(*self.proc_tree.get_children())
+        for i, row in enumerate(items):
+            tag = "alt" if i % 2 else ""
+            self.proc_tree.insert("", tk.END, values=row, tags=(tag,))
+        self.proc_tree.tag_configure("alt", background=ROW_ALT)
+
+    def _refresh_procs(self):
+        if not psutil:
+            return
+        self.procs = []
+        for p in psutil.process_iter(["pid", "name", "cpu_percent", "memory_percent", "username"]):
+            try:
+                i = p.info
+                self.procs.append({
+                    "pid": i["pid"], "name": i["name"] or "?",
+                    "cpu": round(i.get("cpu_percent", 0) or 0, 1),
+                    "ram": round(i.get("memory_percent", 0) or 0, 1),
+                    "user": i.get("username", "") or "",
+                })
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        self._filter_procs()
+
+    def _kill_selected(self):
+        sel = self.proc_tree.selection()
+        if not sel:
+            return
+        pid = self.proc_tree.item(sel[0], "values")[0]
+        name = self.proc_tree.item(sel[0], "values")[1]
+        if messagebox.askyesno("Sureci Oldur", f"PID {pid} ({name}) oldurulsun mu?"):
+            try:
+                subprocess.run(["pkexec", "kill", "-9", str(pid)], timeout=5)
+                self.root.after(500, self._refresh_procs)
+            except Exception as e:
+                messagebox.showerror("Hata", str(e))
+
+    def _restart_selected(self):
+        sel = self.proc_tree.selection()
+        if not sel:
+            return
+        pid = int(self.proc_tree.item(sel[0], "values")[0])
+        try:
+            p = psutil.Process(pid)
+            subprocess.Popen([p.exe()])
+            self.root.after(500, self._refresh_procs)
+        except Exception as e:
+            messagebox.showerror("Hata", str(e))
+
+    def _open_files(self):
+        sel = self.proc_tree.selection()
+        if not sel:
+            return
+        pid = int(self.proc_tree.item(sel[0], "values")[0])
+        try:
+            p = psutil.Process(pid)
+            subprocess.Popen(["dolphin", p.cwd()])
+        except Exception as e:
+            messagebox.showerror("Hata", str(e))
+
+    def _proc_menu(self, event):
+        m = tk.Menu(self.root, tearoff=0, bg=CREAM, fg=FG_DARK)
+        m.add_command(label="Sureci Oldur", command=self._kill_selected)
+        m.add_command(label="Yeniden Baslat", command=self._restart_selected)
+        m.add_command(label="Dosyalari Ac", command=self._open_files)
+        m.tk_popup(event.x_root, event.y_root)
+
+    # --- KAYNAKLAR ---
+    def _build_resource_tab(self):
+        tab = tk.Frame(self.notebook, bg=CREAM)
+        self.notebook.add(tab, text="  Kaynaklar  ")
+        self.cpu_cv = self._make_graph(tab, "CPU Kullanimi (%)", "#C74A1F")
+        self.ram_cv = self._make_graph(tab, "RAM Kullanimi (%)", "#0B3D2E")
+        self.disk_cv = self._make_graph(tab, "Disk G/C (MB/s)", "#2E7D32")
+
+    def _make_graph(self, parent, title, color):
+        f = tk.Frame(parent, bg=CREAM)
+        f.pack(fill=tk.X, padx=8, pady=2)
+        tk.Label(f, text=title, bg=CREAM, fg=FG_DARK, font=("Sans", 9, "bold")).pack(anchor="w")
+        cv = tk.Canvas(f, bg=CREAM, height=120, highlightthickness=0)
+        cv.pack(fill=tk.X)
+        cv._color = color
+        return cv
+
+    def _draw_line(self, canvas, data, maxv):
+        canvas.update_idletasks()
+        w = max(canvas.winfo_width(), 100)
+        h = max(canvas.winfo_height(), 60)
+        canvas.delete("all")
+        n = len(data)
+        if n < 2:
+            return
+        step = w / (n - 1)
+        pts = []
+        for i, v in enumerate(data):
+            x = i * step
+            y = h - (v / max(maxv, 1)) * h
+            pts.append((x, y))
+        flat = []
+        for x, y in pts:
+            flat.extend([x, y])
+        canvas.create_line(flat, fill=canvas._color, width=2, smooth=True)
+        canvas.create_text(4, 4, text=f"{data[-1]:.1f}", fill=FG_DARK, anchor="nw", font=("Sans", 8))
+
+    # --- PERFORMANS ---
+    def _build_perf_tab(self):
+        tab = tk.Frame(self.notebook, bg=CREAM)
+        self.notebook.add(tab, text="  Performans  ")
+        f = tk.Frame(tab, bg=CREAM)
+        f.pack(fill=tk.BOTH, expand=True, padx=12, pady=8)
+        self.info_lbl = {}
+        for key, lbl in [("cpu_temp", "CPU Sicakligi"), ("gpu", "GPU Kullanimi"),
+                          ("net_up", "Ag Gonderim"), ("net_dn", "Ag Alim"),
+                          ("uptime", "Calisma Suresi")]:
+            row = tk.Frame(f, bg=CREAM)
+            row.pack(fill=tk.X, pady=3)
+            tk.Label(row, text=lbl + ":", bg=CREAM, fg=GREEN_DARK,
+                     font=("Sans", 11, "bold"), width=16, anchor="w").pack(side=tk.LEFT)
+            v = tk.Label(row, text="--", bg=CREAM, fg=FG_DARK, font=("Sans", 11))
+            v.pack(side=tk.LEFT, padx=8)
+            self.info_lbl[key] = v
+
+    # --- ANA DONGU ---
+    def _tick(self):
+        try:
+            if psutil:
+                cpu = psutil.cpu_percent(interval=None)
+                mem = psutil.virtual_memory()
+                swp = psutil.swap_memory()
+                try:
+                    di = psutil.disk_io_counters()
+                    dr = di.read_bytes / 1048576.0
+                    dw = di.write_bytes / 1048576.0
+                except Exception:
+                    dr = dw = 0.0
+                try:
+                    ni = psutil.net_io_counters()
+                    up = ni.bytes_sent / 1048576.0
+                    dn = ni.bytes_recv / 1048576.0
+                except Exception:
+                    up = dn = 0.0
+                self.cpu_hist.append(cpu); self.cpu_hist.pop(0)
+                self.ram_hist.append(mem.percent); self.ram_hist.pop(0)
+                self.swap_hist.append(swp.percent); self.swap_hist.pop(0)
+                self.disk_r_hist.append(dr); self.disk_r_hist.pop(0)
+                self.disk_w_hist.append(dw); self.disk_w_hist.pop(0)
+                idx = self.notebook.index(self.notebook.select())
+                if idx == 1:
+                    self._draw_line(self.cpu_cv, self.cpu_hist, 100)
+                    self._draw_line(self.ram_cv, self.ram_hist, 100)
+                    self._draw_disk_graph()
+                if idx == 2:
+                    self.info_lbl["cpu_temp"].configure(text=self._get_cpu_temp())
+                    self.info_lbl["gpu"].configure(text=self._get_gpu())
+                    self.info_lbl["net_up"].configure(text=f"{up:.1f} MB")
+                    self.info_lbl["net_dn"].configure(text=f"{dn:.1f} MB")
+                    self.info_lbl["uptime"].configure(text=self._get_uptime())
+        except Exception:
+            pass
+        self.root.after(1000, self._tick)
+
+    def _draw_disk_graph(self):
+        w = max(self.disk_cv.winfo_width(), 100)
+        h = max(self.disk_cv.winfo_height(), 60)
+        self.disk_cv.delete("all")
+        n = len(self.disk_r_hist)
+        if n < 2:
+            return
+        mx = max(max(self.disk_r_hist + [1]), max(self.disk_w_hist + [1]))
+        step = w / (n - 1)
+        for data, col in [(self.disk_r_hist, "#2E7D32"), (self.disk_w_hist, "#C74A1F")]:
+            pts = []
+            for i, v in enumerate(data):
+                pts.extend([i * step, h - (v / mx) * h])
+            self.disk_cv.create_line(pts, fill=col, width=2, smooth=True)
+
+    def _get_cpu_temp(self):
+        try:
+            if hasattr(psutil, "sensors_temperatures"):
+                temps = psutil.sensors_temperatures()
+                for name in ("coretemp", "k10temp", "acpitz"):
+                    if name in temps and temps[name]:
+                        return f"{temps[name][0].current:.0f} C"
+        except Exception:
+            pass
+        try:
+            r = subprocess.run(["sensors", "-u"], capture_output=True, text=True, timeout=3)
+            for line in r.stdout.splitlines():
+                if "temp1_input" in line:
+                    val = float(line.split(":")[1].strip())
+                    return f"{val:.0f} C"
+        except Exception:
+            pass
+        return "—"
+
+    def _get_gpu(self):
+        # final46 §3: nvidia-smi yoksa hemen "—" don (FileNotFoundError onlem)
+        import shutil as _shutil
+        if not _shutil.which("nvidia-smi"):
+            return "—"
+        try:
+            r = subprocess.run(["nvidia-smi", "--query-gpu=utilization.gpu",
+                                "--format=csv,noheader,nounits"],
+                               capture_output=True, text=True, timeout=3)
+            if r.returncode == 0:
+                return f"{r.stdout.strip()}%"
+        except Exception:
+            pass
+        return "—"
+
+    def _get_uptime(self):
+        try:
+            u = time.time() - psutil.boot_time()
+            d = int(u // 86400)
+            h = int((u % 86400) // 3600)
+            m = int((u % 3600) // 60)
+            return f"{d} gun {h} saat {m} dk"
+        except Exception:
+            return "--"
+
+
+def main():
+    root = tk.Tk()
+    GorevYoneticisi(root)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

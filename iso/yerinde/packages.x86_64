@@ -187,3 +187,25 @@ portaudio
 # şart. NOT: yalnızca ARAÇLAR; asistan PAKETİ ISO'da YOK (final18 §1 sürer).
 ydotool
 git
+# final42 §4: NVIDIA sahipli driver ailesi (otomatik tespit: finalize.sh)
+# Nouveau canli ortamda acik; NVIDIA driver kurulumdan sonra aktif olur.
+# NOT: "nvidia" meta-paketi Artik yok (kernel modulu dkms ile derlenir → finalize.sh halleder).
+nvidia-utils
+nvidia-settings
+lib32-nvidia-utils
+libva-nvidia-driver
+# final42 §1+§2: Yerinde ANKA ozel uygulamalari (Discover/SystemMonitor yerine)
+yerinde-magaza
+yerinde-gorev-yoneticisi
+# final42 §3 + final43: Waydroid Android ortam yoneticisi (GUI + TTY)
+yerinde-waydroid
+# final46 §4: Keşfet (Discover) + PackageKit + AppStream (kullanıcı isteği)
+discover
+packagekit
+appstream
+# final42 §5: python-tk — Arch Linux'ta tkinter python paketine dahildir (ayrı paket YOKTUR)
+# final42 §5: python-psutil gorev yoneticisi icin
+python-psutil
+# final47 §4: OBS Studio + LibreOffice (kullanıcı isteği)
+obs-studio
+libreoffice-fresh

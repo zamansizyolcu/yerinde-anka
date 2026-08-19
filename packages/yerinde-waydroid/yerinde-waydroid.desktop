@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Waydroid (Android)
+Comment=Yerinde ANKA Android ortam yoneticisi
+Exec=/usr/bin/yerinde-waydroid
+Icon=yerinde
+Terminal=false
+Type=Application
+Categories=System;Emulator;
+StartupNotify=true

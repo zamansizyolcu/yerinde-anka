@@ -1,0 +1,504 @@
+#!/usr/bin/env python3
+"""YERINDE Mağazası — Yerinde ANKA paket yöneticisi (Tkinter + ttk).
+   final46: Modern clam/sun-valley tarzı tema, kart görünümü, üstte arama
+   çubuğu, kategori sekmeleri, renkli kur/kaldır butonları, ince ilerleme.
+   Kategorili, aramalı, çoklu arka uçlu (pacman + flatpak + AUR).
+   ANKA paleti: krem zemin #EFE9DC, yeşil başlık #0B3D2E, turuncu vurgu #C74A1F.
+"""
+import tkinter as tk
+from tkinter import ttk, messagebox, scrolledtext
+import subprocess, threading, os, re, time
+
+# ── ANKA Renk Paleti ──────────────────────────────────────────────
+CREAM      = "#EFE9DC"
+GREEN_DARK = "#0B3D2E"
+ORANGE     = "#C74A1F"
+WHITE      = "#FFFFFF"
+BG_DARK    = "#1a1a1a"
+BG_ENTRY   = "#D6CEBC"
+FG_DARK    = "#222222"
+FG_LIGHT   = "#EFE9DC"
+HEADER_BG  = "#0B3D2E"
+HEADER_FG  = "#EFE9DC"
+BTN_BG     = "#0B3D2E"
+BTN_FG     = "#EFE9DC"
+BTN_INSTALL = "#C74A1F"
+BTN_REMOVE  = "#8B0000"
+BTN_UPDATE  = "#2E7D32"
+ROW_ALT     = "#E5DFD0"
+CARD_BG     = "#F5F0E6"
+CARD_BORDER = "#C74A1F"
+
+CATEGORIES = [
+    ("Tümü", None),
+    ("İnternet", ["firefox", "chromium", "thunderbird", "wget", "curl", "transmission-qt", "qbittorrent", "telegram-desktop", "discord", "signal-desktop"]),
+    ("Grafik", ["gimp", "inkscape", "krita", "blender", "shotwell", "eog", "feh", "imagemagick", "darktable", "rawtherapee"]),
+    ("Geliştirme", ["code", "vim", "neovim", "git", "base-devel", "cmake", "gcc", "python", "nodejs", "npm", "docker", "nano", "emacs"]),
+    ("Ofis", ["libreoffice-fresh", "evince", "okular", "atril", "zathura", "hunspell", "hunspell-tr"]),
+    ("Ses/Video", ["vlc", "mpv", "audacity", "obs-studio", "lollypop", "pipewire", "pavucontrol", "alsa-utils", "playerctl"]),
+    ("Oyun", ["steam", "lutris", "wine", "gamemode", "mangohud", "protonup-qt", "heroic-games-launcher"]),
+    ("Sistem", ["htop", "btop", "neofetch", "tmux", "dolphin", "kate", "gparted", "baobab", "stacer"]),
+    ("Eğitim", ["kalgebra", "kgeography", "krita", "blender", "stellarium", "gcompris", "tuxtype"]),
+]
+
+FLATHUB_REMOTE = "flathub"
+FLATHUB_URL    = "https://flathub.org/repo/flathub.flatpakrepo"
+
+
+def _setup_ttk_style():
+    """Modern clam/sun-valley tarzı ttk stili kur."""
+    style = ttk.Style()
+    try:
+        style.theme_use("clam")
+    except tk.TclError:
+        pass
+
+    style.configure("TFrame", background=CREAM)
+    style.configure("Card.TFrame", background=CARD_BG, relief="groove", borderwidth=2)
+    style.configure("Header.TLabel", background=HEADER_BG, foreground=HEADER_FG,
+                     font=("Sans", 16, "bold"))
+    style.configure("Sub.TLabel", background=CREAM, foreground=FG_DARK,
+                     font=("Sans", 10))
+    style.configure("CardTitle.TLabel", background=CARD_BG, foreground=GREEN_DARK,
+                     font=("Sans", 11, "bold"))
+    style.configure("CardInfo.TLabel", background=CARD_BG, foreground=FG_DARK,
+                     font=("Sans", 9))
+
+    # Renkli butonlar
+    style.configure("Install.TButton", background=BTN_INSTALL, foreground=BTN_FG,
+                     font=("Sans", 9, "bold"), borderwidth=0, padding=(8, 4))
+    style.map("Install.TButton",
+              background=[("active", ORANGE), ("disabled", "#999999")],
+              foreground=[("disabled", "#CCCCCC")])
+
+    style.configure("Remove.TButton", background=BTN_REMOVE, foreground=BTN_FG,
+                     font=("Sans", 9, "bold"), borderwidth=0, padding=(8, 4))
+    style.map("Remove.TButton",
+              background=[("active", "#A00000"), ("disabled", "#999999")],
+              foreground=[("disabled", "#CCCCCC")])
+
+    style.configure("Update.TButton", background=BTN_UPDATE, foreground=BTN_FG,
+                     font=("Sans", 9, "bold"), borderwidth=0, padding=(8, 4))
+    style.map("Update.TButton",
+              background=[("active", "#3A9D44"), ("disabled", "#999999")],
+              foreground=[("disabled", "#CCCCCC")])
+
+    style.configure("Accent.TButton", background=BTN_BG, foreground=BTN_FG,
+                     font=("Sans", 9, "bold"), borderwidth=0, padding=(8, 3))
+    style.map("Accent.TButton",
+              background=[("active", ORANGE)])
+
+    style.configure("Thin.Horizontal.TProgressbar",
+                     troughcolor=BG_ENTRY, background=ORANGE, thickness=6)
+
+    style.configure("Treeview", background=WHITE, foreground=FG_DARK,
+                     fieldbackground=WHITE, font=("Sans", 10), rowheight=26)
+    style.configure("Treeview.Heading", background=GREEN_DARK, foreground=HEADER_FG,
+                     font=("Sans", 10, "bold"))
+    style.map("Treeview", background=[("selected", GREEN_DARK)],
+              foreground=[("selected", HEADER_FG)])
+
+    style.configure("Tab.TNotebook", background=CREAM)
+    style.configure("Tab.TNotebook.Tab", font=("Sans", 10), padding=(12, 4))
+    style.map("Tab.TNotebook.Tab",
+              background=[("selected", WHITE)],
+              foreground=[("selected", GREEN_DARK)])
+
+
+class YerindeMagaza:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("YERINDE Mağazası")
+        self.root.geometry("1100x720")
+        self.root.minsize(900, 600)
+        self.root.configure(bg=CREAM)
+        _setup_ttk_style()
+        self._set_icon()
+        self.packages = []
+        self.queue = []
+        self.running = False
+        self.selected_pkg = None
+        self.search_var = tk.StringVar()
+        self.installed_filter = tk.BooleanVar(value=False)
+        self._ensure_flathub()
+        self._build_ui()
+        self.root.after(200, self._refresh_packages)
+
+    def _set_icon(self):
+        for p in ["/usr/share/yerinde/yerinde-icon-256.png",
+                  "/usr/share/icons/hicolor/256x256/apps/yerinde.png"]:
+            if os.path.exists(p):
+                try:
+                    self.root.iconphoto(True, tk.PhotoImage(file=p))
+                except Exception:
+                    pass
+                break
+
+    def _ensure_flathub(self):
+        if not shutil_which("flatpak"):
+            return
+        try:
+            r = subprocess.run(["flatpak", "remotes", "--columns=name"],
+                               capture_output=True, text=True, timeout=10)
+            if FLATHUB_REMOTE not in r.stdout:
+                subprocess.run(["flatpak", "remote-add", "--if-not-exists",
+                                FLATHUB_REMOTE, FLATHUB_URL],
+                               capture_output=True, timeout=30)
+        except Exception:
+            pass
+
+    # ── Arayüz ────────────────────────────────────────────────────
+    def _build_ui(self):
+        self._build_header()
+        self._build_search_bar()
+        self._build_main()
+        self._build_footer()
+
+    def _build_header(self):
+        hdr = ttk.Frame(self.root, style="TFrame")
+        hdr.pack(fill=tk.X)
+        # Yeşil banner
+        banner = tk.Frame(hdr, bg=HEADER_BG, height=48)
+        banner.pack(fill=tk.X)
+        banner.pack_propagate(False)
+        tk.Label(banner, text="YERINDE Mağazası", bg=HEADER_BG, fg=HEADER_FG,
+                 font=("Sans", 16, "bold")).pack(side=tk.LEFT, padx=16)
+        btn_frame = tk.Frame(banner, bg=HEADER_BG)
+        btn_frame.pack(side=tk.RIGHT, padx=12)
+        self._make_accent_btn(btn_frame, "Yenile", self._on_refresh).pack(side=tk.LEFT, padx=4)
+
+    def _build_search_bar(self):
+        bar = tk.Frame(self.root, bg=CREAM, height=40)
+        bar.pack(fill=tk.X, padx=12, pady=(8, 2))
+        bar.pack_propagate(False)
+        tk.Label(bar, text="Ara:", bg=CREAM, fg=FG_DARK,
+                 font=("Sans", 10, "bold")).pack(side=tk.LEFT, padx=(0, 6))
+        e = tk.Entry(bar, textvariable=self.search_var, width=32, bg=BG_ENTRY,
+                     fg=FG_DARK, insertbackground=FG_DARK, relief="flat",
+                     font=("Sans", 11))
+        e.pack(side=tk.LEFT, padx=(0, 8))
+        e.bind("<Return>", lambda _: self._filter_packages())
+        self._make_accent_btn(bar, "Ara", self._filter_packages).pack(side=tk.LEFT, padx=(0, 12))
+        ttk.Checkbutton(bar, text="Yalnız kurulu", variable=self.installed_filter,
+                        command=self._filter_packages).pack(side=tk.LEFT, padx=4)
+
+    def _build_main(self):
+        body = ttk.Frame(self.root)
+        body.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+        body.columnconfigure(0, weight=1)
+        body.columnconfigure(1, weight=4)
+        body.rowconfigure(0, weight=1)
+
+        self._build_category_tabs(body)
+        self._build_pkg_list(body)
+
+    def _build_category_tabs(self, parent):
+        lf = ttk.Frame(parent)
+        lf.grid(row=0, column=0, sticky="nswe", padx=(0, 4))
+        ttk.Label(lf, text="Kategoriler", background=GREEN_DARK, foreground=HEADER_FG,
+                  font=("Sans", 10, "bold")).pack(fill=tk.X)
+        canvas = tk.Canvas(lf, bg=CREAM, highlightthickness=0)
+        sb = ttk.Scrollbar(lf, orient=tk.VERTICAL, command=canvas.yview)
+        inner = tk.Frame(canvas, bg=CREAM)
+        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=inner, anchor="nw")
+        canvas.configure(yscrollcommand=sb.set)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        sb.pack(side=tk.RIGHT, fill=tk.Y)
+        self.cat_buttons = []
+        for label, _pkgs in CATEGORIES:
+            b = tk.Label(inner, text=label, bg=CREAM, fg=FG_DARK,
+                         font=("Sans", 10), padx=10, pady=5, cursor="hand2",
+                         anchor="w")
+            b.pack(fill=tk.X)
+            b.bind("<Button-1>", lambda e, l=label: self._select_category(l))
+            self.cat_buttons.append((label, b))
+        self._highlight_cat("Tümü")
+
+    def _build_pkg_list(self, parent):
+        mid = ttk.Frame(parent)
+        mid.grid(row=0, column=1, sticky="nswe", padx=4)
+
+        # Kart görünümü: üst kısım (paket listesi)
+        card = tk.Frame(mid, bg=CARD_BG, relief="groove", bd=2)
+        card.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(card, text="Paketler", bg=CARD_BG, fg=GREEN_DARK,
+                 font=("Sans", 11, "bold")).pack(anchor="w", padx=8, pady=(6, 2))
+
+        cols = ("name", "source", "status")
+        self.tree = ttk.Treeview(card, columns=cols, show="headings", selectmode="browse")
+        self.tree.heading("name", text="Paket Adı")
+        self.tree.heading("source", text="Kaynak")
+        self.tree.heading("status", text="Durum")
+        self.tree.column("name", width=220)
+        self.tree.column("source", width=80)
+        self.tree.column("status", width=80)
+        tsb = ttk.Scrollbar(card, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=tsb.set)
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(8, 0), pady=(0, 8))
+        tsb.pack(side=tk.RIGHT, fill=tk.Y, pady=(0, 8), padx=(0, 8))
+        self.tree.bind("<<TreeviewSelect>>", self._on_select)
+
+        # Alt kısım: detay kartı
+        self._build_detail_card(mid)
+
+    def _build_detail_card(self, parent):
+        right = tk.Frame(parent, bg=CARD_BG, relief="groove", bd=2)
+        right.pack(fill=tk.X, pady=(4, 0))
+
+        self.detail_title = tk.Label(right, text="Paket seçin", bg=CARD_BG,
+                                     fg=GREEN_DARK, font=("Sans", 12, "bold"))
+        self.detail_title.pack(anchor="w", padx=10, pady=(8, 2))
+
+        self.detail_info = tk.Label(right, text="", bg=CARD_BG, fg=FG_DARK,
+                                    font=("Sans", 9), justify=tk.LEFT, wraplength=300)
+        self.detail_info.pack(anchor="w", padx=10, pady=(0, 6))
+
+        af = tk.Frame(right, bg=CARD_BG)
+        af.pack(fill=tk.X, padx=10, pady=(0, 8))
+        self.btn_install = ttk.Button(af, text="Kur", style="Install.TButton",
+                                       command=lambda: self._queue_action("install"))
+        self.btn_install.pack(side=tk.LEFT, padx=(0, 4))
+        self.btn_remove = ttk.Button(af, text="Kaldır", style="Remove.TButton",
+                                      command=lambda: self._queue_action("remove"))
+        self.btn_remove.pack(side=tk.LEFT, padx=(0, 4))
+        self.btn_update = ttk.Button(af, text="Güncelle", style="Update.TButton",
+                                      command=lambda: self._queue_action("update"))
+        self.btn_update.pack(side=tk.LEFT)
+
+    def _build_footer(self):
+        ft = tk.Frame(self.root, bg="#D6CEBC", height=64)
+        ft.pack(fill=tk.X, side=tk.BOTTOM)
+        ft.pack_propagate(False)
+        top = tk.Frame(ft, bg="#D6CEBC")
+        top.pack(fill=tk.X, padx=8, pady=(4, 0))
+        tk.Label(top, text="İşlem Kuyruğu", bg="#D6CEBC", fg=FG_DARK,
+                 font=("Sans", 10, "bold")).pack(side=tk.LEFT)
+        self.queue_label = tk.Label(top, text="Boş", bg="#D6CEBC", fg=FG_DARK,
+                                    font=("Sans", 9))
+        self.queue_label.pack(side=tk.LEFT, padx=8)
+        self._make_accent_btn(top, "Başlat", self._run_queue).pack(side=tk.RIGHT)
+        pf = tk.Frame(ft, bg="#D6CEBC")
+        pf.pack(fill=tk.X, padx=8, pady=(2, 6))
+        self.progress = ttk.Progressbar(pf, mode="determinate", style="Thin.Horizontal.TProgressbar")
+        self.progress.pack(fill=tk.X, expand=True)
+
+    # ── Yardımcılar ───────────────────────────────────────────────
+    def _make_accent_btn(self, parent, text, cmd):
+        b = tk.Button(parent, text=text, command=cmd, bg=BTN_BG, fg=BTN_FG,
+                      activebackground=ORANGE, activeforeground=WHITE,
+                      font=("Sans", 9, "bold"), relief="flat", padx=8, pady=3,
+                      cursor="hand2")
+        return b
+
+    def _highlight_cat(self, sel):
+        for label, btn in self.cat_buttons:
+            if label == sel:
+                btn.configure(bg=GREEN_DARK, fg=HEADER_FG)
+            else:
+                btn.configure(bg=CREAM, fg=FG_DARK)
+
+    def _select_category(self, cat):
+        self._highlight_cat(cat)
+        self.search_var.set("")
+        self._filter_packages(cat)
+
+    # ── Paket tarama ──────────────────────────────────────────────
+    def _refresh_packages(self):
+        self._log("Paket listesi taranıyor…")
+        threading.Thread(target=self._scan_packages, daemon=True).start()
+
+    def _scan_packages(self):
+        pkgs = []
+        try:
+            r = subprocess.run(["pacman", "-Sl"], capture_output=True, text=True, timeout=30)
+            for line in r.stdout.strip().splitlines():
+                parts = line.split()
+                if len(parts) >= 3:
+                    installed = parts[2] in ("[kurulu]", "[installed]")
+                    pkgs.append({"name": parts[1], "desc": "", "source": "pacman",
+                                 "installed": installed, "cat": ""})
+        except Exception:
+            pass
+        try:
+            r = subprocess.run(["flatpak", "search", "", "--columns=application,name,description"],
+                               capture_output=True, text=True, timeout=30)
+            for line in r.stdout.strip().splitlines()[1:]:
+                cols = line.split("\t")
+                if cols:
+                    fpkg = cols[0].strip()
+                    fdesc = cols[2].strip() if len(cols) > 2 else ""
+                    installed = self._flatpak_installed(fpkg)
+                    pkgs.append({"name": fpkg, "desc": fdesc, "source": "flatpak",
+                                 "installed": installed, "cat": ""})
+        except Exception:
+            pass
+        try:
+            r = subprocess.run(["yay", "-Ss", ""], capture_output=True, text=True, timeout=30)
+            for line in r.stdout.strip().splitlines():
+                if line.startswith("local/"):
+                    continue
+                m = re.match(r"aur/(\S+)\s+(\S+)", line)
+                if m:
+                    pkgs.append({"name": m.group(1), "desc": "", "source": "AUR",
+                                 "installed": False, "cat": ""})
+        except Exception:
+            pass
+        for cat_label, cat_pkgs in CATEGORIES:
+            if cat_pkgs is None:
+                continue
+            for p in pkgs:
+                if p["name"] in cat_pkgs:
+                    p["cat"] = cat_label
+        self.packages = pkgs
+        self.root.after(0, self._filter_packages)
+
+    def _flatpak_installed(self, app_id):
+        try:
+            r = subprocess.run(["flatpak", "list", "--columns=application"],
+                               capture_output=True, text=True, timeout=10)
+            return app_id in r.stdout
+        except Exception:
+            return False
+
+    # ── Filtre ────────────────────────────────────────────────────
+    def _filter_packages(self, cat=None):
+        self.tree.delete(*self.tree.get_children())
+        q = self.search_var.get().strip().lower()
+        only_installed = self.installed_filter.get()
+        for p in self.packages:
+            if q and q not in p["name"].lower() and q not in p.get("desc", "").lower():
+                continue
+            if only_installed and not p["installed"]:
+                continue
+            if cat and cat != "Tümü" and p["cat"] != cat:
+                continue
+            status = "Kurulu" if p["installed"] else ""
+            self.tree.insert("", tk.END, values=(p["name"], p["source"], status),
+                             tags=(p["name"],))
+
+    # ── Seçim ─────────────────────────────────────────────────────
+    def _on_select(self, _event):
+        sel = self.tree.selection()
+        if not sel:
+            return
+        vals = self.tree.item(sel[0], "values")
+        name = vals[0]
+        self.selected_pkg = next((p for p in self.packages if p["name"] == name), None)
+        if not self.selected_pkg:
+            return
+        p = self.selected_pkg
+        self.detail_title.configure(text=p["name"])
+        status = "Kurulu ✓" if p["installed"] else "Kurulu değil"
+        self.detail_info.configure(text=f"Kaynak: {p['source']}\nDurum: {status}\n\n{p.get('desc', '')}")
+        if p["installed"]:
+            self.btn_install.configure(state=tk.DISABLED)
+            self.btn_remove.configure(state=tk.NORMAL)
+            self.btn_update.configure(state=tk.NORMAL)
+        else:
+            self.btn_install.configure(state=tk.NORMAL)
+            self.btn_remove.configure(state=tk.DISABLED)
+            self.btn_update.configure(state=tk.DISABLED)
+
+    # ── İşlem kuyruğu ─────────────────────────────────────────────
+    def _queue_action(self, action):
+        if not self.selected_pkg:
+            return
+        name = self.selected_pkg["name"]
+        self.queue.append((action, name))
+        self._update_queue_label()
+
+    def _update_queue_label(self):
+        if not self.queue:
+            self.queue_label.configure(text="Boş")
+        else:
+            texts = [f"{a}: {n}" for a, n in self.queue[-5:]]
+            self.queue_label.configure(text=" → ".join(texts))
+
+    def _run_queue(self):
+        if self.running or not self.queue:
+            return
+        self.running = True
+        threading.Thread(target=self._execute_queue, daemon=True).start()
+
+    def _execute_queue(self):
+        total = len(self.queue)
+        for i, (action, name) in enumerate(self.queue):
+            self.root.after(0, lambda a=action, n=name: self._log(f"{a} kuruluyor: {n}…"))
+            self.root.after(0, lambda v=(i / total) * 100: self.progress.configure(value=v))
+            ok = self._run_pkg_action(action, name)
+            if ok:
+                self.root.after(0, lambda n=name: self._log(f"✓ {n} tamamlandı"))
+            else:
+                self.root.after(0, lambda n=name: self._log(f"✗ {n} başarısız"))
+        self.root.after(0, lambda: self.progress.configure(value=100))
+        self.queue.clear()
+        self.root.after(0, self._update_queue_label)
+        self.root.after(0, self._refresh_packages)
+        self.running = False
+
+    def _run_pkg_action(self, action, name):
+        try:
+            src = self.selected_pkg["source"] if self.selected_pkg else "pacman"
+            if action == "install":
+                if src == "flatpak":
+                    cmd = ["pkexec", "flatpak", "install", "-y", FLATHUB_REMOTE, name]
+                elif src == "AUR":
+                    cmd = ["pkexec", "yay", "-S", "--noconfirm", name]
+                else:
+                    cmd = ["pkexec", "pacman", "-S", "--noconfirm", name]
+            elif action == "remove":
+                if src == "flatpak":
+                    cmd = ["pkexec", "flatpak", "uninstall", "-y", name]
+                else:
+                    cmd = ["pkexec", "pacman", "-R", "--noconfirm", name]
+            elif action == "update":
+                if src == "flatpak":
+                    cmd = ["pkexec", "flatpak", "update", "-y", name]
+                else:
+                    cmd = ["pkexec", "pacman", "-S", "--noconfirm", name]
+            else:
+                return False
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            return r.returncode == 0
+        except Exception as e:
+            self.root.after(0, lambda err=str(e): self._log(f"Hata: {err}"))
+            return False
+
+    def _on_refresh(self):
+        self._log("Pacman -Sy çalıştırılıyor…")
+        threading.Thread(target=self._refresh_backend, daemon=True).start()
+
+    def _refresh_backend(self):
+        try:
+            subprocess.run(["pkexec", "pacman", "-Sy"], capture_output=True, timeout=60)
+        except Exception:
+            pass
+        try:
+            subprocess.run(["flatpak", "update", "--appstream"], capture_output=True, timeout=60)
+        except Exception:
+            pass
+        self.root.after(0, self._refresh_packages)
+
+    def _log(self, msg):
+        ts = time.strftime("%H:%M:%S")
+        print(f"[{ts}] {msg}")
+
+
+def shutil_which(cmd):
+    for p in os.environ.get("PATH", "/usr/bin:/usr/local/bin").split(":"):
+        fp = os.path.join(p, cmd)
+        if os.path.isfile(fp) and os.access(fp, os.X_OK):
+            return fp
+    return None
+
+
+def main():
+    root = tk.Tk()
+    YerindeMagaza(root)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

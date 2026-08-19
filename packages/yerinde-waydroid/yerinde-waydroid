@@ -1,0 +1,413 @@
+#!/usr/bin/env python3
+"""YERINDE Waydroid Yoneticisi — Android ortam yoneticisi (Tkinter GUI).
+   final46: GERCEK ilerleme bari (imaj boyutu okuma), binder_linux uyarisi.
+   Durum karti, kur/sil/baslat/durakla/guncelle butonlari, canli log.
+   ANKA paleti: krem #EFE9DC, yesil #0B3D2E, turuncu #C74A1F.
+"""
+import tkinter as tk
+from tkinter import ttk, scrolledtext, messagebox
+import subprocess, threading, os, time, glob
+
+CREAM      = "#EFE9DC"
+GREEN_DARK = "#0B3D2E"
+ORANGE     = "#C74A1F"
+WHITE      = "#FFFFFF"
+FG_DARK    = "#222222"
+HEADER_BG  = "#0B3D2E"
+HEADER_FG  = "#EFE9DC"
+BTN_BG     = "#0B3D2E"
+BTN_FG     = "#EFE9DC"
+
+WAYDROID_DIR = "/var/lib/waydroid"
+IMAGE_SIZE_GAPPAS = 1_600_000_000   # ~1.5 GB GAPPS
+IMAGE_SIZE_VANILLA = 800_000_000    # ~800 MB Vanilla
+
+
+def _detect_virt():
+    """systemd-detect-virt çıktısını döndürür (ör. 'kvm', 'qemu', 'none')."""
+    try:
+        r = subprocess.run(["systemd-detect-virt"], capture_output=True, text=True, timeout=5)
+        return (r.stdout.strip().lower() if r.returncode == 0 else "none") or "none"
+    except Exception:
+        return "none"
+
+
+def _check_binder():
+    """BINDER KEŞİF zinciri — 4 katman:
+      a) /dev/binder* VAR → yüklü
+      b) /sys/module/binder_linux VAR → built-in yüklü
+      c) modprobe binder_linux dene (sudo gerekli)
+      d) /proc/config.gz → =m ama modül yoksa → uyarı; yoksa → uyarı
+    Returns: (durum_str, detay_str)
+      durum: "yuklu", "modprobe_basarili", "modul_yok", "cekirdek_desteksiz"
+    """
+    # a) /dev/binder* doğrudan var mı?
+    import glob as _glob
+    if _glob.glob("/dev/binder*"):
+        return ("yuklu", "/dev/binder* aygıtları mevcut")
+
+    # b) /sys/module/binder_linux — modül yüklü (built-in veya insmod)
+    if os.path.isdir("/sys/module/binder_linux"):
+        return ("yuklu", "binder_linux modülü yüklü (/sys/module)")
+
+    # c) modprobe dene (sudo ile — live oturumda çalışabilir)
+    try:
+        r = subprocess.run(["modprobe", "binder_linux"],
+                           capture_output=True, text=True, timeout=10)
+        if r.returncode == 0:
+            return ("modprobe_basarili", "modprobe binder_linux başarılı")
+    except Exception:
+        pass
+
+    # d) /proc/config.gz kontrolü
+    try:
+        import gzip
+        r = subprocess.run(["zgrep", "ANDROID_BINDER", "/proc/config.gz"],
+                           capture_output=True, text=True, timeout=10)
+        output = r.stdout.strip()
+        if "=m" in output:
+            return ("modul_yok",
+                    "binder config'de =m (modül olarak derlenmiş ama henüz yüklenmemiş). "
+                    "Çözüm: sudo modprobe binder_linux ya da linux paketini yenileyin.")
+        if "=y" in output:
+            return ("yuklu", "binder =y (çekirdeğe yerleşik)")
+    except Exception:
+        pass
+
+    return ("cekirdek_desteksiz",
+            "Bu çekirdekte binder desteği yok. "
+            "Gerçek donanımda linux-lts veya linux deneyin; "
+            "VM'de Waydroid sınırlı çalışır.")
+
+
+def _is_vm():
+    """VM tespiti — software render prop'ları yalnızca VM'de uygulanır."""
+    return _detect_virt() != "none"
+
+
+class WaydroidManager:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Waydroid (Android)")
+        self.root.geometry("820x680")
+        self.root.minsize(680, 520)
+        self.root.configure(bg=CREAM)
+        self._set_icon()
+        self.running_op = False
+        self._polling = False
+        self._build_ui()
+        self._refresh_status()
+
+    def _set_icon(self):
+        for p in ["/usr/share/yerinde/yerinde-icon-256.png",
+                  "/usr/share/icons/hicolor/256x256/apps/yerinde.png"]:
+            if os.path.exists(p):
+                try:
+                    self.root.iconphoto(True, tk.PhotoImage(file=p))
+                except Exception:
+                    pass
+                break
+
+    def _build_ui(self):
+        hdr = tk.Frame(self.root, bg=HEADER_BG, height=44)
+        hdr.pack(fill=tk.X)
+        hdr.pack_propagate(False)
+        tk.Label(hdr, text="Waydroid (Android) Yoneticisi", bg=HEADER_BG, fg=HEADER_FG,
+                 font=("Sans", 14, "bold")).pack(side=tk.LEFT, padx=12)
+
+        self._build_status_card()
+        self._build_progress()
+        self._build_actions()
+        self._build_log()
+
+    # --- BINDER UYARISI ---
+    def _build_status_card(self):
+        card = tk.Frame(self.root, bg=CREAM, relief=tk.GROOVE, bd=2)
+        card.pack(fill=tk.X, padx=12, pady=(10, 4))
+        tk.Label(card, text="Durum", bg=GREEN_DARK, fg=HEADER_FG,
+                 font=("Sans", 11, "bold")).pack(fill=tk.X)
+        info = tk.Frame(card, bg=CREAM)
+        info.pack(fill=tk.X, padx=10, pady=6)
+        self.lbl_installed = tk.Label(info, text="Kurulu: --", bg=CREAM, fg=FG_DARK,
+                                      font=("Sans", 10), width=30, anchor="w")
+        self.lbl_installed.pack(anchor="w")
+        self.lbl_running = tk.Label(info, text="Calisiyor: --", bg=CREAM, fg=FG_DARK,
+                                    font=("Sans", 10), width=30, anchor="w")
+        self.lbl_running.pack(anchor="w")
+        self.lbl_type = tk.Label(info, text="Tur: --", bg=CREAM, fg=FG_DARK,
+                                 font=("Sans", 10), width=30, anchor="w")
+        self.lbl_type.pack(anchor="w")
+        # Binder durumu — keşif zinciri sonucu
+        binder_durum, binder_detay = _check_binder()
+        if binder_durum in ("yuklu", "modprobe_basarili"):
+            txt = f"Binder: Yuklu ({binder_detay})"
+            clr = GREEN_DARK
+        elif binder_durum == "modul_yok":
+            txt = f"Binder: {binder_detay}"
+            clr = ORANGE
+        else:
+            txt = f"Binder: {binder_detay}"
+            clr = ORANGE
+        # VM uyarısı
+        if _is_vm():
+            txt += "  [SANAL MAKINE]"
+        self.lbl_binder = tk.Label(info, text=txt, bg=CREAM, fg=clr,
+                                   font=("Sans", 10), width=60, anchor="w")
+        self.lbl_binder.pack(anchor="w")
+
+    # --- GERCEK ILERLEME BARI ---
+    def _build_progress(self):
+        pf = tk.Frame(self.root, bg=CREAM)
+        pf.pack(fill=tk.X, padx=12, pady=(2, 4))
+        self.lbl_progress = tk.Label(pf, text="", bg=CREAM, fg=FG_DARK,
+                                     font=("Sans", 9))
+        self.lbl_progress.pack(side=tk.LEFT)
+        self.progress = ttk.Progressbar(pf, mode="determinate", length=400)
+        self.progress.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
+        self.progress["value"] = 0
+
+    def _start_progress_poll(self, expected_size, label="Indiriliyor"):
+        """Arka planda imaj boyutunu 1sn'de bir oku → bar doldur."""
+        self._polling = True
+        self._expected_size = max(expected_size, 1)
+        self._poll_label = label
+
+        def _poll():
+            while self._polling:
+                cur = self._get_image_size()
+                pct = min(100.0, (cur / self._expected_size) * 100)
+                self.root.after(0, self._update_progress, pct, cur)
+                time.sleep(1)
+        threading.Thread(target=_poll, daemon=True).start()
+
+    def _stop_progress_poll(self):
+        self._polling = False
+
+    def _update_progress(self, pct, cur_bytes):
+        self.progress["value"] = pct
+        mb = cur_bytes / 1_048_576
+        self.lbl_progress.configure(text=f"{self._poll_label}: {mb:.0f} MB ({pct:.0f}%)")
+
+    def _get_image_size(self):
+        """Waydroid imaj klasorundeki toplam boyutu dondur."""
+        total = 0
+        for root, dirs, files in os.walk(WAYDROID_DIR):
+            for f in files:
+                fp = os.path.join(root, f)
+                try:
+                    total += os.path.getsize(fp)
+                except OSError:
+                    pass
+        return total
+
+    def _refresh_status(self):
+        installed = os.path.isdir(WAYDROID_DIR)
+        running = False
+        wtype = "Yuklu degil"
+        if installed:
+            try:
+                r = subprocess.run(["waydroid", "status"], capture_output=True, text=True, timeout=5)
+                output = r.stdout.lower()
+                running = "session is running" in output or "running" in output
+            except Exception:
+                pass
+            try:
+                cfg = os.path.join(WAYDROID_DIR, "waydroid.cfg")
+                if os.path.exists(cfg):
+                    with open(cfg) as f:
+                        for line in f:
+                            if "session.type=" in line:
+                                val = line.split("=", 1)[1].strip()
+                                wtype = "GAPPS (Play Store)" if val == "gsa" else "Vanilla"
+                            elif "images_type=" in line:
+                                val = line.split("=", 1)[1].strip()
+                                if val.lower() == "gapps":
+                                    wtype = "GAPPS (Play Store)"
+            except Exception:
+                pass
+        self.lbl_installed.configure(text=f"Kurulu: {'Evet' if installed else 'Hayir'}")
+        self.lbl_running.configure(text=f"Calisiyor: {'Evet' if running else 'Hayir'}")
+        self.lbl_type.configure(text=f"Tur: {wtype}")
+
+    # --- BUTONLAR ---
+    def _build_actions(self):
+        frm = tk.Frame(self.root, bg=CREAM)
+        frm.pack(fill=tk.X, padx=12, pady=6)
+        for text, cmd, color in [
+            ("Kur: GAPPS", self._install_gapps, ORANGE),
+            ("Kur: Vanilla", self._install_vanilla, "#2E7D32"),
+            ("Sil", self._remove, "#8B0000"),
+            ("Baslat", self._start, "#1565C0"),
+            ("Durdur", self._stop, "#6A5ACD"),
+            ("Guncelle", self._upgrade, "#2E7D32"),
+        ]:
+            b = tk.Button(frm, text=text, command=cmd, bg=color, fg=BTN_FG,
+                          activebackground=ORANGE, activeforeground=WHITE,
+                          font=("Sans", 9, "bold"), relief=tk.FLAT, padx=10, pady=4,
+                          cursor="hand2")
+            b.pack(side=tk.LEFT, padx=3)
+            if not hasattr(self, "_btns"):
+                self._btns = []
+            self._btns.append(b)
+
+        self._make_btn(frm, "Yenile", self._on_refresh, bg=BTN_BG).pack(side=tk.RIGHT, padx=3)
+
+    def _on_refresh(self):
+        """Yenile: waydroid status + imaj boyutu + durum karti guncelle."""
+        self._refresh_status()
+        cur = self._get_image_size()
+        mb = cur / 1_048_576
+        if cur > 0:
+            self.lbl_progress.configure(text=f"Imaj boyutu: {mb:.0f} MB")
+        else:
+            self.lbl_progress.configure(text="Imaj yok")
+
+    # --- LOG ---
+    def _build_log(self):
+        frm = tk.Frame(self.root, bg=CREAM)
+        frm.pack(fill=tk.BOTH, expand=True, padx=12, pady=(2, 8))
+        tk.Label(frm, text="Islem Logu", bg=CREAM, fg=GREEN_DARK,
+                 font=("Sans", 10, "bold")).pack(anchor="w")
+        self.log = scrolledtext.ScrolledText(frm, bg="#1a1a1a", fg="#e0e0e0",
+                                             insertbackground="#e0e0e0",
+                                             font=("Mono", 9), height=10, state=tk.DISABLED)
+        self.log.pack(fill=tk.BOTH, expand=True)
+
+    # --- YARDIMCI ---
+    def _make_btn(self, parent, text, cmd, bg=BTN_BG):
+        return tk.Button(parent, text=text, command=cmd, bg=bg, fg=BTN_FG,
+                         activebackground=ORANGE, activeforeground=WHITE,
+                         font=("Sans", 9, "bold"), relief=tk.FLAT, padx=8, pady=3,
+                         cursor="hand2")
+
+    def _log(self, msg):
+        ts = time.strftime("%H:%M:%S")
+        self.log.configure(state=tk.NORMAL)
+        self.log.insert(tk.END, f"[{ts}] {msg}\n")
+        self.log.see(tk.END)
+        self.log.configure(state=tk.DISABLED)
+
+    def _set_buttons(self, enabled):
+        state = tk.NORMAL if enabled else tk.DISABLED
+        for b in self._btns:
+            b.configure(state=state)
+
+    def _run_priv(self, cmd, label="", expected_size=0):
+        self._log(f">> {' '.join(cmd)}")
+        if expected_size > 0:
+            self._start_progress_poll(expected_size, label)
+        threading.Thread(target=self._run_priv_thread, args=(cmd, label),
+                         daemon=True).start()
+
+    def _run_priv_thread(self, cmd, label):
+        try:
+            r = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                 text=True)
+            for line in iter(r.stdout.readline, ""):
+                self.root.after(0, self._log, line.rstrip())
+            r.wait()
+            if r.returncode == 0:
+                self.root.after(0, self._log, f"[OK] {label} tamamlandi")
+            else:
+                self.root.after(0, self._log, f"[HATA] {label} basarisiz (kod {r.returncode})")
+        except Exception as e:
+            self.root.after(0, self._log, f"[HATA] {e}")
+        finally:
+            self.root.after(0, self._stop_progress_poll)
+            self.root.after(0, self._set_buttons, True)
+            self.root.after(0, self._refresh_status)
+
+    # --- ISLEMLER ---
+    def _install_gapps(self):
+        binder_durum, binder_detay = _check_binder()
+        if binder_durum not in ("yuklu", "modprobe_basarili"):
+            messagebox.showwarning("Binder Durumu",
+                                   f"{binder_detay}\n\n"
+                                   "Kurulum yine de devam edebilir, "
+                                   "ama Waydroid düzgün çalışmayabilir.")
+        if not messagebox.askyesno("Kurulum (GAPPS)",
+                                   "Yaklasik 1-1.5 GB internetten inecek.\n"
+                                   "5-15 dk surebilir.\n\nDevam edilsin mi?"):
+            return
+        self._set_buttons(False)
+        if _is_vm():
+            self._log("[VM] Sanal makine algilandi — software render prop'lari uygulanacak")
+            self._run_priv(["pkexec", "bash", "-c",
+                            "waydroid prop set ro.hardware.egl swiftshader 2>/dev/null; "
+                            "waydroid prop set ro.hardware.gralloc default 2>/dev/null; "
+                            "waydroid init -s GAPPS"],
+                           "GAPPS kurulumu (VM software render)", expected_size=IMAGE_SIZE_GAPPAS)
+        else:
+            self._run_priv(["pkexec", "waydroid", "init", "-s", "GAPPS"],
+                           "GAPPS kurulumu", expected_size=IMAGE_SIZE_GAPPAS)
+
+    def _install_vanilla(self):
+        binder_durum, binder_detay = _check_binder()
+        if binder_durum not in ("yuklu", "modprobe_basarili"):
+            messagebox.showwarning("Binder Durumu",
+                                   f"{binder_detay}\n\n"
+                                   "Kurulum yine de devam edebilir, "
+                                   "ama Waydroid düzgün çalışmayabilir.")
+        if not messagebox.askyesno("Kurulum (Vanilla)",
+                                   "Yaklasik 800 MB internetten inecek.\n\nDevam edilsin mi?"):
+            return
+        self._set_buttons(False)
+        if _is_vm():
+            self._log("[VM] Sanal makine algilandi — software render prop'lari uygulanacak")
+            self._run_priv(["pkexec", "bash", "-c",
+                            "waydroid prop set ro.hardware.egl swiftshader 2>/dev/null; "
+                            "waydroid prop set ro.hardware.gralloc default 2>/dev/null; "
+                            "waydroid init -s VANILLA"],
+                           "Vanilla kurulumu (VM software render)", expected_size=IMAGE_SIZE_VANILLA)
+        else:
+            self._run_priv(["pkexec", "waydroid", "init", "-s", "VANILLA"],
+                           "Vanilla kurulumu", expected_size=IMAGE_SIZE_VANILLA)
+
+    def _remove(self):
+        if not messagebox.askyesno("TEHLIKE - Waydroid Sil",
+                                   "Android goruntusu ve TUM veriler silinecek!\n\n"
+                                   "Emin misiniz?", icon="warning"):
+            return
+        if not messagebox.askyesno("Son Onay",
+                                   "Bu islem geri alinamaz. Emin misiniz?",
+                                   icon="warning"):
+            return
+        self._set_buttons(False)
+        self._run_priv(["pkexec", "bash", "-c",
+                        "waydroid container stop 2>/dev/null; "
+                        "rm -rf /var/lib/waydroid"],
+                       "Waydroid silindi")
+
+    def _start(self):
+        self._set_buttons(False)
+        threading.Thread(target=self._start_thread, daemon=True).start()
+
+    def _start_thread(self):
+        try:
+            self.root.after(0, self._log, "Waydroid baslatiliyor...")
+            r = subprocess.run(["waydroid", "show-full-ui"], capture_output=True, timeout=10)
+            self.root.after(0, self._log, "Waydroid penceresi acildi")
+        except subprocess.TimeoutExpired:
+            self.root.after(0, self._log, "Waydroid baslatildi (arka planda calisiyor)")
+        except Exception as e:
+            self.root.after(0, self._log, f"[HATA] {e}")
+        self.root.after(0, self._set_buttons, True)
+        self.root.after(0, self._refresh_status)
+
+    def _stop(self):
+        self._set_buttons(False)
+        self._run_priv(["pkexec", "waydroid", "container", "stop"], "Waydroid durduruldu")
+
+    def _upgrade(self):
+        self._set_buttons(False)
+        self._run_priv(["pkexec", "waydroid", "upgrade"], "Guncelleme")
+
+
+def main():
+    root = tk.Tk()
+    WaydroidManager(root)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
