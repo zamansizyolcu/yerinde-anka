@@ -148,6 +148,17 @@ class TTSManager:
             return
         self._piper_fallback_warned = True
         binary_found = bool(shutil.which(self.s.piper_binary) or Path(self.s.piper_binary).exists())
+        # Proje piper binary kontrolü
+        proj_piper = Path(__file__).resolve().parent.parent / "piper" / "piper"
+        if not binary_found and proj_piper.exists():
+            binary_found = True
+        # Python piper modülü kontrolü
+        if not binary_found:
+            try:
+                import piper  # noqa: F401
+                binary_found = True
+            except ImportError:
+                pass
         voice_found = Path(self.s.piper_voice).exists()
         if not binary_found:
             reason = f"piper çalıştırılabilir dosyası bulunamadı (aranan: '{self.s.piper_binary}')"
@@ -167,14 +178,32 @@ class TTSManager:
 
     # ── Piper (yerel binary, milisaniyelik) ─────────────────────────────────
     def _piper(self, text: str, voice_path: str | None = None) -> Optional[Path]:
-        binary = shutil.which(self.s.piper_binary) or self.s.piper_binary
+        # Piper binary arama: PATH → proje/piper/ → python3 -m piper
+        binary = shutil.which(self.s.piper_binary)
+        if not binary:
+            # Proje kökündeki piper binary
+            proj_piper = Path(__file__).resolve().parent.parent / "piper" / "piper"
+            if proj_piper.exists():
+                binary = str(proj_piper)
+            else:
+                # Python piper modülü (pip install piper-tts)
+                try:
+                    import piper  # noqa: F401
+                    binary = "python3"
+                except ImportError:
+                    binary = self.s.piper_binary
         voice = voice_path or self.s.piper_voice
         if not Path(voice).exists():
             return None
         out = Path(tempfile.mktemp(prefix="yerinde-tts-", suffix=".wav"))
         try:
+            if binary == "python3":
+                cmd = ["python3", "-m", "piper",
+                       "--model", voice, "--output_file", str(out)]
+            else:
+                cmd = [binary, "--model", voice, "--output_file", str(out)]
             proc = subprocess.run(
-                [binary, "--model", voice, "--output_file", str(out)],
+                cmd,
                 input=text.encode("utf-8"), capture_output=True, timeout=60,
                 creationflags=_CREATE_NO_WINDOW,
             )

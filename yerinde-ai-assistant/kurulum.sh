@@ -206,6 +206,31 @@ if [ ! -f config/api_keys.json ]; then
     echo "AYARLAR panelinden girebilir, ya da bu dosyayı elle düzenleyebilirsin."
 fi
 
+# ══ Piper TTS binary (yerel nöral ses için) ══════════════════════════════
+echo
+echo "[*] Piper TTS binary kontrol..."
+PIPER_DIR="$(dirname "$0")/piper"
+PIPER_BIN="$PIPER_DIR/piper"
+if [ -x "$PIPER_BIN" ]; then
+    echo "  [OK] Piper binary zaten mevcut ($PIPER_BIN)"
+else
+    echo "  [*] Piper indiriliyor (GitHub release ~34MB)..."
+    PIPER_VER="1.2.0"
+    PIPER_URL="https://github.com/rhasspy/piper/releases/download/${PIPER_VER}/piper_linux_x86_64.tar.gz"
+    if command -v curl >/dev/null 2>&1; then
+        mkdir -p "$PIPER_DIR"
+        if curl -fSL "$PIPER_URL" | tar xz -C "$PIPER_DIR" --strip-components=1; then
+            chmod +x "$PIPER_BIN"
+            echo "  [OK] Piper binary indirildi ($PIPER_BIN)"
+        else
+            echo "  [UYARI] Piper indirilemedi — espeak-ng fallback kullanılacak."
+            echo "           Elle kurulum: curl -fSL $PIPER_URL | tar xz -C piper/ --strip-components=1"
+        fi
+    else
+        echo "  [UYARI] curl yok — Piper indirilemedi. espeak-ng fallback kullanılacak."
+    fi
+fi
+
 echo
 echo "══════════════════════════════════════════"
 if [ -n "$ATLANAN" ]; then

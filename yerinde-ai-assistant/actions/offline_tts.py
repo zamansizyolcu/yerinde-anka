@@ -29,9 +29,27 @@ _proc_lock = threading.Lock()
 
 
 def _find_piper_binary() -> str | None:
+    # 1) config'de özel yol ayarlanmış mı?
     configured = str(get_app_config_value("piper_binary_path", "") or "").strip()
     if configured and Path(configured).exists():
         return configured
+    # 2) Python piper modülü yüklü mü? (pip install piper-tts)
+    try:
+        import piper  # noqa: F401
+        # piper modülü varsa __file__'ı binary olarak kullan (Python modülü)
+        piper_mod = Path(piper.__file__).parent / "__main__.py"
+        if piper_mod.exists():
+            return "python3"  # speak_text_offline'da python -m piper çağrılır
+    except ImportError:
+        pass
+    # 3) Proje kökündeki piper binary (yerinde-ai-assistant/piper/ klasörü)
+    proj_piper = BASE_DIR / "piper" / "piper"
+    if proj_piper.exists():
+        return str(proj_piper)
+    proj_piper2 = BASE_DIR / "piper" / "piper_bin"
+    if proj_piper2.exists():
+        return str(proj_piper2)
+    # 4) Sistem PATH'inde piper var mı?
     return shutil.which("piper")
 
 
@@ -91,8 +109,15 @@ def _speak_with_piper(piper_bin: str, piper_voice: str, text: str, on_done=None,
             tmp_path = Path(tmp.name)
             tmp.close()
 
+            # Python piper modülü (pip install piper-tts) → python3 -m piper
+            if piper_bin == "python3":
+                cmd = ["python3", "-m", "piper",
+                       "--model", piper_voice, "--output_file", str(tmp_path)]
+            else:
+                cmd = [piper_bin, "--model", piper_voice, "--output_file", str(tmp_path)]
+
             proc = subprocess.Popen(
-                [piper_bin, "--model", piper_voice, "--output_file", str(tmp_path)],
+                cmd,
                 stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
             with _proc_lock:

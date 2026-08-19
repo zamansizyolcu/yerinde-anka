@@ -39,9 +39,23 @@ def _sapi_turkish_voices() -> list[str]:
         return []
     try:
         from actions.tts import get_available_voices
-        return [v["name"] for v in get_available_voices()
-                if "tr" in str(v.get("culture", "")).lower()
-                or "turk" in str(v.get("name", "")).lower()]
+        # get_available_voices() Linux'ta espeak-ng string satırları,
+        # Windows'ta dict listesi döndürebilir.
+        voices = get_available_voices()
+        result = []
+        for v in voices:
+            if isinstance(v, dict):
+                name = v.get("name", "")
+                culture = str(v.get("culture", "")).lower()
+                if "tr" in culture or "turk" in name.lower():
+                    result.append(name)
+            elif isinstance(v, str) and v.strip():
+                parts = v.split()
+                if len(parts) >= 2:
+                    variant = parts[1]
+                    if "tr" in variant.lower():
+                        result.append(variant)
+        return result
     except Exception:
         return []
 

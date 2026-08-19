@@ -134,9 +134,56 @@ fi
 echo
 read -rp "Çevrimdışı modeller kurulsun mu? (e/h): " CEVAP
 if [ "$CEVAP" = "e" ] || [ "$CEVAP" = "E" ]; then
-    sudo systemctl enable --now ollama 2>/dev/null || true
-    ollama pull llama3.1 || true
-    ollama pull qwen2.5-coder:1.5b || true
+    # Ollama kurulumu
+    if ! command -v ollama >/dev/null 2>&1; then
+        echo "[*] Ollama kuruluyor..."
+        sudo pacman -S --needed --noconfirm ollama 2>/dev/null || {
+            echo "[UYARI] ollama kurulamadi — cevrimdifi modeller atlandi."
+            echo "         Elle kurulum: sudo pacman -S ollama"
+        }
+    fi
+    if command -v ollama >/dev/null 2>&1; then
+        # Servis durumu kontrol — çalışıyorsa dokunma
+        if ! systemctl is-active --quiet ollama 2>/dev/null; then
+            echo "[*] Ollama servisi baslatiliyor..."
+            sudo systemctl enable --now ollama 2>/dev/null || true
+            sleep 2
+        else
+            echo "[OK] Ollama servisi zaten calisiyor."
+        fi
+        # Sıralı model indirme: qwen hızlı (72MB), llama ağır (4.7GB)
+        MODELS=(
+            "qwen2.5-coder:1.5b"
+            "llama3.1"
+        )
+        for MODEL in "${MODELS[@]}"; do
+            # Zaten indirilmiş mi?
+            if ollama list 2>/dev/null | grep -q "^${MODEL}"; then
+                echo "[OK] ${MODEL} zaten mevcut — atlanıyor."
+                continue
+            fi
+            echo
+            echo "[*] ${MODEL} indiriliyor..."
+            echo "    (Ctrl+C ile bu modeli atlayıp devam edebilirsiniz)"
+            # Canlı çıktı: stdout inherit — kullanıcı gerçek progress'i görür
+            # trap: Ctrl+C → bu modeli atla, sonrakine geç
+            trap 'echo; echo "[ATLANDI] ${MODEL} — kullanıcı iptal etti."; SKIP_MODEL=1; continue' INT
+            SKIP_MODEL=0
+            ollama pull "$MODEL" && {
+                # İndirme sonrası doğrulama
+                if ollama list 2>/dev/null | grep -q "^${MODEL}"; then
+                    echo "[OK] ${MODEL} indirildi ve doğrulandı."
+                else
+                    echo "[UYARI] ${MODEL} pull tamamlandı ama listede gorunmuyor — kontrol edin."
+                fi
+            } || {
+                echo "[UYARI] ${MODEL} indirilemedi — sonraki modele geciliyor."
+            }
+            trap - INT  # INT trap'ini kaldır
+        done
+    else
+        echo "[UYARI] ollama hala mevcut degil — cevrimdifi modeller kullanilamaz"
+    fi
 fi
 
 # 8) Başlat

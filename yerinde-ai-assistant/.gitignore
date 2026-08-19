@@ -17,9 +17,8 @@ model-egitimi/llama.cpp/
 model-egitimi/venv*/
 # vosk-model: indirilebilir Vosk STT modeli (~57MB)
 vosk-model/
-# voices/*.onnx: indirilebilir Piper ses modelleri
-voices/*.onnx
-voices/*.onnx.json
+# piper/ binary: GitHub'a girmez; kurulum.sh release'den indirir
+piper/
 *.pkg.tar.zst
 # yolo11n.pt: indirilebilir YOLO ağırlıkları
 yolo11n.pt
