@@ -382,27 +382,26 @@ verify_sources() {
     || fail "final53 §1 FAIL: airootfs/etc/default/grub'da GRUB_DISABLE_OS_PROBER=false yok"
   echo "DUAL-BOOT OK (final53 §1): os-prober packages'te + GRUB_DISABLE_OS_PROBER=false"
 
-  # final53 §2: SDDM ComboBox — TextBox yerine kullanıcı açılır listesi
-  rg -q 'ComboBox' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "final53 §2 FAIL: Main.qml'de ComboBox yok (TextBox kalmış olabilir)"
-  rg -q 'userModel' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "final53 §2 FAIL: Main.qml'de userModel referansı yok"
-  rg -q 'userCombo' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "final53 §2 FAIL: Main.qml'de userCombo id'si yok"
+  # final55: SDDM ComboBox — QtQuick.Controls 2.15 + userSelect + delegate
+  rg -q 'import QtQuick\.Controls 2\.15' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final55 FAIL: Main.qml'de QtQuick.Controls 2.15 import'u yok"
+  rg -q 'userSelect' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final55 FAIL: Main.qml'de userSelect id'si yok"
+  rg -q 'textRole:\s*"name"' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final55 FAIL: Main.qml'de textRole: \"name\" yok"
+  rg -q 'currentIndex:\s*userModel\.lastIndex' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final55 FAIL: Main.qml'de currentIndex: userModel.lastIndex yok"
+  rg -q 'delegate:\s*ItemDelegate' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final55 FAIL: Main.qml'de delegate: ItemDelegate yok"
   # TextBox (eski username girişi) artık OLMA_MALI
   if rg -q 'TextBox' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml"; then
-    fail "final53 §2 FAIL: Main.qml'de hâlâ TextBox var (ComboBox ile değiştirilmeli)"
+    fail "final55 FAIL: Main.qml'de hâlâ TextBox var"
   fi
-  echo "SDDM-COMBOBOX OK (final53 §2): userModel ComboBox + TextBox YOK"
-
-  # final54 §1: currentIndex YAZMA ataması ComboBox dışında OLMA_MALI
-  # (SddmComponents 2.0 ComboBox'ta currentIndex yalnızca okunabilir;
-  #  yazma = "Cannot assign to non-existent property" hatası → tema düşer).
-  # Yalnızca yorum satırlarında ve model.get(...).currentIndex okumasında olabilir.
-  if rg -q '^\s*currentIndex\s*:' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml"; then
-    fail "final54 §1 FAIL: Main.qml'de currentIndex YAZMA ataması var (SddmComponents ComboBox'ta desteklenmez)"
+  # SddmComponents ComboBox id'leri (userCombo) artık OLMAMALI
+  if rg -q 'userCombo' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml"; then
+    fail "final55 FAIL: Main.qml'de eski userCombo id'si var (userSelect olmalı)"
   fi
-  echo "FINAL54 OK (§1): currentIndex yazma ataması YOK (yalnızca okuma)"
+  echo "SDDM-COMBOBOX OK (final55): QtQuick.Controls 2.15 + userSelect + textRole:name + delegate"
 
   # final53 §3a: ＋ butonu + bilgi penceresi
   rg -q 'addUserButton' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
@@ -432,20 +431,26 @@ verify_prep() {
   [ -f "$THEME/Main.qml" ] || fail "SDDM teması yok: $THEME/Main.qml"
 
   if grep -n "onActivated" "$THEME/Main.qml"; then
-    fail "SDDM QML FAIL: onActivated satırı var (SddmComponents ComboBox yalnızca valueChanged sunar)"
+    fail "SDDM QML FAIL: onActivated satırı var (QtQuick.Controls ComboBox'ta desteklenmez)"
   fi
-  grep -q "onValueChanged" "$THEME/Main.qml" || fail "SDDM QML FAIL: ComboBox onValueChanged eksik"
-  # final53 §2: ComboBox userModel ile kullanıcı listesi
-  grep -q "userCombo" "$THEME/Main.qml" || fail "SDDM QML FAIL: userCombo ComboBox yok"
-  grep -q "userModel" "$THEME/Main.qml" || fail "SDDM QML FAIL: userModel referansı yok"
-  # final53 §3a: addUserButton + infoDialog
+  # final55: QtQuick.Controls 2.15 + userSelect + delegate + textRole
+  grep -q "QtQuick\.Controls 2\.15" "$THEME/Main.qml" \
+    || fail "SDDM QML FAIL: QtQuick.Controls 2.15 import'u yok"
+  grep -q "userSelect" "$THEME/Main.qml" \
+    || fail "SDDM QML FAIL: userSelect ComboBox id'si yok"
+  grep -q 'textRole:\s*"name"' "$THEME/Main.qml" \
+    || fail "SDDM QML FAIL: textRole: \"name\" yok"
+  grep -q "currentIndex:\s*userModel\.lastIndex" "$THEME/Main.qml" \
+    || fail "SDDM QML FAIL: currentIndex: userModel.lastIndex yok"
+  grep -q "delegate:\s*ItemDelegate" "$THEME/Main.qml" \
+    || fail "SDDM QML FAIL: delegate: ItemDelegate yok"
   grep -q "addUserButton" "$THEME/Main.qml" || fail "SDDM QML FAIL: addUserButton yok"
   grep -q "infoDialog" "$THEME/Main.qml" || fail "SDDM QML FAIL: infoDialog yok"
-  # final54 §1: currentIndex yazma ataması OLMA_MALI
-  if grep -qE '^\s*currentIndex\s*:' "$THEME/Main.qml"; then
-    fail "SDDM QML FAIL: currentIndex yazma ataması var (final54: SddmComponents ComboBox'ta desteklenmez)"
+  # Eski SddmComponents ComboBox id'leri kalmamalı
+  if grep -q "userCombo" "$THEME/Main.qml"; then
+    fail "SDDM QML FAIL: eski userCombo id'si var (userSelect olmalı)"
   fi
-  echo "SDDM QML OK: statik kontrol (onActivated yok, onValueChanged var, ComboBox+userModel+addUser+infoDialog, currentIndex temiz)"
+  echo "SDDM QML OK: statik kontrol (QtQuick.Controls 2.15 + userSelect + delegate + textRole:name + addUser+infoDialog)"
 
   rm -f /tmp/opencode/sddm-test.log
   timeout 15 env QT_QPA_PLATFORM=offscreen \
@@ -604,15 +609,16 @@ verify_post() {
     || fail "POSTFAIL (final19 H1): [X11] Enable=false yok"
   echo "POST OK (H1 final19): sddm teması + conf (Current=yerinde + Wayland=true + X11=false)"
 
-  # F1: SDDM Main.qml tek satır oturum seçici + ComboBox giriş (regresyon)
-  grep -q 'onValueChanged: sessionIndex = index' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "POSTFAIL (F1): Main.qml oturum seçici satırı yok"
-  # final53: login artık userCombo.model.get(...).name kullanır (TextBox YOK)
-  grep -q 'userCombo.model.get' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "POSTFAIL (F1): Main.qml sddm.login(userCombo.model.get...) yok"
+  # F1: SDDM Main.qml — QtQuick.Controls ComboBox + userSelect + oturum seçici
+  grep -q 'userSelect\.currentText' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (F1): Main.qml sddm.login(userSelect.currentText...) yok"
   grep -q 'sddm.login(' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
     || fail "POSTFAIL (F1): Main.qml sddm.login() yok"
-  echo "POST OK (F1): Main.qml ComboBox giriş + oturum seçici — SDDM regresyon koruması"
+  grep -q 'QtQuick\.Controls 2\.15' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (F1): Main.qml QtQuick.Controls 2.15 import'u yok"
+  grep -q 'onCurrentIndexChanged' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (F1): Main.qml sessionCombo onCurrentIndexChanged yok"
+  echo "POST OK (F1): Main.qml QtQuick.Controls ComboBox + userSelect + sessionCombo — SDDM regresyon koruması"
 
   # REGRESYON: 5 duvar kağıdı
   local nw=0
@@ -829,15 +835,17 @@ verify_post() {
     || fail "POSTFAIL (final53 §1): /etc/default/grub'da GRUB_DISABLE_OS_PROBER=false yok"
   echo "POST OK (final53 §1): GRUB_DISABLE_OS_PROBER=false kurulu sistemde"
 
-  # final53 §2 POST: SDDM Main.qml ComboBox (kullanıcı listesi)
-  grep -q 'userCombo' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "POSTFAIL (final53 §2): Main.qml userCombo yok"
+  # final55 §2 POST: SDDM Main.qml — QtQuick.Controls 2.15 + userSelect
+  grep -q 'userSelect' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (final55 §2): Main.qml userSelect yok"
   grep -q 'userModel' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "POSTFAIL (final53 §2): Main.qml userModel yok"
+    || fail "POSTFAIL (final55 §2): Main.qml userModel yok"
+  grep -q 'QtQuick\.Controls 2\.15' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (final55 §2): Main.qml QtQuick.Controls 2.15 import'u yok"
   if grep -q 'TextBox' "$WA/usr/share/sddm/themes/yerinde/Main.qml"; then
-    fail "POSTFAIL (final53 §2): Main.qml'de hâlâ TextBox var"
+    fail "POSTFAIL (final55 §2): Main.qml'de hâlâ TextBox var"
   fi
-  echo "POST OK (final53 §2): SDDM ComboBox (userCombo + userModel, TextBox YOK)"
+  echo "POST OK (final55 §2): SDDM ComboBox (QtQuick.Controls 2.15 + userSelect + TextBox YOK)"
 
   # final53 §3a POST: ＋ butonu + bilgi penceresi
   grep -q 'addUserButton' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \

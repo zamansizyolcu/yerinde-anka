@@ -1,4 +1,5 @@
-import QtQuick 2.11
+import QtQuick 2.15
+import QtQuick.Controls 2.15
 import SddmComponents 2.0
 
 Rectangle {
@@ -52,17 +53,23 @@ Rectangle {
             font.bold: true
         }
 
-        // final53 §2 + final54: Kullanıcı açılır listesi (ComboBox — userModel)
-        // textRole "realName": kullanıcı adı görünür; "name" fallback giriş adı.
-        // NOT: currentIndex KALDIRILDI — SddmComponents 2.0 ComboBox'ta
-        // bu özellik yoktur (Cannot assign to non-existent property hatası).
-        // userModel.lastIndex zaten otomatik olarak doğru kullanıcıyı seçer.
+        // final55: QtQuick.Controls 2.15 ComboBox — textRole + delegate + currentIndex
         ComboBox {
-            id: userCombo
+            id: userSelect
             width: 260
             height: 32
             model: userModel
-            textRole: "realName"
+            textRole: "name"
+            currentIndex: userModel.lastIndex
+            delegate: ItemDelegate {
+                width: userSelect.width
+                highlighted: userSelect.highlightedIndex === index
+                contentItem: Text {
+                    text: model.realName !== "" ? model.realName : model.name
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
+                }
+            }
             KeyNavigation.tab: passwordEntry
             Keys.onReturnPressed: loginButton.onClicked()
             Keys.onEnterPressed: loginButton.onClicked()
@@ -78,7 +85,7 @@ Rectangle {
             Keys.onEnterPressed: loginButton.onClicked()
         }
 
-        // final16.md §1: Oturum seçici + Giriş + ⟳ + ＋ + ⏻ TEK satırda (Row), ortalanmış.
+        // Oturum seçici + Giriş + ⟳ + ＋ + ⏻ TEK satırda (Row), ortalanmış.
         Row {
             spacing: 8
             anchors.horizontalCenter: parent.horizontalCenter
@@ -96,8 +103,8 @@ Rectangle {
                 width: 220
                 height: 28
                 model: sessionModel
-                index: sessionIndex
-                onValueChanged: sessionIndex = index
+                currentIndex: sessionIndex
+                onCurrentIndexChanged: sessionIndex = currentIndex
                 KeyNavigation.tab: loginButton
                 visible: sessionModel.count > 1
             }
@@ -107,7 +114,7 @@ Rectangle {
                 width: 180
                 height: 36
                 text: "Giriş"
-                onClicked: sddm.login(userCombo.model.get(userCombo.currentIndex).name, passwordEntry.text, sessionIndex)
+                onClicked: sddm.login(userSelect.currentText, passwordEntry.text, sessionIndex)
                 KeyNavigation.backtab: sessionCombo
             }
 
@@ -120,7 +127,7 @@ Rectangle {
                 onClicked: sddm.reboot()
             }
 
-            // final53 §3a: ＋ YENİ KULLANICI — bilgi penceresi (greeter komut ÇALIŞTIRAMAZ)
+            // ＋ YENİ KULLANICI — bilgi penceresi (greeter komut ÇALIŞTIRAMAZ)
             Button {
                 id: addUserButton
                 width: 36
@@ -140,7 +147,7 @@ Rectangle {
         }
     }
 
-    // final53 §3a: Bilgi penceresi — kullanıcıyı Yerinde Kullanıcı Yöneticisi'ne yönlendirir
+    // Bilgi penceresi — kullanıcıyı Yerinde Kullanıcı Yöneticisi'ne yönlendirir
     Rectangle {
         id: infoDialog
         visible: false
