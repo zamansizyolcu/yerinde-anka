@@ -52,15 +52,17 @@ Rectangle {
             font.bold: true
         }
 
-        // final53 §2: Kullanıcı açılır listesi (ComboBox — userModel)
-        // textRole "realName": kullanıcı adı görünür; "name" fallback olarak giriş adı kullanılır.
+        // final53 §2 + final54: Kullanıcı açılır listesi (ComboBox — userModel)
+        // textRole "realName": kullanıcı adı görünür; "name" fallback giriş adı.
+        // NOT: currentIndex KALDIRILDI — SddmComponents 2.0 ComboBox'ta
+        // bu özellik yoktur (Cannot assign to non-existent property hatası).
+        // userModel.lastIndex zaten otomatik olarak doğru kullanıcıyı seçer.
         ComboBox {
             id: userCombo
             width: 260
             height: 32
             model: userModel
             textRole: "realName"
-            currentIndex: userModel.lastIndex
             KeyNavigation.tab: passwordEntry
             Keys.onReturnPressed: loginButton.onClicked()
             Keys.onEnterPressed: loginButton.onClicked()

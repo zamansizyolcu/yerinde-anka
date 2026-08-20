@@ -395,6 +395,15 @@ verify_sources() {
   fi
   echo "SDDM-COMBOBOX OK (final53 §2): userModel ComboBox + TextBox YOK"
 
+  # final54 §1: currentIndex YAZMA ataması ComboBox dışında OLMA_MALI
+  # (SddmComponents 2.0 ComboBox'ta currentIndex yalnızca okunabilir;
+  #  yazma = "Cannot assign to non-existent property" hatası → tema düşer).
+  # Yalnızca yorum satırlarında ve model.get(...).currentIndex okumasında olabilir.
+  if rg -q '^\s*currentIndex\s*:' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml"; then
+    fail "final54 §1 FAIL: Main.qml'de currentIndex YAZMA ataması var (SddmComponents ComboBox'ta desteklenmez)"
+  fi
+  echo "FINAL54 OK (§1): currentIndex yazma ataması YOK (yalnızca okuma)"
+
   # final53 §3a: ＋ butonu + bilgi penceresi
   rg -q 'addUserButton' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
     || fail "final53 §3a FAIL: Main.qml'de addUserButton yok"
@@ -432,7 +441,11 @@ verify_prep() {
   # final53 §3a: addUserButton + infoDialog
   grep -q "addUserButton" "$THEME/Main.qml" || fail "SDDM QML FAIL: addUserButton yok"
   grep -q "infoDialog" "$THEME/Main.qml" || fail "SDDM QML FAIL: infoDialog yok"
-  echo "SDDM QML OK: statik kontrol (onActivated yok, onValueChanged var, ComboBox+userModel+addUser+infoDialog)"
+  # final54 §1: currentIndex yazma ataması OLMA_MALI
+  if grep -qE '^\s*currentIndex\s*:' "$THEME/Main.qml"; then
+    fail "SDDM QML FAIL: currentIndex yazma ataması var (final54: SddmComponents ComboBox'ta desteklenmez)"
+  fi
+  echo "SDDM QML OK: statik kontrol (onActivated yok, onValueChanged var, ComboBox+userModel+addUser+infoDialog, currentIndex temiz)"
 
   rm -f /tmp/opencode/sddm-test.log
   timeout 15 env QT_QPA_PLATFORM=offscreen \
