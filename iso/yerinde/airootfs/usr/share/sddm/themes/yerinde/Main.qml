@@ -102,8 +102,7 @@ Rectangle {
                 width: 220
                 height: 28
                 model: sessionModel
-                currentIndex: sessionIndex
-                onCurrentIndexChanged: sessionIndex = currentIndex
+                onValueChanged: sessionIndex = index
                 KeyNavigation.tab: loginButton
                 visible: sessionModel.count > 1
             }
