@@ -374,6 +374,46 @@ verify_sources() {
   python3 -m py_compile "$PROJ/packages/yerinde-waydroid/yerinde-waydroid" 2>/dev/null \
     || fail "final43 FAIL: yerinde-waydroid Python soz dizim hatasi"
   echo "WAYDROID SCRIPTS OK (final43): GUI (py_compile) + TTY (bash -n)"
+
+  # final53 §1: Çift boot — GRUB os-prober ayarı
+  rg -q '^os-prober$' "$PK" \
+    || fail "final53 §1 FAIL: packages.x86_64'te os-prober yok"
+  grep -q 'GRUB_DISABLE_OS_PROBER=false' "$AIROOTFS/etc/default/grub" \
+    || fail "final53 §1 FAIL: airootfs/etc/default/grub'da GRUB_DISABLE_OS_PROBER=false yok"
+  echo "DUAL-BOOT OK (final53 §1): os-prober packages'te + GRUB_DISABLE_OS_PROBER=false"
+
+  # final53 §2: SDDM ComboBox — TextBox yerine kullanıcı açılır listesi
+  rg -q 'ComboBox' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final53 §2 FAIL: Main.qml'de ComboBox yok (TextBox kalmış olabilir)"
+  rg -q 'userModel' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final53 §2 FAIL: Main.qml'de userModel referansı yok"
+  rg -q 'userCombo' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final53 §2 FAIL: Main.qml'de userCombo id'si yok"
+  # TextBox (eski username girişi) artık OLMA_MALI
+  if rg -q 'TextBox' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml"; then
+    fail "final53 §2 FAIL: Main.qml'de hâlâ TextBox var (ComboBox ile değiştirilmeli)"
+  fi
+  echo "SDDM-COMBOBOX OK (final53 §2): userModel ComboBox + TextBox YOK"
+
+  # final53 §3a: ＋ butonu + bilgi penceresi
+  rg -q 'addUserButton' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final53 §3a FAIL: Main.qml'de addUserButton yok"
+  rg -q 'infoDialog' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final53 §3a FAIL: Main.qml'de infoDialog yok"
+  rg -q 'Yerinde Kullanıcı Yöneticisi' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final53 §3a FAIL: Main.qml bilgi penceresi metni yok"
+  echo "ADD-USER-BUTTON OK (final53 §3a): addUserButton + infoDialog"
+
+  # final53 §3b: yerinde-kullanici paketi kaynakları
+  python3 -m py_compile "$PROJ/packages/yerinde-kullanici/yerinde-kullanici" 2>/dev/null \
+    || fail "final53 §3b FAIL: yerinde-kullanici Python sözdizim hatası"
+  bash -n "$PROJ/packages/yerinde-kullanici/helper.sh" \
+    || fail "final53 §3b FAIL: helper.sh bash -n hatası"
+  [ -f "$PROJ/packages/yerinde-kullanici/org.yerinde.kullanici.policy" ] \
+    || fail "final53 §3b FAIL: polkit policy dosyası yok"
+  rg -q '^yerinde-kullanici$' "$PK" \
+    || fail "final53 §3b FAIL: packages.x86_64'te yerinde-kullanici yok"
+  echo "YERINDE-KULLANICI OK (final53 §3b): py_compile + bash -n + polkit policy + packages'te"
 }
 
 # --- SDDM QML testi (VM'siz, offscreen) ---
@@ -386,7 +426,13 @@ verify_prep() {
     fail "SDDM QML FAIL: onActivated satırı var (SddmComponents ComboBox yalnızca valueChanged sunar)"
   fi
   grep -q "onValueChanged" "$THEME/Main.qml" || fail "SDDM QML FAIL: ComboBox onValueChanged eksik"
-  echo "SDDM QML OK: statik kontrol (onActivated yok, onValueChanged var)"
+  # final53 §2: ComboBox userModel ile kullanıcı listesi
+  grep -q "userCombo" "$THEME/Main.qml" || fail "SDDM QML FAIL: userCombo ComboBox yok"
+  grep -q "userModel" "$THEME/Main.qml" || fail "SDDM QML FAIL: userModel referansı yok"
+  # final53 §3a: addUserButton + infoDialog
+  grep -q "addUserButton" "$THEME/Main.qml" || fail "SDDM QML FAIL: addUserButton yok"
+  grep -q "infoDialog" "$THEME/Main.qml" || fail "SDDM QML FAIL: infoDialog yok"
+  echo "SDDM QML OK: statik kontrol (onActivated yok, onValueChanged var, ComboBox+userModel+addUser+infoDialog)"
 
   rm -f /tmp/opencode/sddm-test.log
   timeout 15 env QT_QPA_PLATFORM=offscreen \
@@ -545,15 +591,15 @@ verify_post() {
     || fail "POSTFAIL (final19 H1): [X11] Enable=false yok"
   echo "POST OK (H1 final19): sddm teması + conf (Current=yerinde + Wayland=true + X11=false)"
 
-  # F1: SDDM Main.qml tek satır oturum seçici (regresyon)
-  # Not: `rg -q` yerine `grep -q` kullanılıyor çünkü desen `()` içerir ve
-  # ripgrep bunları regex yakalama grubu olarak yorumlar (literal değil).
+  # F1: SDDM Main.qml tek satır oturum seçici + ComboBox giriş (regresyon)
   grep -q 'onValueChanged: sessionIndex = index' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
     || fail "POSTFAIL (F1): Main.qml oturum seçici satırı yok"
-  grep -q 'sddm.login(userEntry.text, passwordEntry.text, sessionIndex)' \
-    "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "POSTFAIL (F1): Main.qml sddm.login(sessionIndex) yok"
-  echo "POST OK (F1): Main.qml oturum seçici + sddm.login(sessionIndex) — SDDM regresyon koruması"
+  # final53: login artık userCombo.model.get(...).name kullanır (TextBox YOK)
+  grep -q 'userCombo.model.get' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (F1): Main.qml sddm.login(userCombo.model.get...) yok"
+  grep -q 'sddm.login(' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (F1): Main.qml sddm.login() yok"
+  echo "POST OK (F1): Main.qml ComboBox giriş + oturum seçici — SDDM regresyon koruması"
 
   # REGRESYON: 5 duvar kağıdı
   local nw=0
@@ -764,6 +810,41 @@ verify_post() {
   rg -q 'systemd-detect-virt' "$WA/usr/bin/yerinde-waydroid" \
     || fail "POSTFAIL (final47 §3): yerinde-waydroid VM tespiti yok"
   echo "POST OK (final47 §3): waydroid binder keşif zinciri + VM software render koruması"
+
+  # final53 §1 POST: GRUB os-prober kurulu sistemde
+  grep -q 'GRUB_DISABLE_OS_PROBER=false' "$WA/etc/default/grub" \
+    || fail "POSTFAIL (final53 §1): /etc/default/grub'da GRUB_DISABLE_OS_PROBER=false yok"
+  echo "POST OK (final53 §1): GRUB_DISABLE_OS_PROBER=false kurulu sistemde"
+
+  # final53 §2 POST: SDDM Main.qml ComboBox (kullanıcı listesi)
+  grep -q 'userCombo' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (final53 §2): Main.qml userCombo yok"
+  grep -q 'userModel' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (final53 §2): Main.qml userModel yok"
+  if grep -q 'TextBox' "$WA/usr/share/sddm/themes/yerinde/Main.qml"; then
+    fail "POSTFAIL (final53 §2): Main.qml'de hâlâ TextBox var"
+  fi
+  echo "POST OK (final53 §2): SDDM ComboBox (userCombo + userModel, TextBox YOK)"
+
+  # final53 §3a POST: ＋ butonu + bilgi penceresi
+  grep -q 'addUserButton' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (final53 §3a): Main.qml addUserButton yok"
+  grep -q 'infoDialog' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (final53 §3a): Main.qml infoDialog yok"
+  echo "POST OK (final53 §3a): addUserButton + infoDialog Main.qml'de"
+
+  # final53 §3b POST: yerinde-kullanici kurulu
+  [ -x "$WA/usr/bin/yerinde-kullanici" ] \
+    || fail "POSTFAIL (final53 §3b): /usr/bin/yerinde-kullanici yok"
+  [ -x "$WA/usr/lib/yerinde-kullanici/helper.sh" ] \
+    || fail "POSTFAIL (final53 §3b): helper.sh yok"
+  [ -f "$WA/usr/share/polkit-1/actions/org.yerinde.kullanici.policy" ] \
+    || fail "POSTFAIL (final53 §3b): polkit policy yok"
+  [ -f "$WA/usr/share/applications/yerinde-kullanici.desktop" ] \
+    || fail "POSTFAIL (final53 §3b): .desktop yok"
+  sudo python3 -m py_compile "$WA/usr/bin/yerinde-kullanici" 2>/dev/null \
+    || fail "POSTFAIL (final53 §3b): yerinde-kullanici py_compile hatası"
+  echo "POST OK (final53 §3b): yerinde-kullanici + helper + polkit + .desktop ISO'da"
 
   echo "== TÜM POST DOĞRULAMALAR BAŞARILI =="
 }

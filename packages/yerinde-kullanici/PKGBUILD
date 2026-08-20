@@ -1,0 +1,22 @@
+# Maintainer: Yerinde Project
+
+pkgname=yerinde-kullanici
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Yerinde ANKA kullanıcı yöneticisi — pkexec ile kullanıcı ekle/sil/parola"
+arch=('any')
+url="https://yerinde.example.com"
+license=('GPL')
+depends=('python' 'polkit')
+source=('yerinde-kullanici' 'helper.sh' 'yerinde-kullanici.desktop'
+        'org.yerinde.kullanici.policy')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+package() {
+  install -Dm755 "$srcdir/yerinde-kullanici" "$pkgdir/usr/bin/yerinde-kullanici"
+  install -Dm755 "$srcdir/helper.sh" "$pkgdir/usr/lib/yerinde-kullanici/helper.sh"
+  install -Dm644 "$srcdir/yerinde-kullanici.desktop" \
+    "$pkgdir/usr/share/applications/yerinde-kullanici.desktop"
+  install -Dm644 "$srcdir/org.yerinde.kullanici.policy" \
+    "$pkgdir/usr/share/polkit-1/actions/org.yerinde.kullanici.policy"
+}

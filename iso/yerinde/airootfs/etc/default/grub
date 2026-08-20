@@ -4,4 +4,5 @@ GRUB_DISTRIBUTOR="Yerinde ANKA"
 GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"
 GRUB_CMDLINE_LINUX=""
 GRUB_PRELOAD_MODULES="part_gpt part_msdos"
-GRUB_DISABLE_OS_PROBER=true
+# final53.md §1: Çift boot — kurulu sistemdeki Windows/Linux'u otomatik bulur
+GRUB_DISABLE_OS_PROBER=false

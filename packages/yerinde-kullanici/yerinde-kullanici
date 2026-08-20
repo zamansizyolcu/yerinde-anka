@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+# yerinde-kullanici — Yerinde ANKA Kullanıcı Yöneticisi (Tkinter + pkexec)
+# final53.md §3b: pkexec ile çalışır; kullanıcı ekle/sil, parola belirle, grup seç.
+
+import tkinter as tk
+from tkinter import ttk, messagebox
+import subprocess
+import sys
+
+HELPER = "/usr/lib/yerinde-kullanici/helper.sh"
+GRUPLAR = [("wheel", "Yönetici (wheel)"), ("ogrenci", "Öğrenci"), ("ogretmen", "Öğretmen")]
+
+
+class KullaniciYoneticisi:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Yerinde Kullanıcı Yöneticisi")
+        self.root.geometry("420x440")
+        self.root.resizable(False, False)
+        self.root.configure(bg="#F7F2E2")
+
+        tk.Label(self.root, text="Yerinde Kullanıcı Yöneticisi",
+                 bg="#F7F2E2", fg="#1F3D2E", font=("sans-serif", 14, "bold")).pack(pady=(12, 4))
+        tk.Label(self.root, text="Yeni kullanıcı ekle, sil veya parola değiştir.\nDeğişiklikler için yönetici parolası gerekir.",
+                 bg="#F7F2E2", fg="#555", font=("sans-serif", 9), justify="center").pack(pady=(0, 8))
+
+        btn_frame = tk.Frame(self.root, bg="#F7F2E2")
+        btn_frame.pack(pady=4)
+        for text, cmd in [("＋ Kullanıcı Ekle", self.ekle_penceresi),
+                          ("🗑 Kullanıcı Sil", self.sil_penceresi),
+                          ("🔑 Parola Değiştir", self.parola_penceresi)]:
+            tk.Button(btn_frame, text=text, width=20, command=cmd,
+                      bg="#1F3D2E", fg="white", font=("sans-serif", 10)).pack(pady=3)
+
+        self.log = tk.Text(self.root, height=8, width=48, state="disabled",
+                           bg="white", fg="#1F3D2E", font=("monospace", 9))
+        self.log.pack(padx=12, pady=(8, 12))
+
+        self.root.mainloop()
+
+    def _log(self, msg):
+        self.log.configure(state="normal")
+        self.log.insert("end", msg + "\n")
+        self.log.see("end")
+        self.log.configure(state="disabled")
+
+    def _run(self, args):
+        try:
+            r = subprocess.run(["pkexec", HELPER] + args,
+                               capture_output=True, text=True, timeout=30)
+            if r.returncode == 0:
+                self._log("✓ " + r.stdout.strip())
+                return True
+            else:
+                err = r.stderr.strip() or r.stdout.strip() or "Bilinmeyen hata"
+                self._log("✗ " + err)
+                messagebox.showerror("Hata", err)
+                return False
+        except subprocess.TimeoutExpired:
+            self._log("✗ Zaman aşımı")
+            messagebox.showerror("Hata", "İşlem zaman aşımına uğradı.")
+            return False
+        except FileNotFoundError:
+            self._log("✗ helper.sh bulunamadı")
+            messagebox.showerror("Hata", f"Yardımcı betik bulunamadı:\n{HELPER}")
+            return False
+
+    def ekle_penceresi(self):
+        win = tk.Toplevel(self.root)
+        win.title("Kullanıcı Ekle")
+        win.geometry("340x260")
+        win.configure(bg="#F7F2E2")
+        win.transient(self.root)
+        win.grab_set()
+
+        tk.Label(win, text="Kullanıcı Adı:", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(12, 0))
+        e_kullanici = tk.Entry(win, width=30)
+        e_kullanici.pack(padx=16)
+
+        tk.Label(win, text="Parola:", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(8, 0))
+        e_parola = tk.Entry(win, width=30, show="*")
+        e_parola.pack(padx=16)
+
+        tk.Label(win, text="Gruplar:", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(8, 0))
+        grup_frame = tk.Frame(win, bg="#F7F2E2")
+        grup_frame.pack(padx=16, anchor="w")
+        grup_varlari = {}
+        for gk, ga in GRUPLAR:
+            v = tk.BooleanVar(value=(gk == "wheel"))
+            tk.Checkbutton(grup_frame, text=ga, variable=v, bg="#F7F2E2",
+                           fg="#1F3D2E").pack(anchor="w")
+            grup_varlari[gk] = v
+
+        def onayla():
+            k = e_kullanici.get().strip()
+            p = e_parola.get().strip()
+            if not k or not p:
+                messagebox.showwarning("Uyarı", "Kullanıcı adı ve parola gerekli.", parent=win)
+                return
+            secilen = [g for g, v in grup_varlari.items() if v.get()]
+            if not secilen:
+                secilen = ["wheel"]
+            if not messagebox.askyesno("Onay", f"'{k}' kullanıcısı eklensin mi?\nGrup: {', '.join(secilen)}", parent=win):
+                return
+            if self._run(["ekle", k, p, ",".join(secilen)]):
+                win.destroy()
+
+        tk.Button(win, text="Ekle", width=14, command=onayla,
+                  bg="#1F3D2E", fg="white").pack(pady=12)
+
+    def sil_penceresi(self):
+        win = tk.Toplevel(self.root)
+        win.title("Kullanıcı Sil")
+        win.geometry("340x160")
+        win.configure(bg="#F7F2E2")
+        win.transient(self.root)
+        win.grab_set()
+
+        tk.Label(win, text="Silinecek Kullanıcı:", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(12, 0))
+        e_kullanici = tk.Entry(win, width=30)
+        e_kullanici.pack(padx=16)
+
+        def onayla():
+            k = e_kullanici.get().strip()
+            if not k:
+                messagebox.showwarning("Uyarı", "Kullanıcı adı gerekli.", parent=win)
+                return
+            if not messagebox.askyesno("Onay", f"'{k}' kullanıcısı silinsin mi?\nBu işlem geri alınamaz!", parent=win):
+                return
+            if self._run(["sil", k]):
+                win.destroy()
+
+        tk.Button(win, text="Sil", width=14, command=onayla,
+                  bg="#C64A17", fg="white").pack(pady=12)
+
+    def parola_penceresi(self):
+        win = tk.Toplevel(self.root)
+        win.title("Parola Değiştir")
+        win.geometry("340x200")
+        win.configure(bg="#F7F2E2")
+        win.transient(self.root)
+        win.grab_set()
+
+        tk.Label(win, text="Kullanıcı Adı:", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(12, 0))
+        e_kullanici = tk.Entry(win, width=30)
+        e_kullanici.pack(padx=16)
+
+        tk.Label(win, text="Yeni Parola:", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(8, 0))
+        e_parola = tk.Entry(win, width=30, show="*")
+        e_parola.pack(padx=16)
+
+        def onayla():
+            k = e_kullanici.get().strip()
+            p = e_parola.get().strip()
+            if not k or not p:
+                messagebox.showwarning("Uyarı", "Kullanıcı adı ve yeni parola gerekli.", parent=win)
+                return
+            if not messagebox.askyesno("Onay", f"'{k}' kullanıcısının parolası değiştirilsin mi?", parent=win):
+                return
+            if self._run(["parola", k, p]):
+                win.destroy()
+
+        tk.Button(win, text="Değiştir", width=14, command=onayla,
+                  bg="#1F3D2E", fg="white").pack(pady=12)
+
+
+if __name__ == "__main__":
+    KullaniciYoneticisi()

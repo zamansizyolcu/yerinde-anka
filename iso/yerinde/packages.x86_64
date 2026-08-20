@@ -197,6 +197,8 @@ libva-nvidia-driver
 # final42 §1+§2: Yerinde ANKA ozel uygulamalari (Discover/SystemMonitor yerine)
 yerinde-magaza
 yerinde-gorev-yoneticisi
+# final53 §3b: Kullanıcı yöneticisi (pkexec ile kullanıcı ekle/sil/parola)
+yerinde-kullanici
 # final42 §3 + final43: Waydroid Android ortam yoneticisi (GUI + TTY)
 yerinde-waydroid
 # final46 §4: Keşfet (Discover) + PackageKit + AppStream (kullanıcı isteği)

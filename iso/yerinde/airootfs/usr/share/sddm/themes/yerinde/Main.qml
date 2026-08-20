@@ -7,11 +7,6 @@ Rectangle {
     height: Screen.height
     color: "#F7F2E2"
 
-    // final15.md §2c: Oturum seçimi GERÇEKTEN işlesin.
-    // SDDM 0.21.0'da `session` bağlam nesnesi YOKTUR (yalnızca sessionModel).
-    // İlk seçim = sessionModel.lastIndex (önceki oturum; ilk açılışta 0).
-    // ComboBox seçimi değişince sessionIndex güncellenir ve sddm.login'e
-    // aktarılır (X11 seçilince X11 açılır; eskiden hep Wayland başlardı).
     property int sessionIndex: sessionModel.lastIndex
 
     Connections {
@@ -57,11 +52,15 @@ Rectangle {
             font.bold: true
         }
 
-        TextBox {
-            id: userEntry
+        // final53 §2: Kullanıcı açılır listesi (ComboBox — userModel)
+        // textRole "realName": kullanıcı adı görünür; "name" fallback olarak giriş adı kullanılır.
+        ComboBox {
+            id: userCombo
             width: 260
             height: 32
-            text: userModel.lastUser
+            model: userModel
+            textRole: "realName"
+            currentIndex: userModel.lastIndex
             KeyNavigation.tab: passwordEntry
             Keys.onReturnPressed: loginButton.onClicked()
             Keys.onEnterPressed: loginButton.onClicked()
@@ -77,13 +76,11 @@ Rectangle {
             Keys.onEnterPressed: loginButton.onClicked()
         }
 
-        // final16.md §1: Oturum seçici + Giriş + ⟳ + ⏻ TEK satırda (Row), ortalanmış.
+        // final16.md §1: Oturum seçici + Giriş + ⟳ + ＋ + ⏻ TEK satırda (Row), ortalanmış.
         Row {
             spacing: 8
             anchors.horizontalCenter: parent.horizontalCenter
 
-            // final19.md §2: tek oturum (Wayland) seçici + etiket gizlenir;
-            // düzen bozulmasın. sessionModel.count > 1 ise tekrar görünür.
             Text {
                 text: "Oturum:"
                 color: "#1F3D2E"
@@ -108,7 +105,7 @@ Rectangle {
                 width: 180
                 height: 36
                 text: "Giriş"
-                onClicked: sddm.login(userEntry.text, passwordEntry.text, sessionIndex)
+                onClicked: sddm.login(userCombo.model.get(userCombo.currentIndex).name, passwordEntry.text, sessionIndex)
                 KeyNavigation.backtab: sessionCombo
             }
 
@@ -121,6 +118,15 @@ Rectangle {
                 onClicked: sddm.reboot()
             }
 
+            // final53 §3a: ＋ YENİ KULLANICI — bilgi penceresi (greeter komut ÇALIŞTIRAMAZ)
+            Button {
+                id: addUserButton
+                width: 36
+                height: 36
+                text: "＋"
+                onClicked: infoDialog.visible = true
+            }
+
             Button {
                 id: powerOffButton
                 width: 36
@@ -128,6 +134,51 @@ Rectangle {
                 text: "⏻"
                 visible: sddm.canPowerOff
                 onClicked: sddm.powerOff()
+            }
+        }
+    }
+
+    // final53 §3a: Bilgi penceresi — kullanıcıyı Yerinde Kullanıcı Yöneticisi'ne yönlendirir
+    Rectangle {
+        id: infoDialog
+        visible: false
+        anchors.centerIn: parent
+        width: 380
+        height: 160
+        color: "#F7F2E2"
+        border.color: "#1F3D2E"
+        border.width: 2
+        radius: 8
+        z: 100
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 16
+            width: parent.width - 32
+
+            Text {
+                text: "Yeni Kullanıcı Ekleme"
+                color: "#1F3D2E"
+                font.pointSize: 14
+                font.bold: true
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            Text {
+                text: "Yeni kullanıcı eklemek için giriş yaptıktan sonra:\n\n• Yerinde Kullanıcı Yöneticisi\n  veya\n• Sistem Ayarları → Kullanıcılar"
+                color: "#1F3D2E"
+                font.pointSize: 11
+                wrapMode: Text.WordWrap
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+            }
+
+            Button {
+                text: "Tamam"
+                width: 100
+                height: 32
+                anchors.horizontalCenter: parent.horizontalCenter
+                onClicked: infoDialog.visible = false
             }
         }
     }

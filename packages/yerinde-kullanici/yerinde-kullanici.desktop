@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Yerinde Kullanıcı Yöneticisi
+Comment=Yeni kullanıcı ekle, sil veya parola değiştir
+Exec=/usr/bin/yerinde-kullanici
+Icon=yerinde
+Terminal=false
+Type=Application
+Categories=System;Settings;
+StartupNotify=true
