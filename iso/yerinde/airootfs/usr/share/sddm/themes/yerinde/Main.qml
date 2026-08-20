@@ -1,5 +1,4 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
+import QtQuick 2.11
 import SddmComponents 2.0
 
 Rectangle {
@@ -53,28 +52,28 @@ Rectangle {
             font.bold: true
         }
 
-        // final55: QtQuick.Controls 2.15 ComboBox — textRole + delegate + currentIndex
-        ComboBox {
-            id: userSelect
-            width: 260
-            height: 32
+        // final56: Saf QtQuick ListView — kullanıcı listesi (Controls YASAK)
+        ListView {
+            id: userListView
             model: userModel
-            textRole: "name"
             currentIndex: userModel.lastIndex
-            delegate: ItemDelegate {
-                width: userSelect.width
-                highlighted: userSelect.highlightedIndex === index
-                contentItem: Text {
-                    text: model.realName !== "" ? model.realName : model.name
-                    verticalAlignment: Text.AlignVCenter
-                    elide: Text.ElideRight
-                }
+            width: 260; height: Math.min(contentHeight, 220)
+            interactive: contentHeight > height
+            delegate: Rectangle {
+                property string userName: model.name
+                width: userListView.width; height: 44; radius: 6
+                color: userListView.currentIndex === index ? "#C74A1F" : "#EFE9DC"
+                border.color: "#0B3D2E"; border.width: 1
+                Text { anchors.centerIn: parent
+                       text: model.realName !== "" ? model.realName : model.name
+                       color: userListView.currentIndex === index ? "#FFFFFF" : "#0B3D2E"
+                       font.pixelSize: 15 }
+                MouseArea { anchors.fill: parent
+                            onClicked: userListView.currentIndex = index }
             }
-            KeyNavigation.tab: passwordEntry
-            Keys.onReturnPressed: loginButton.onClicked()
-            Keys.onEnterPressed: loginButton.onClicked()
         }
 
+        // Parola girişi — SddmComponents PasswordBox
         PasswordBox {
             id: passwordEntry
             width: 260
@@ -85,7 +84,7 @@ Rectangle {
             Keys.onEnterPressed: loginButton.onClicked()
         }
 
-        // Oturum seçici + Giriş + ⟳ + ＋ + ⏻ TEK satırda (Row), ortalanmış.
+        // Oturum seçici + Giriş + ⟳ + ＋ + ⏻ — tek satırda (Row)
         Row {
             spacing: 8
             anchors.horizontalCenter: parent.horizontalCenter
@@ -114,7 +113,7 @@ Rectangle {
                 width: 180
                 height: 36
                 text: "Giriş"
-                onClicked: sddm.login(userSelect.currentText, passwordEntry.text, sessionIndex)
+                onClicked: sddm.login(userListView.currentItem.userName, passwordEntry.text, sessionIndex)
                 KeyNavigation.backtab: sessionCombo
             }
 
@@ -127,7 +126,7 @@ Rectangle {
                 onClicked: sddm.reboot()
             }
 
-            // ＋ YENİ KULLANICI — bilgi penceresi (greeter komut ÇALIŞTIRAMAZ)
+            // ＋ YENİ KULLANICI — bilgi penceresi
             Button {
                 id: addUserButton
                 width: 36
@@ -147,7 +146,7 @@ Rectangle {
         }
     }
 
-    // Bilgi penceresi — kullanıcıyı Yerinde Kullanıcı Yöneticisi'ne yönlendirir
+    // Bilgi penceresi
     Rectangle {
         id: infoDialog
         visible: false

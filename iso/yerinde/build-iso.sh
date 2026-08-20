@@ -382,26 +382,21 @@ verify_sources() {
     || fail "final53 §1 FAIL: airootfs/etc/default/grub'da GRUB_DISABLE_OS_PROBER=false yok"
   echo "DUAL-BOOT OK (final53 §1): os-prober packages'te + GRUB_DISABLE_OS_PROBER=false"
 
-  # final55: SDDM ComboBox — QtQuick.Controls 2.15 + userSelect + delegate
-  rg -q 'import QtQuick\.Controls 2\.15' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "final55 FAIL: Main.qml'de QtQuick.Controls 2.15 import'u yok"
-  rg -q 'userSelect' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "final55 FAIL: Main.qml'de userSelect id'si yok"
-  rg -q 'textRole:\s*"name"' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "final55 FAIL: Main.qml'de textRole: \"name\" yok"
-  rg -q 'currentIndex:\s*userModel\.lastIndex' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "final55 FAIL: Main.qml'de currentIndex: userModel.lastIndex yok"
-  rg -q 'delegate:\s*ItemDelegate' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "final55 FAIL: Main.qml'de delegate: ItemDelegate yok"
-  # TextBox (eski username girişi) artık OLMA_MALI
-  if rg -q 'TextBox' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml"; then
-    fail "final55 FAIL: Main.qml'de hâlâ TextBox var"
+  # final56: Saf QtQuick ListView — Controls YASAK
+  if rg -q 'QtQuick\.Controls' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml"; then
+    fail "final56 FAIL: Main.qml'de QtQuick.Controls import'u var (YASAK)"
   fi
-  # SddmComponents ComboBox id'leri (userCombo) artık OLMAMALI
-  if rg -q 'userCombo' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml"; then
-    fail "final55 FAIL: Main.qml'de eski userCombo id'si var (userSelect olmalı)"
+  rg -q 'userListView' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final56 FAIL: Main.qml'de userListView id'si yok"
+  rg -q 'currentItem\.userName' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final56 FAIL: Main.qml'de login currentItem.userName kullanmıyor"
+  rg -q 'MouseArea' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "final56 FAIL: Main.qml'de delegate MouseArea yok"
+  # Eski id'ler kalmamalı
+  if rg -q 'userCombo|userSelect' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml"; then
+    fail "final56 FAIL: Main.qml'de eski userCombo/userSelect id'si var (userListView olmalı)"
   fi
-  echo "SDDM-COMBOBOX OK (final55): QtQuick.Controls 2.15 + userSelect + textRole:name + delegate"
+  echo "SDDM-LISTVIEW OK (final56): Saf QtQuick ListView + currentItem.userName + Controls YASAK"
 
   # final53 §3a: ＋ butonu + bilgi penceresi
   rg -q 'addUserButton' "$AIROOTFS/usr/share/sddm/themes/yerinde/Main.qml" \
@@ -433,24 +428,23 @@ verify_prep() {
   if grep -n "onActivated" "$THEME/Main.qml"; then
     fail "SDDM QML FAIL: onActivated satırı var (QtQuick.Controls ComboBox'ta desteklenmez)"
   fi
-  # final55: QtQuick.Controls 2.15 + userSelect + delegate + textRole
-  grep -q "QtQuick\.Controls 2\.15" "$THEME/Main.qml" \
-    || fail "SDDM QML FAIL: QtQuick.Controls 2.15 import'u yok"
-  grep -q "userSelect" "$THEME/Main.qml" \
-    || fail "SDDM QML FAIL: userSelect ComboBox id'si yok"
-  grep -q 'textRole:\s*"name"' "$THEME/Main.qml" \
-    || fail "SDDM QML FAIL: textRole: \"name\" yok"
-  grep -q "currentIndex:\s*userModel\.lastIndex" "$THEME/Main.qml" \
-    || fail "SDDM QML FAIL: currentIndex: userModel.lastIndex yok"
-  grep -q "delegate:\s*ItemDelegate" "$THEME/Main.qml" \
-    || fail "SDDM QML FAIL: delegate: ItemDelegate yok"
+  # final56: Saf QtQuick — Controls YASAK + userListView
+  if grep -q "QtQuick\.Controls" "$THEME/Main.qml"; then
+    fail "SDDM QML FAIL: QtQuick.Controls import'u var (final56: YASAK)"
+  fi
+  grep -q "userListView" "$THEME/Main.qml" \
+    || fail "SDDM QML FAIL: userListView id'si yok"
+  grep -q "currentItem\.userName" "$THEME/Main.qml" \
+    || fail "SDDM QML FAIL: login currentItem.userName kullanmıyor"
+  grep -q "MouseArea" "$THEME/Main.qml" \
+    || fail "SDDM QML FAIL: delegate MouseArea yok"
   grep -q "addUserButton" "$THEME/Main.qml" || fail "SDDM QML FAIL: addUserButton yok"
   grep -q "infoDialog" "$THEME/Main.qml" || fail "SDDM QML FAIL: infoDialog yok"
-  # Eski SddmComponents ComboBox id'leri kalmamalı
-  if grep -q "userCombo" "$THEME/Main.qml"; then
-    fail "SDDM QML FAIL: eski userCombo id'si var (userSelect olmalı)"
+  # Eski id'ler kalmamalı
+  if grep -q "userCombo\|userSelect" "$THEME/Main.qml"; then
+    fail "SDDM QML FAIL: eski userCombo/userSelect id'si var (userListView olmalı)"
   fi
-  echo "SDDM QML OK: statik kontrol (QtQuick.Controls 2.15 + userSelect + delegate + textRole:name + addUser+infoDialog)"
+  echo "SDDM QML OK: statik kontrol (Saf QtQuick + userListView + MouseArea + Controls YASAK)"
 
   rm -f /tmp/opencode/sddm-test.log
   timeout 15 env QT_QPA_PLATFORM=offscreen \
@@ -609,16 +603,17 @@ verify_post() {
     || fail "POSTFAIL (final19 H1): [X11] Enable=false yok"
   echo "POST OK (H1 final19): sddm teması + conf (Current=yerinde + Wayland=true + X11=false)"
 
-  # F1: SDDM Main.qml — QtQuick.Controls ComboBox + userSelect + oturum seçici
-  grep -q 'userSelect\.currentText' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "POSTFAIL (F1): Main.qml sddm.login(userSelect.currentText...) yok"
+  # F1: SDDM Main.qml — Saf QtQuick ListView + currentItem.userName + sessionCombo
+  grep -q 'currentItem\.userName' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (F1): Main.qml sddm.login(currentItem.userName...) yok"
   grep -q 'sddm.login(' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
     || fail "POSTFAIL (F1): Main.qml sddm.login() yok"
-  grep -q 'QtQuick\.Controls 2\.15' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "POSTFAIL (F1): Main.qml QtQuick.Controls 2.15 import'u yok"
-  grep -q 'onCurrentIndexChanged' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "POSTFAIL (F1): Main.qml sessionCombo onCurrentIndexChanged yok"
-  echo "POST OK (F1): Main.qml QtQuick.Controls ComboBox + userSelect + sessionCombo — SDDM regresyon koruması"
+  if grep -q 'QtQuick\.Controls' "$WA/usr/share/sddm/themes/yerinde/Main.qml"; then
+    fail "POSTFAIL (F1): Main.qml'de QtQuick.Controls import'u var (final56: YASAK)"
+  fi
+  grep -q 'userListView' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (F1): Main.qml userListView yok"
+  echo "POST OK (F1): Main.qml Saf QtQuick ListView + currentItem.userName + sessionCombo — SDDM regresyon koruması"
 
   # REGRESYON: 5 duvar kağıdı
   local nw=0
@@ -835,17 +830,18 @@ verify_post() {
     || fail "POSTFAIL (final53 §1): /etc/default/grub'da GRUB_DISABLE_OS_PROBER=false yok"
   echo "POST OK (final53 §1): GRUB_DISABLE_OS_PROBER=false kurulu sistemde"
 
-  # final55 §2 POST: SDDM Main.qml — QtQuick.Controls 2.15 + userSelect
-  grep -q 'userSelect' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "POSTFAIL (final55 §2): Main.qml userSelect yok"
+  # final56 §2 POST: SDDM Main.qml — Saf QtQuick ListView + Controls YASAK
+  grep -q 'userListView' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
+    || fail "POSTFAIL (final56 §2): Main.qml userListView yok"
   grep -q 'userModel' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "POSTFAIL (final55 §2): Main.qml userModel yok"
-  grep -q 'QtQuick\.Controls 2\.15' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
-    || fail "POSTFAIL (final55 §2): Main.qml QtQuick.Controls 2.15 import'u yok"
-  if grep -q 'TextBox' "$WA/usr/share/sddm/themes/yerinde/Main.qml"; then
-    fail "POSTFAIL (final55 §2): Main.qml'de hâlâ TextBox var"
+    || fail "POSTFAIL (final56 §2): Main.qml userModel yok"
+  if grep -q 'QtQuick\.Controls' "$WA/usr/share/sddm/themes/yerinde/Main.qml"; then
+    fail "POSTFAIL (final56 §2): Main.qml'de QtQuick.Controls import'u var (YASAK)"
   fi
-  echo "POST OK (final55 §2): SDDM ComboBox (QtQuick.Controls 2.15 + userSelect + TextBox YOK)"
+  if grep -q 'TextBox' "$WA/usr/share/sddm/themes/yerinde/Main.qml"; then
+    fail "POSTFAIL (final56 §2): Main.qml'de hâlâ TextBox var"
+  fi
+  echo "POST OK (final56 §2): SDDM Saf QtQuick ListView (userListView + userModel + Controls YOK)"
 
   # final53 §3a POST: ＋ butonu + bilgi penceresi
   grep -q 'addUserButton' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
