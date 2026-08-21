@@ -9,6 +9,17 @@ Rectangle {
 
     property int sessionIndex: sessionModel.lastIndex
 
+    // final60 §1.3: lastIndex geçersizse oturum siyah düşer — tek cerrahi giriş yolu
+    function doLogin() {
+        var u = (userListView.currentItem !== null)
+                ? userListView.currentItem.userName : ""
+        var s = 0
+        if (typeof sessionModel !== "undefined" && sessionModel.count > 0)
+            s = sessionModel.lastIndex
+        if (s < 0 || s >= sessionModel.count) s = 0
+        sddm.login(u, passwordEntry.text, s)
+    }
+
     Connections {
         target: sddm
         onLoginFailed: {
@@ -112,7 +123,7 @@ Rectangle {
                 width: 180
                 height: 36
                 text: "Giriş"
-                onClicked: sddm.login(userListView.currentItem.userName, passwordEntry.text, sessionIndex)
+                onClicked: doLogin()
                 KeyNavigation.backtab: sessionCombo
             }
 
@@ -143,6 +154,18 @@ Rectangle {
                 onClicked: sddm.powerOff()
             }
         }
+    }
+
+    // final60 §1.4: greeter hatası görünür (siyah ekran yerine mesaj)
+    Text {
+        id: errorBanner
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 16
+        anchors.horizontalCenter: parent.horizontalCenter
+        text: (typeof errorMessage !== "undefined") ? errorMessage : ""
+        visible: text !== ""
+        color: "#C64A17"
+        font.pointSize: 11
     }
 
     // Bilgi penceresi
