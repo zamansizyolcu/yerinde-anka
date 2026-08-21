@@ -90,6 +90,24 @@ if [ -n "$NEW_USER" ]; then
 else
   echo "UYARI: uid>=1000 kullanıcı bulunamadı (usermod atlandı)" >> /tmp/finalize.log
 fi
+
+# final62 §2: OTO-GİRİŞ KARARI KURULUM ANINDA — ilk-açılış betiğine muhtaç değil.
+# Parola konmuşsa (shadow hash '$' ile başlar) autologin conf'u HEMEN silinir;
+# parolasız kurulumda conf KALIR ama User= gerçek kullanıcı adına düzeltilir
+# (kullanıcı 'yerinde' dışında bir ad girdiyse de tutarlı çalışır).
+if [ -n "$NEW_USER" ] && [ -f "$R/etc/sddm.conf.d/yerinde-autologin.conf" ]; then
+  HASH=$(awk -F: -v u="$NEW_USER" '$1==u{print $2}' "$R/etc/shadow" 2>/dev/null)
+  case "$HASH" in
+    \$*)
+      rm -f "$R/etc/sddm.conf.d/yerinde-autologin.conf"
+      echo "final62 §2: $NEW_USER parolalı → oto-giriş KAPALI (greeter parola sorar)" >> /tmp/finalize.log
+      ;;
+    *)
+      sed -i "s/^User=.*/User=$NEW_USER/" "$R/etc/sddm.conf.d/yerinde-autologin.conf"
+      echo "final62 §2: $NEW_USER parolasız → oto-giriş AÇIK (User=$NEW_USER)" >> /tmp/finalize.log
+      ;;
+  esac
+fi
 rm -f "$R/etc/machine-id"
 chroot "$R" systemd-machine-id-setup >> /tmp/finalize.log 2>&1 || true
 chroot "$R" hwclock --systohc --utc >> /tmp/finalize.log 2>&1 || true
@@ -156,6 +174,15 @@ if [ -d /sys/firmware/efi ]; then
     ESP="$R/boot"
     ESP_INNER="/boot"
   fi
+  # final62: paylaşılan ESP (Windows) senaryosu — grub-install --removable
+  # EFI/BOOT/BOOTX64.EFI'nın ÜZERİNE yazar; Windows'un kendi fallback
+  # yükleyicisini ÖNCE yedekle (geri alma yolu açık kalsın).
+  if [ -d "$ESP/EFI/Microsoft" ] || [ -d "$ESP/EFI/MICROSOFT" ]; then
+    if [ -f "$ESP/EFI/BOOT/BOOTX64.EFI" ] && [ ! -f "$ESP/EFI/BOOT/BOOTX64.EFI.yerinde-yedek" ]; then
+      cp -v "$ESP/EFI/BOOT/BOOTX64.EFI" "$ESP/EFI/BOOT/BOOTX64.EFI.yerinde-yedek" >> /tmp/finalize.log 2>&1 \
+        && echo "--- final62: Windows BOOTX64.EFI yedeklendi (.yerinde-yedek)" >> /tmp/finalize.log
+    fi
+  fi
   GRUB_OK=1
   (
     set -e
@@ -198,6 +225,35 @@ if [ -d /sys/firmware/efi ]; then
     echo "--- UEFI: GRUB OK (yeşil ANKA temalı, final37)" >> /tmp/finalize.log
     echo "grub" > "$R/etc/yerinde-bootloader"
     ls -l "$R/boot/grub/themes/anka" "$R/boot/grub/fonts" "$ESP/EFI/BOOT" "$ESP/grub/fonts" >> /tmp/finalize.log 2>&1
+    # final62 §1: KURULUM ANINDA NVRAM garantisi — grub-install --removable
+    # NVRAM'e DOKUNMAZ; boot sırası Windows'ta kalır, makine Anka'yi HİÇ
+    # açamadan Windows'a gider ve ilk-açılış betiği (yerinde-grub-varsayilan)
+    # asla koşamaz (yerinde1 VM kanıtı). Giriş + boot order burada yazılır:
+    (
+      set -e
+      ESP_SRC=$(findmnt -n -o SOURCE -T "$ESP")
+      DISK=$(lsblk -nro PKNAME "$ESP_SRC" | head -n1)
+      PNUM=$(lsblk -nro PARTN "$ESP_SRC")
+      [ -n "$DISK" ] && [ -n "$PNUM" ]
+      if ! chroot "$R" efibootmgr 2>/dev/null | grep -qi YerindeANKA; then
+        chroot "$R" efibootmgr -c -d "/dev/$DISK" -p "$PNUM" \
+          -L YerindeANKA -l '\EFI\YerindeANKA\grubx64.efi'
+        echo "final62: NVRAM girdisi kuruldu (/dev/$DISK p$PNUM)" >> /tmp/finalize.log
+      fi
+      ANKA_NUM=$(chroot "$R" efibootmgr 2>/dev/null | awk 'tolower($0) ~ /yerindeanka/{gsub(/\*/,"",$1); print substr($1,5); exit}')
+      ORDER_NOW=$(chroot "$R" efibootmgr 2>/dev/null | awk '/^BootOrder/{print $2}')
+      if [ -n "$ANKA_NUM" ] && [ -n "$ORDER_NOW" ]; then
+        NEW_ORDER="$ANKA_NUM"
+        OLDIFS=$IFS; IFS=','
+        for b in $ORDER_NOW; do
+          [ "$b" != "$ANKA_NUM" ] && NEW_ORDER="$NEW_ORDER,$b"
+        done
+        IFS=$OLDIFS
+        chroot "$R" efibootmgr -o "$NEW_ORDER"
+        echo "final62: bootorder = $NEW_ORDER (ANKA ilk)" >> /tmp/finalize.log
+      fi
+    ) >> /tmp/finalize.log 2>&1 \
+      || echo "--- UYARI: final62 NVRAM/bootorder yazılamadı — ilk açılışta yerinde-grub-varsayilan tekrar dener" >> /tmp/finalize.log
   else
     echo "--- UEFI: GRUB basarisiz -> systemd-boot fallback" >> /tmp/finalize.log
     cp -v "$R/boot/vmlinuz-linux" "$ESP/vmlinuz-linux" >> /tmp/finalize.log 2>&1
@@ -220,6 +276,25 @@ options root=UUID=$ROOT_UUID rw
 ENTRY
     echo "systemd-boot" > "$R/etc/yerinde-bootloader"
     ls -l "$ESP" "$ESP/loader" "$ESP/loader/entries" >> /tmp/finalize.log 2>&1
+    # final62 §1b: systemd-boot yedeğinde de NVRAM girdisi + sıra kur
+    (
+      set -e
+      ESP_SRC=$(findmnt -n -o SOURCE -T "$ESP")
+      DISK=$(lsblk -nro PKNAME "$ESP_SRC" | head -n1)
+      PNUM=$(lsblk -nro PARTN "$ESP_SRC")
+      [ -n "$DISK" ] && [ -n "$PNUM" ]
+      chroot "$R" efibootmgr -c -d "/dev/$DISK" -p "$PNUM" \
+        -L YerindeANKA -l '\EFI\BOOT\BOOTX64.EFI' || true
+      ANKA_NUM=$(chroot "$R" efibootmgr 2>/dev/null | awk 'tolower($0) ~ /yerindeanka/{gsub(/\*/,"",$1); print substr($1,5); exit}')
+      ORDER_NOW=$(chroot "$R" efibootmgr 2>/dev/null | awk '/^BootOrder/{print $2}')
+      if [ -n "$ANKA_NUM" ] && [ -n "$ORDER_NOW" ]; then
+        NEW_ORDER="$ANKA_NUM"; OLDIFS=$IFS; IFS=','
+        for b in $ORDER_NOW; do [ "$b" != "$ANKA_NUM" ] && NEW_ORDER="$NEW_ORDER,$b"; done
+        IFS=$OLDIFS
+        chroot "$R" efibootmgr -o "$NEW_ORDER" || true
+        echo "final62 §1b: bootorder = $NEW_ORDER (systemd-boot)" >> /tmp/finalize.log
+      fi
+    ) >> /tmp/finalize.log 2>&1 || true
   fi
   echo "--- fstab ESP satiri /boot yapildi" >> /tmp/finalize.log
 else

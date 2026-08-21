@@ -416,6 +416,25 @@ verify_sources() {
   done
   echo "PERMISSIONS OK (final61): profiledef.sh file_permissions 3 betik için 755"
 
+  # final62: kurulum-anı NVRAM/bootorder + oto-giriş kararı finalize'da OLMALI
+  # (--removable NVRAM'e dokunmaz → ilk açılış betiği hiç koşamadan Windows açılır)
+  rg -q 'KURULUM ANINDA NVRAM garantisi' "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
+    || fail "final62 FAIL: finalize.sh'te kurulum-anı NVRAM bloğu yok"
+  rg -q 'efibootmgr -o "\$NEW_ORDER"' "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
+    || fail "final62 FAIL: finalize.sh bootorder yazmıyor (efibootmgr -o YOK)"
+  rg -q 'BOOTX64\.EFI\.yerinde-yedek' "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
+    || fail "final62 FAIL: paylaşılan ESP'de Windows BOOTX64.EFI yedeklenmiyor"
+  rg -q 'case "\$HASH" in' "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
+    || fail "final62 FAIL: oto-giriş kararı (shadow hash) kurulum anında verilmiyor"
+  rg -q 'nologin\|false' "$AIROOTFS/usr/local/bin/yerinde-autologin-check.sh" \
+    || fail "final62 FAIL: autologin-check kullanıcı-bağımsız değil (gerçek kullanıcı taraması yok)"
+  rg -q '^gawk$' "$PK" || fail "final62 FAIL: packages.x86_64'te gawk yok (betikler awk kullanıyor)"
+  bash -n "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
+    || fail "final62 FAIL: finalize.sh bash -n hatası"
+  bash -n "$AIROOTFS/usr/local/bin/yerinde-autologin-check.sh" \
+    || fail "final62 FAIL: autologin-check.sh bash -n hatası"
+  echo "FINALIZE-62 OK: kurulum-anı NVRAM+bootorder + BOOTX64 yedeği + oto-giriş kararı + gawk"
+
   # final53 §3b: yerinde-kullanici paketi kaynakları
   python3 -m py_compile "$PROJ/packages/yerinde-kullanici/yerinde-kullanici" 2>/dev/null \
     || fail "final53 §3b FAIL: yerinde-kullanici Python sözdizim hatası"
@@ -838,6 +857,19 @@ verify_post() {
   grep -q 'GRUB_DISABLE_OS_PROBER=false' "$WA/etc/default/grub" \
     || fail "POSTFAIL (final53 §1): /etc/default/grub'da GRUB_DISABLE_OS_PROBER=false yok"
   echo "POST OK (final53 §1): GRUB_DISABLE_OS_PROBER=false kurulu sistemde"
+
+  # final62 POST: kurulum-anı NVRAM + oto-giriş kararı ISO'daki finalize'da
+  rg -q 'KURULUM ANINDA NVRAM garantisi' "$WA/usr/local/bin/yerinde-finalize.sh" \
+    || fail "POSTFAIL (final62): finalize NVRAM bloğu ISO'da yok"
+  rg -q 'efibootmgr -o "\$NEW_ORDER"' "$WA/usr/local/bin/yerinde-finalize.sh" \
+    || fail "POSTFAIL (final62): bootorder yazımı ISO'da yok"
+  rg -q 'case "\$HASH" in' "$WA/usr/local/bin/yerinde-finalize.sh" \
+    || fail "POSTFAIL (final62): oto-giriş hash kararı ISO'da yok"
+  [ -x "$WA/usr/local/bin/yerinde-autologin-check.sh" ] \
+    || fail "POSTFAIL (final62): autologin-check.sh ISO'da yok/çalıştırılabilir değil"
+  rg -q 'nologin\|false' "$WA/usr/local/bin/yerinde-autologin-check.sh" \
+    || fail "POSTFAIL (final62): autologin-check kullanıcı-bağımsız değil"
+  echo "POST OK (final62): kurulum-anı NVRAM+bootorder + oto-giriş kararı + kullanıcı-bağımsız check"
 
   # final56 §2 POST: SDDM Main.qml — Saf QtQuick ListView + Controls YASAK
   grep -q 'userListView' "$WA/usr/share/sddm/themes/yerinde/Main.qml" \
