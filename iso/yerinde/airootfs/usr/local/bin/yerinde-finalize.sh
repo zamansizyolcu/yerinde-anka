@@ -232,14 +232,28 @@ if [ -d /sys/firmware/efi ]; then
     (
       set -e
       ESP_SRC=$(findmnt -n -o SOURCE -T "$ESP")
+      echo "final62: ESP=$ESP SRC=$ESP_SRC PARTUUID=$(blkid -s PARTUUID -o value "$ESP_SRC")" >> /tmp/finalize.log
+      echo "final62: $ESP/EFI içerigi:" >> /tmp/finalize.log
+      ls "$ESP/EFI/" >> /tmp/finalize.log 2>&1 || true
       DISK=$(lsblk -nro PKNAME "$ESP_SRC" | head -n1)
       PNUM=$(lsblk -nro PARTN "$ESP_SRC")
       [ -n "$DISK" ] && [ -n "$PNUM" ]
-      if ! chroot "$R" efibootmgr 2>/dev/null | grep -qi YerindeANKA; then
-        chroot "$R" efibootmgr -c -d "/dev/$DISK" -p "$PNUM" \
-          -L YerindeANKA -l '\EFI\YerindeANKA\grubx64.efi'
-        echo "final62: NVRAM girdisi kuruldu (/dev/$DISK p$PNUM)" >> /tmp/finalize.log
+      # final62ek: girdi yalnız GERÇEKTEN var olan dosyayı göstersin.
+      # (BdsDxe kanıtı: \EFI\YerindeANKA\grubx64.efi NOT FOUND → makine Windows'a düşer)
+      ENTRY_PATH='\EFI\YerindeANKA\grubx64.efi'
+      if [ ! -f "$ESP/EFI/YerindeANKA/grubx64.efi" ]; then
+        ENTRY_PATH='\EFI\BOOT\BOOTX64.EFI'
+        echo "final62ek UYARI: EFI/YerindeANKA yok — girdi EFI/BOOT/BOOTX64.EFI'ya yazilacak" >> /tmp/finalize.log
       fi
+      # final62ek: eski/yanlış yollu YerindeANKA girdileri temizlenir (yeniden
+      # kurulum senaryolarında bozuk girdi makineyi sonsuza dek Windows'a düşürür)
+      for bn in $(chroot "$R" efibootmgr 2>/dev/null | grep -i YerindeANKA | awk '{gsub(/\*/,"",$1); print substr($1,5)}'); do
+        chroot "$R" efibootmgr -b "$bn" -B >> /tmp/finalize.log 2>&1 \
+          && echo "final62ek: eski girdi silindi Boot$bn" >> /tmp/finalize.log || true
+      done
+      chroot "$R" efibootmgr -c -d "/dev/$DISK" -p "$PNUM" \
+        -L YerindeANKA -l "$ENTRY_PATH"
+      echo "final62: NVRAM girdisi kuruldu (/dev/$DISK p$PNUM -> $ENTRY_PATH)" >> /tmp/finalize.log
       ANKA_NUM=$(chroot "$R" efibootmgr 2>/dev/null | awk 'tolower($0) ~ /yerindeanka/{gsub(/\*/,"",$1); print substr($1,5); exit}')
       ORDER_NOW=$(chroot "$R" efibootmgr 2>/dev/null | awk '/^BootOrder/{print $2}')
       if [ -n "$ANKA_NUM" ] && [ -n "$ORDER_NOW" ]; then
@@ -372,5 +386,8 @@ fi
 for d in run sys proc dev/pts dev; do
   umount "$R/$d" >> /tmp/finalize.log 2>&1 || true
 done
+
+# final62ek: log kurulu sistemde de kalsın (parola/NVRAM kararları kanıtı)
+cp /tmp/finalize.log "$R/var/log/yerinde-finalize.log" 2>/dev/null || true
 
 echo "=== finalize bitti: $(date -Is)"

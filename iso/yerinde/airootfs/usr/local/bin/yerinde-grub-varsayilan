@@ -120,22 +120,28 @@ for i in "${!ESP_PARTS[@]}"; do
 done
 [ -n "$WIN_PART" ] && log "Windows ESP: $WIN_PART ($WIN_MNT)"
 
-# --- 2) NVRAM girdisi: YOKSA oluştur ---
+# --- 2) NVRAM girdisi: SİL + DOĞRULANMIŞ yolla yeniden oluştur ---
+# final62ek: yalnız "yoksa oluştur" yetmez — yanlış yollu/bozuk eski girdi
+# (BdsDxe: \EFI\YerindeANKA\grubx64.efi Not Found) makineyi her açılışta
+# Windows'a düşürür. Girdiler burada HER ZAMAN tazelenir; yol yukarıda
+# ESP'lerde GERÇEKTEN bulunmuş dosyadan (ANKA_REL/ANKA_FILE) üretilir.
 NVRAM_FAIL=0
-ANKA_BOOTNUM=""
-if efibootmgr -v 2>>"$LOG" | grep -qi "$ANKA_ID"; then
-  log "NVRAM girdisi VAR: $ANKA_ID"
-else
-  DISK=$(lsblk -nro PKNAME "$ANKA_PART" | head -n1)
-  PNUM=$(lsblk -nro PARTN "$ANKA_PART")
-  EFI_PATH="\\$(echo "$ANKA_REL" | tr '/' '\\')\\$ANKA_FILE"
-  log "NVRAM girdisi YOK — oluşturuluyor: -d /dev/$DISK -p $PNUM -l $EFI_PATH"
-  if efibootmgr -c -d "/dev/$DISK" -p "$PNUM" -L "$ANKA_ID" -l "$EFI_PATH" >>"$LOG" 2>&1; then
-    log "NVRAM girdisi oluşturuldu"
+DISK=$(lsblk -nro PKNAME "$ANKA_PART" | head -n1)
+PNUM=$(lsblk -nro PARTN "$ANKA_PART")
+EFI_PATH="\\$(echo "$ANKA_REL" | tr '/' '\\')\\$ANKA_FILE"
+for bn in $(efibootmgr 2>/dev/null | grep -i "$ANKA_ID" | awk '{gsub(/\*/,"",$1); print substr($1,5)}'); do
+  if efibootmgr -b "$bn" -B >>"$LOG" 2>&1; then
+    log "eski girdi silindi: Boot$bn (tazeleme)"
   else
-    log "HATA: NVRAM girdisi yazılamadı (VBox benzeri firmware)"
-    NVRAM_FAIL=1
+    log "UYARI: Boot$bn silinemedi"
   fi
+done
+log "NVRAM girdisi yazılıyor: -d /dev/$DISK -p $PNUM -l $EFI_PATH"
+if efibootmgr -c -d "/dev/$DISK" -p "$PNUM" -L "$ANKA_ID" -l "$EFI_PATH" >>"$LOG" 2>&1; then
+  log "NVRAM girdisi oluşturuldu"
+else
+  log "HATA: NVRAM girdisi yazılamadı (VBox benzeri firmware)"
+  NVRAM_FAIL=1
 fi
 
 if ! efibootmgr -v 2>>"$LOG" | grep -qi "$ANKA_ID"; then
