@@ -77,7 +77,7 @@ if [ "${#ESP_PARTS[@]}" -eq 0 ]; then
 fi
 
 # --- ANKA ESP'sini ve grubx64.efi yolunu tespit et ---
-ANKA_PART="" ANKA_MNT="" ANKA_REL=""
+ANKA_PART="" ANKA_MNT="" ANKA_REL="" ANKA_FILE="grubx64.efi"
 for i in "${!ESP_PARTS[@]}"; do
   m="${ESP_MNTS[$i]}"
   for cand in "EFI/$ANKA_ID" EFI/boot EFI/BOOT; do
@@ -88,11 +88,26 @@ for i in "${!ESP_PARTS[@]}"; do
   done
 done
 
+# final61: yalnız EFI/BOOT/BOOTX64.EFI yazılmış kurulumlar (--removable tek başına
+# kalmış) için: ANKA imzası (grub/fonts/anka-tr.pf2) VARSA bu yükleyiciyi kabul et.
+# İmza şartı Windows ESP'sindeki kendi BOOTX64.EFI'sıyla karışmayı önler.
+if [ -z "$ANKA_PART" ]; then
+  for i in "${!ESP_PARTS[@]}"; do
+    m="${ESP_MNTS[$i]}"
+    if [ -f "$m/EFI/BOOT/BOOTX64.EFI" ] && [ -f "$m/grub/fonts/anka-tr.pf2" ]; then
+      ANKA_PART="${ESP_PARTS[$i]}"; ANKA_MNT="$m"; ANKA_REL="EFI/BOOT"
+      ANKA_FILE="BOOTX64.EFI"
+      log "NOT: EFI/YerindeANKA yok — imzalı EFI/BOOT/BOOTX64.EFI ANKA yükleyicisi sayıldı"
+      break
+    fi
+  done
+fi
+
 if [ -z "$ANKA_PART" ]; then
   log "HATA: ANKA grubx64.efi hiçbir ESP'de bulunamadı"
   exit 1
 fi
-log "ANKA ESP: $ANKA_PART ($ANKA_MNT), yol: /$ANKA_REL/grubx64.efi"
+log "ANKA ESP: $ANKA_PART ($ANKA_MNT), yol: /$ANKA_REL/$ANKA_FILE"
 
 # --- Windows ESP tespiti (EFI/Microsoft içeren) ---
 WIN_PART="" WIN_MNT=""
@@ -113,7 +128,7 @@ if efibootmgr -v 2>>"$LOG" | grep -qi "$ANKA_ID"; then
 else
   DISK=$(lsblk -nro PKNAME "$ANKA_PART" | head -n1)
   PNUM=$(lsblk -nro PARTN "$ANKA_PART")
-  EFI_PATH="\\$(echo "$ANKA_REL" | tr '/' '\\')\\grubx64.efi"
+  EFI_PATH="\\$(echo "$ANKA_REL" | tr '/' '\\')\\$ANKA_FILE"
   log "NVRAM girdisi YOK — oluşturuluyor: -d /dev/$DISK -p $PNUM -l $EFI_PATH"
   if efibootmgr -c -d "/dev/$DISK" -p "$PNUM" -L "$ANKA_ID" -l "$EFI_PATH" >>"$LOG" 2>&1; then
     log "NVRAM girdisi oluşturuldu"
@@ -156,7 +171,7 @@ if [ "$NVRAM_FAIL" -eq 1 ] && [ -n "$WIN_PART" ]; then
   WIN_BOOT="$WIN_MNT/EFI/BOOT/BOOTX64.EFI"
   WIN_BOOT_LC="$WIN_MNT/EFI/boot/bootx64.efi"
   [ -f "$WIN_BOOT" ] || WIN_BOOT="$WIN_BOOT_LC"
-  SRC="$ANKA_MNT/$ANKA_REL/grubx64.efi"
+  SRC="$ANKA_MNT/$ANKA_REL/$ANKA_FILE"
   if [ -f "$SRC" ] && [ -f "$WIN_BOOT" ]; then
     # zaten bizim kopyamış mıyız? (grubx64 == BOOTX64 karşılaştırması)
     if cmp -s "$SRC" "$WIN_BOOT"; then

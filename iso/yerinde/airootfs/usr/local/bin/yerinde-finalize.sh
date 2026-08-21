@@ -161,6 +161,14 @@ if [ -d /sys/firmware/efi ]; then
     set -e
     chroot "$R" grub-install --target=x86_64-efi --efi-directory="$ESP_INNER" \
       --bootloader-id=YerindeANKA --removable
+    # final61: bazı grub-install/--removable kombinasyonları yalnız EFI/BOOT/
+    # BOOTX64.EFI yazıp EFI/YerindeANKA/grubx64.efi'yi atlıyor (VM kanıtı).
+    # NVRAM girdisi + yerinde-grub-varsayilan bu yola muhtaç — yoksa BOOTX64'ten kopyala.
+    if [ ! -f "$ESP/EFI/YerindeANKA/grubx64.efi" ]; then
+      mkdir -p "$ESP/EFI/YerindeANKA"
+      cp "$ESP/EFI/BOOT/BOOTX64.EFI" "$ESP/EFI/YerindeANKA/grubx64.efi"
+      echo "--- final61: EFI/YerindeANKA/grubx64.efi BOOTX64.EFI'dan tamamlandi" >> /tmp/finalize.log
+    fi
     # final37 §2 + §3: yeşil ANKA teması + Türkçe fontlar /boot/grub'a;
     # fontlar ayrıca ESP'ye de gömülür (emniyet — 00_header tema dizinindeki
     # tüm .pf2'leri zaten otomatik yükler).

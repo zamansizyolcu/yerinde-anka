@@ -29,5 +29,10 @@ file_permissions=(
   ["/usr/local/bin/yerinde-keyring-init"]="0:0:755"
   ["/usr/local/bin/yerinde-asistan-kur"]="0:0:755"
   ["/usr/local/bin/yerinde-live-user"]="0:0:755"
+  # final61: mkarchiso cp --no-preserve=mode yapar → bu üçü 644 kalıp
+  # systemd'de 203/EXEC ile ölüyordu (parola sorulmadı + NVRAM/GRUB garantisi öldü)
+  ["/usr/local/bin/yerinde-autologin-check.sh"]="0:0:755"
+  ["/usr/local/bin/yerinde-grub-varsayilan"]="0:0:755"
+  ["/usr/local/bin/yerinde-set-wallpaper"]="0:0:755"
   ["/etc/sudoers.d/wheel"]="0:0:440"
 )

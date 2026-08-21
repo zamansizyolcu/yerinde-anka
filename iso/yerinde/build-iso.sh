@@ -407,6 +407,15 @@ verify_sources() {
     || fail "final53 §3a FAIL: Main.qml bilgi penceresi metni yok"
   echo "ADD-USER-BUTTON OK (final53 §3a): addUserButton + infoDialog"
 
+  # final61: file_permissions ZORUNLU — mkarchiso cp --no-preserve=mode yapar;
+  # listesiz betik kurulumda 644 kalır → systemd 203/EXEC (parola sorulmaz,
+  # NVRAM/GRUB garantisi ölür — yerinde1 VM kanıtı)
+  for b in yerinde-autologin-check.sh yerinde-grub-varsayilan yerinde-set-wallpaper; do
+    rg -qF "\"/usr/local/bin/$b\"]=\"0:0:755\"" "$ISO_DIR/profiledef.sh" \
+      || fail "final61 FAIL: profiledef.sh file_permissions'ta /usr/local/bin/$b yok (755)"
+  done
+  echo "PERMISSIONS OK (final61): profiledef.sh file_permissions 3 betik için 755"
+
   # final53 §3b: yerinde-kullanici paketi kaynakları
   python3 -m py_compile "$PROJ/packages/yerinde-kullanici/yerinde-kullanici" 2>/dev/null \
     || fail "final53 §3b FAIL: yerinde-kullanici Python sözdizim hatası"
@@ -862,6 +871,15 @@ verify_post() {
   sudo python3 -m py_compile "$WA/usr/bin/yerinde-kullanici" 2>/dev/null \
     || fail "POSTFAIL (final53 §3b): yerinde-kullanici py_compile hatası"
   echo "POST OK (final53 §3b): yerinde-kullanici + helper + polkit + .desktop ISO'da"
+
+  # final61 POST: kurulan sistemde betikler GERÇEKTEN çalıştırılabilir olmalı
+  # (mkarchiso --no-preserve=mode + profiledef file_permissions zinciri)
+  for b in yerinde-autologin-check.sh yerinde-grub-varsayilan yerinde-finalize.sh; do
+    [ "$(sudo stat -c %a "$WA/usr/local/bin/$b" 2>/dev/null)" = "755" ] \
+      || fail "POSTFAIL (final61): /usr/local/bin/$b ISO'da 755 değil (systemd 203/EXEC ölür)"
+  done
+  echo "POST OK (final61): autologin-check + grub-varsayilan + finalize 755 (çalıştırılabilir)"
+  sudo ls -l "$WA/usr/local/bin/" | grep -E "yerinde-(autologin|grub|finalize)" | sed 's/^/    /'
 
   echo "== TÜM POST DOĞRULAMALAR BAŞARILI =="
 }
