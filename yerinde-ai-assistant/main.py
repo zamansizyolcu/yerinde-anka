@@ -306,6 +306,10 @@ if pyaudio is not None:
             print(f"[YERINDE] pyaudio başlatılamadı (ses özelliği pas geçer): {_exc}")
             pya = None
 
+# final58.md §2.1 — hızlı oturum kapatma: SIGTERM/SIGHUP gelince açık pyaudio
+# akışlarını kapatıp asyncio döngüsünü durduran temiz kapanış kaydı.
+_KAPANIS = {"loop": None, "streams": set()}
+
 # ── Tool tanımları — paylaşılan modülden ────────────────────────────────────
 from tool_defs import TOOL_DECLARATIONS
 
@@ -1896,6 +1900,7 @@ class YerindeLive:
             rate=SEND_SAMPLE_RATE, input=True,
             frames_per_buffer=CHUNK_SIZE,
         )
+        _KAPANIS["streams"].add(stream)   # final58 §2.1: temiz kapanış kaydı
         try:
             while True:
                 data = await asyncio.to_thread(
@@ -1908,6 +1913,7 @@ class YerindeLive:
             print(f"[YERINDE] ❌ Mikrofon: {e}")
             raise
         finally:
+            _KAPANIS["streams"].discard(stream)
             stream.close()
 
     async def _receive_audio(self):
@@ -2086,6 +2092,7 @@ class YerindeLive:
         finally:
             self.set_speaking(False)
             if stream is not None:
+                _KAPANIS["streams"].discard(stream)
                 stream.close()
             elif proc is not None:
                 try:
@@ -2120,6 +2127,7 @@ class YerindeLive:
                 ):
                     self.session        = session
                     self._loop          = asyncio.get_event_loop()
+                    _KAPANIS["loop"]    = self._loop   # final58 §2.1
                     self.audio_in_queue = asyncio.Queue()
                     self.out_queue      = asyncio.Queue(maxsize=10)
 
@@ -2220,6 +2228,50 @@ def _enable_crash_log():
         pass
 
 
+def _install_signal_handlers(ui: "YerindeUI"):
+    """final58.md §2.1 — hızlı oturum kapatma (<10sn hedefi).
+
+    Oturum kapanırken systemd süreçlere SIGTERM yollar; açık pyaudio
+    akışları + çalışan asyncio döngüsü kapanışı uzatıyordu. Bu handler:
+      1) kayıtlı pyaudio stream'lerini kapatır (_KAPANIS["streams"]),
+      2) asyncio döngüsünü durdurur (_KAPANIS["loop"]),
+      3) Tk mainloop'u bırakır,
+      4) 3 sn içinde çıkmazsa emniyet mandalıyla temiz çıkar.
+    """
+    import signal
+
+    def _temiz_kapanis(signum, _frame):
+        print(f"[YERINDE] 🔴 Sinyal {signum} — temiz kapanış...")
+        for s in list(_KAPANIS["streams"]):
+            try:
+                s.stop_stream()
+            except Exception:
+                pass
+            try:
+                s.close()
+            except Exception:
+                pass
+        _KAPANIS["streams"].clear()
+        loop = _KAPANIS.get("loop")
+        if loop is not None:
+            try:
+                loop.call_soon_threadsafe(loop.stop)
+            except Exception:
+                pass
+        try:
+            ui.root.after(0, ui.root.quit)
+        except Exception:
+            pass
+        # Emniyet mandalı: normal çıkış 3 sn içinde gerçekleşmezse zorla.
+        threading.Timer(3.0, lambda: os._exit(0)).start()
+
+    for _sig in (signal.SIGTERM, signal.SIGHUP):
+        try:
+            signal.signal(_sig, _temiz_kapanis)
+        except Exception as exc:
+            print(f"[YERINDE] Sinyal {_sig} kurulamadı: {exc}")
+
+
 def main():
     _harden_native_libs()
     _enable_crash_log()
@@ -2256,6 +2308,7 @@ def main():
         print("[YERINDE] VS Code icinden baslatildi.")
 
     ui = YerindeUI()
+    _install_signal_handlers(ui)   # final58 §2.1: SIGTERM/SIGHUP → temiz hızlı çıkış
     provider = str(get_app_config_value("model_provider", MOD_VARSAYILAN) or MOD_VARSAYILAN).lower()
 
     try:
@@ -2304,6 +2357,13 @@ def main():
             asyncio.run(yerinde.run())
         except KeyboardInterrupt:
             print("\n🔴 Kapatılıyor...")
+        except RuntimeError as e:
+            # final58 §2.1: SIGTERM handler döngüyü loop.stop() ile durdurunca
+            # asyncio.run "Event loop stopped" fırlatır — bu TEMİZ kapanıştır.
+            if "stopped" in str(e).lower():
+                print("\n🔴 Kapatılıyor (sinyal)...")
+            else:
+                raise
 
     threading.Thread(target=runner, daemon=True).start()
 

@@ -4,18 +4,20 @@
 
 import tkinter as tk
 from tkinter import ttk, messagebox
+import os
 import subprocess
 import sys
 
 HELPER = "/usr/lib/yerinde-kullanici/helper.sh"
 GRUPLAR = [("wheel", "Yönetici (wheel)"), ("ogrenci", "Öğrenci"), ("ogretmen", "Öğretmen")]
+AUTOLOGIN_KEEP = "/etc/yerinde/autologin-keep"
 
 
 class KullaniciYoneticisi:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Yerinde Kullanıcı Yöneticisi")
-        self.root.geometry("420x440")
+        self.root.geometry("420x500")
         self.root.resizable(False, False)
         self.root.configure(bg="#F7F2E2")
 
@@ -32,6 +34,16 @@ class KullaniciYoneticisi:
             tk.Button(btn_frame, text=text, width=20, command=cmd,
                       bg="#1F3D2E", fg="white", font=("sans-serif", 10)).pack(pady=3)
 
+        # final58.md §1.4 — "oto-girişi açık tut" onay kutusu:
+        # AÇIK → /etc/yerinde/autologin-keep + oto-giriş conf'u geri konur;
+        # parola varken bile SDDM otomatik girer. KAPALI → keep + conf silinir.
+        self.otogiris_var = tk.BooleanVar(value=os.path.exists(AUTOLOGIN_KEEP))
+        tk.Checkbutton(self.root,
+                       text="Otomatik girişi açık tut (parola olsa bile)",
+                       variable=self.otogiris_var, command=self.otogiris_degisti,
+                       bg="#F7F2E2", fg="#1F3D2E",
+                       font=("sans-serif", 9)).pack(pady=(2, 0))
+
         self.log = tk.Text(self.root, height=8, width=48, state="disabled",
                            bg="white", fg="#1F3D2E", font=("monospace", 9))
         self.log.pack(padx=12, pady=(8, 12))
@@ -43,6 +55,15 @@ class KullaniciYoneticisi:
         self.log.insert("end", msg + "\n")
         self.log.see("end")
         self.log.configure(state="disabled")
+
+    def otogiris_degisti(self):
+        # final58.md §1.4 — onay kutusu → helper.sh otogiris <acik|kapali>
+        durum = "acik" if self.otogiris_var.get() else "kapali"
+        if self._run(["otogiris", durum]):
+            if durum == "acik":
+                self._log("ℹ Oto-giriş açık: yeniden başlatınca doğrudan masaüstü açılır.")
+            else:
+                self._log("ℹ Oto-giriş kapandı: açılışta parola sorulacak.")
 
     def _run(self, args):
         try:

@@ -1,0 +1,15 @@
+# final58.md §1.2 — oto-giriş/parola tutarlılık denetimi (oneshot)
+# display-manager'dan ÖNCE koşar: parola konmuşsa oto-giriş conf'unu siler,
+# böylece greeter parola sorar. Canlı ortamda kullanıcı şifresiz olduğundan
+# (yerinde-live-user.service) betik dokunmaz.
+[Unit]
+Description=Yerinde ANKA oto-giris/parola tutarlilik denetimi
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/yerinde-autologin-check.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

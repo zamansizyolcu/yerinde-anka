@@ -22,7 +22,9 @@ rm -f "$R/etc/xdg/autostart/calamares.desktop"
 # final33 (unpackfs düzeltmesi): canlı-ortam polkit kuralı kurulu sisteme
 # GİRMEZ (parolasız calamares pkexec izni yalnız canlıda geçerliydi).
 rm -f "$R/etc/polkit-1/rules.d/49-yerinde-live-calamares.rules"
-rm -f "$R/etc/sddm.conf.d/yerinde-autologin.conf"
+# final58.md §1: oto-giriş conf'u artık hedefte KALIR — şifresiz kurulumda
+# oto-giriş AÇIK; parola konursa ilk açılışta yerinde-autologin-check.service
+# (multi-user.target.wants) conf'u siler ve greeter parola sorar.
 rm -f "$R/etc/xdg/autostart/yerinde-live.desktop"
 
 rm -f "$R/etc/mkinitcpio.conf.d/archiso.conf"
@@ -138,6 +140,15 @@ ROOT_UUID=$(blkid -s UUID -o value "$ROOT_DEV")
 
 if [ -d /sys/firmware/efi ]; then
   echo "--- UEFI: GRUB kurulumu (deneme, final13.md §3)" >> /tmp/finalize.log
+  # final59.md §1: efivarfs mount kontrolü — chroot'a bind edilen /sys altında
+  # efivars alt bağlaması taşınmayabilir; NVRAM yazımı (grub-install, --no-nvram
+  # ASLA) için garantiye alınır.
+  if ! mountpoint -q "$R/sys/firmware/efi/efivars"; then
+    mkdir -p "$R/sys/firmware/efi/efivars"
+    mount -t efivarfs efivarfs "$R/sys/firmware/efi/efivars" \
+      && echo "--- efivarfs chroot'a bağlandı" >> /tmp/finalize.log \
+      || echo "--- UYARI: efivarfs bağlanamadı (NVRAM girdisi ilk açılışta yerinde-grub-varsayilan ile oluşur)" >> /tmp/finalize.log
+  fi
   if mountpoint -q "$R/boot/efi"; then
     ESP="$R/boot/efi"
     ESP_INNER="/boot/efi"
@@ -149,7 +160,7 @@ if [ -d /sys/firmware/efi ]; then
   (
     set -e
     chroot "$R" grub-install --target=x86_64-efi --efi-directory="$ESP_INNER" \
-      --bootloader-id=YerindeANKA --removable --no-nvram
+      --bootloader-id=YerindeANKA --removable
     # final37 §2 + §3: yeşil ANKA teması + Türkçe fontlar /boot/grub'a;
     # fontlar ayrıca ESP'ye de gömülür (emniyet — 00_header tema dizinindeki
     # tüm .pf2'leri zaten otomatik yükler).

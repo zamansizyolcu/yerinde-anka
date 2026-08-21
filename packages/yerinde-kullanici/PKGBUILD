@@ -2,7 +2,7 @@
 
 pkgname=yerinde-kullanici
 pkgver=1.0.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Yerinde ANKA kullanıcı yöneticisi — pkexec ile kullanıcı ekle/sil/parola"
 arch=('any')
 url="https://yerinde.example.com"

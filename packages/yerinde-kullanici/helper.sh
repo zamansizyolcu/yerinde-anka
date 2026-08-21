@@ -4,8 +4,12 @@
 # Komutlar: ekle <kullanıcı> <parola> <gruplar>
 #           sil <kullanıcı>
 #           parola <kullanıcı> <yeni_parola>
+#           otogiris <acik|kapali>   (final58 §1.4)
 
 set -euo pipefail
+
+AUTOLOGIN_CONF=/etc/sddm.conf.d/yerinde-autologin.conf
+AUTOLOGIN_KEEP=/etc/yerinde/autologin-keep
 
 cmd="${1:-}"
 shift || true
@@ -36,7 +40,33 @@ case "$cmd" in
     echo "$user:$pass" | chpasswd
     echo "OK: $user parolası güncellendi"
     ;;
+  otogiris)
+    # final58.md §1.4 — oto-girişi parola olsa bile açık tut / kapat.
+    durum="${1:-}"
+    case "$durum" in
+      acik)
+        touch "$AUTOLOGIN_KEEP"
+        mkdir -p /etc/sddm.conf.d
+        cat > "$AUTOLOGIN_CONF" <<'CONF'
+# final58 §1.4: kullanıcı "oto-girişi açık tut" seçti (autologin-keep).
+[Autologin]
+User=yerinde
+Session=plasma.desktop
+Relogin=false
+CONF
+        echo "OK: oto-giriş AÇIK tutulacak (parola olsa bile)"
+        ;;
+      kapali)
+        rm -f "$AUTOLOGIN_KEEP" "$AUTOLOGIN_CONF"
+        echo "OK: oto-giriş kapandı (greeter parola sorar)"
+        ;;
+      *)
+        echo "Kullanım: $0 otogiris <acik|kapali>" >&2
+        exit 1
+        ;;
+    esac
+    ;;
   *)
-    echo "Kullanım: $0 <ekle|sil|parola> [args...]" >&2; exit 1
+    echo "Kullanım: $0 <ekle|sil|parola|otogiris> [args...]" >&2; exit 1
     ;;
 esac

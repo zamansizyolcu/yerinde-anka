@@ -2,7 +2,7 @@
 
 pkgname=yerinde-branding
 pkgver=1.2.0
-pkgrel=19
+pkgrel=20
 pkgdesc="Yerinde branding package"
 arch=('any')
 url="https://yerinde.example.com"
@@ -57,10 +57,11 @@ source=(
   'yerinde-first-run.sh'
   'yerinde-first-run.desktop'
   'sddm-yerinde.conf'
+  'yerinde-timeouts.conf'
   'yerinde-reboot.desktop'
   'yerinde-poweroff.desktop'
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm644 "$srcdir/os-release" "$pkgdir/etc/os-release"
@@ -78,6 +79,10 @@ package() {
 
   # SDDM yapılandırması (H1): tema + Wayland seçici açık (final19: X11 kapatıldı)
   install -Dm644 "$srcdir/sddm-yerinde.conf" "$pkgdir/etc/sddm.conf.d/yerinde.conf"
+
+  # final58.md §2.2: oturum kapatma hızı (<10sn) — systemd stop/start timeout'ları
+  install -Dm644 "$srcdir/yerinde-timeouts.conf" \
+    "$pkgdir/etc/systemd/system.conf.d/yerinde-timeouts.conf"
 
   # final18.md §2c: KDE menüsüne güvenli güç kısayolları (branding paketi).
   # Exec=systemctl reboot/poweroff — Plasma ayrılma menüsü D-Bus yolu başarısız
@@ -209,6 +214,15 @@ EOF
   grep -A1 '^\[X11\]' "$pkgdir/etc/sddm.conf.d/yerinde.conf" | grep -q 'Enable=false' \
     || { echo "SDDM CONF FAIL: [X11] Enable=false eksik -> build FAIL" >&2; exit 1; }
   echo "SDDM CONF OK: /etc/sddm.conf.d/yerinde.conf (tema + Wayland=true + X11=false)"
+
+  # Doğrulama (final58.md §2.2): systemd timeout kısaltması
+  [ -f "$pkgdir/etc/systemd/system.conf.d/yerinde-timeouts.conf" ] \
+    || { echo "TIMEOUTS FAIL: yerinde-timeouts.conf yok -> build FAIL" >&2; exit 1; }
+  grep -q 'DefaultTimeoutStopSec=15s' "$pkgdir/etc/systemd/system.conf.d/yerinde-timeouts.conf" \
+    || { echo "TIMEOUTS FAIL: DefaultTimeoutStopSec=15s eksik -> build FAIL" >&2; exit 1; }
+  grep -q 'DefaultTimeoutStartSec=30s' "$pkgdir/etc/systemd/system.conf.d/yerinde-timeouts.conf" \
+    || { echo "TIMEOUTS FAIL: DefaultTimeoutStartSec=30s eksik -> build FAIL" >&2; exit 1; }
+  echo "TIMEOUTS OK: DefaultTimeoutStopSec=15s + DefaultTimeoutStartSec=30s"
 
   # Doğrulama (final18.md §2c): güç kısayolları eksikse FAIL
   for _d in yerinde-reboot yerinde-poweroff; do

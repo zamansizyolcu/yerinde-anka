@@ -1,0 +1,19 @@
+# final59.md §2 — kurulum sonrası İLK açılışta GRUB/NVRAM garantisi
+# Yalnız kurulu sistemde koşar: /etc/yerinde-bootloader dosyasını yalnızca
+# yerinde-finalize.sh (kurulum sonu) yazar; canlı ISO'da yoktur.
+# Betik başarıda /var/lib/yerinde/grub-varsayilan.done işareti bırakır —
+# birim böylece yalnız İLK açılışta gerçekten çalışır (koşullar).
+[Unit]
+Description=Yerinde ANKA GRUB onyukleme varsayilani (NVRAM + boot order)
+After=local-fs.target
+Before=display-manager.service
+ConditionPathExists=/etc/yerinde-bootloader
+ConditionPathExists=!/var/lib/yerinde/grub-varsayilan.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/yerinde-grub-varsayilan
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

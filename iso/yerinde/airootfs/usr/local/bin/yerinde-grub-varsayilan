@@ -1,0 +1,225 @@
+#!/bin/bash
+# final59.md §2 — yerinde-grub-varsayilan
+# Kurulum sonrası İLK AÇILIŞTA bir kez koşar (yerinde-grub-varsayilan.service):
+#   1) tüm ESP'leri bulur (PARTTYPE c12a7328-f81f-11d2-ba4b-00a0c93ec93b)
+#   2) efibootmgr -v: ANKA (YerindeANKA) girdisi YOKSA oluşturur (-l yolu
+#      ESP'den otomatik okunur: EFI/<id>/grubx64.efi)
+#   3) bootorder: ANKA İLK (efibootmgr -o)
+#   4) BAŞKA ESP (Windows) varsa ve NVRAM yazılamadıysa (VBox gibi):
+#      İKİ AŞAMALI ONAYLA Windows ESP'sine BOOTX64.EFI fallback kopyalanır.
+#      Aşama 1: koşul tespit edilir, /var/lib/yerinde/grub-fallback-pending
+#               işaret dosyası + log oluşur.
+#      Aşama 2: etkileşimli çalıştırmada çift onay sorulur ya da
+#               "yerinde-grub-varsayilan --onayla" ile uygulanır.
+#      Geri alma (Windows kurtarma notu): yedekten geri kopyalama komutu logda.
+# Log: /var/log/yerinde-grub.log
+
+set -u
+
+LOG=/var/log/yerinde-grub.log
+MARKER_DIR=/var/lib/yerinde
+MARKER="$MARKER_DIR/grub-varsayilan.done"
+PENDING="$MARKER_DIR/grub-fallback-pending"
+ANKA_ID=YerindeANKA
+ESP_PARTTYPE=c12a7328-f81f-11d2-ba4b-00a0c93ec93b
+
+mkdir -p "$MARKER_DIR"
+
+log() { echo "[$(date -Is)] $*" >> "$LOG"; }
+
+# --- canlı ortam koruması: yalnız kurulu sistemde çalış ---
+if [ -e /run/archiso/bootmnt ] && [ ! -e /etc/yerinde-bootloader ]; then
+  exit 0
+fi
+
+# --onayla: aşama 2 (Windows ESP fallback kopyala) — işareti beklemeden uygula
+ONAYLA=0
+[ "${1:-}" = "--onayla" ] && ONAYLA=1
+
+log "=== yerinde-grub-varsayilan başladı (onayla=$ONAYLA) ==="
+
+# --- efivarfs kontrolü (final59 §1) ---
+if [ -d /sys/firmware/efi ] && ! mountpoint -q /sys/firmware/efi/efivars; then
+  mount -t efivarfs efivarfs /sys/firmware/efi/efivars \
+    && log "efivarfs bağlandı" \
+    || log "UYARI: efivarfs bağlanamadı — NVRAM yazımı başarısız olacak"
+fi
+
+if [ ! -d /sys/firmware/efi ]; then
+  log "BIOS sistemi (UEFI yok) — yapılacak iş yok"
+  touch "$MARKER"
+  exit 0
+fi
+
+# --- 1) tüm ESP'leri bul + bağla (bağlı olmayanları geçici ro bağla) ---
+declare -a ESP_PARTS=() ESP_MNTS=() ESP_TMP=()
+TMPROOT=$(mktemp -d /tmp/yerinde-esp.XXXXXX)
+for p in $(lsblk -rno PATH,PARTTYPE | awk -v t="$ESP_PARTTYPE" 'tolower($2)==tolower(t){print $1}'); do
+  mnt=$(findmnt -n -o TARGET --source "$p" 2>/dev/null || true)
+  if [ -z "$mnt" ]; then
+    mnt="$TMPROOT/$(basename "$p")"
+    mkdir -p "$mnt"
+    if mount -o ro "$p" "$mnt" 2>>"$LOG"; then
+      ESP_TMP+=("$mnt")
+    else
+      log "UYARI: $p ro bağlanamadı, atlanıyor"
+      continue
+    fi
+  fi
+  ESP_PARTS+=("$p")
+  ESP_MNTS+=("$mnt")
+  log "ESP bulundu: $p -> $mnt"
+done
+
+if [ "${#ESP_PARTS[@]}" -eq 0 ]; then
+  log "HATA: hiç ESP bulunamadı"
+  exit 1
+fi
+
+# --- ANKA ESP'sini ve grubx64.efi yolunu tespit et ---
+ANKA_PART="" ANKA_MNT="" ANKA_REL=""
+for i in "${!ESP_PARTS[@]}"; do
+  m="${ESP_MNTS[$i]}"
+  for cand in "EFI/$ANKA_ID" EFI/boot EFI/BOOT; do
+    if [ -f "$m/$cand/grubx64.efi" ]; then
+      ANKA_PART="${ESP_PARTS[$i]}"; ANKA_MNT="$m"; ANKA_REL="$cand"
+      break 2
+    fi
+  done
+done
+
+if [ -z "$ANKA_PART" ]; then
+  log "HATA: ANKA grubx64.efi hiçbir ESP'de bulunamadı"
+  exit 1
+fi
+log "ANKA ESP: $ANKA_PART ($ANKA_MNT), yol: /$ANKA_REL/grubx64.efi"
+
+# --- Windows ESP tespiti (EFI/Microsoft içeren) ---
+WIN_PART="" WIN_MNT=""
+for i in "${!ESP_PARTS[@]}"; do
+  m="${ESP_MNTS[$i]}"
+  if [ -d "$m/EFI/Microsoft" ] || [ -d "$m/EFI/MICROSOFT" ]; then
+    WIN_PART="${ESP_PARTS[$i]}"; WIN_MNT="$m"
+    break
+  fi
+done
+[ -n "$WIN_PART" ] && log "Windows ESP: $WIN_PART ($WIN_MNT)"
+
+# --- 2) NVRAM girdisi: YOKSA oluştur ---
+NVRAM_FAIL=0
+ANKA_BOOTNUM=""
+if efibootmgr -v 2>>"$LOG" | grep -qi "$ANKA_ID"; then
+  log "NVRAM girdisi VAR: $ANKA_ID"
+else
+  DISK=$(lsblk -nro PKNAME "$ANKA_PART" | head -n1)
+  PNUM=$(lsblk -nro PARTN "$ANKA_PART")
+  EFI_PATH="\\$(echo "$ANKA_REL" | tr '/' '\\')\\grubx64.efi"
+  log "NVRAM girdisi YOK — oluşturuluyor: -d /dev/$DISK -p $PNUM -l $EFI_PATH"
+  if efibootmgr -c -d "/dev/$DISK" -p "$PNUM" -L "$ANKA_ID" -l "$EFI_PATH" >>"$LOG" 2>&1; then
+    log "NVRAM girdisi oluşturuldu"
+  else
+    log "HATA: NVRAM girdisi yazılamadı (VBox benzeri firmware)"
+    NVRAM_FAIL=1
+  fi
+fi
+
+if ! efibootmgr -v 2>>"$LOG" | grep -qi "$ANKA_ID"; then
+  NVRAM_FAIL=1
+fi
+
+# --- 3) bootorder: ANKA İLK ---
+if [ "$NVRAM_FAIL" -eq 0 ]; then
+  ANKA_BOOTNUM=$(efibootmgr 2>/dev/null | awk -v id="$ANKA_ID" 'tolower($0) ~ tolower(id){gsub(/\*/,"",$1); print substr($1,5); exit}')
+  ORDER_NOW=$(efibootmgr 2>/dev/null | awk '/^BootOrder/{print $2}')
+  if [ -n "$ANKA_BOOTNUM" ] && [ -n "$ORDER_NOW" ]; then
+    NEW_ORDER="$ANKA_BOOTNUM"
+    IFS=',' read -ra _CUR <<< "$ORDER_NOW"
+    for b in "${_CUR[@]}"; do
+      [ "$b" != "$ANKA_BOOTNUM" ] && NEW_ORDER="$NEW_ORDER,$b"
+    done
+    if [ "$NEW_ORDER" != "$ORDER_NOW" ]; then
+      if efibootmgr -o "$NEW_ORDER" >>"$LOG" 2>&1; then
+        log "bootorder güncellendi: $NEW_ORDER (ANKA ilk)"
+      else
+        log "HATA: bootorder yazılamadı"
+        NVRAM_FAIL=1
+      fi
+    else
+      log "bootorder zaten ANKA ilk: $ORDER_NOW"
+    fi
+  fi
+fi
+
+# --- 4) NVRAM yazılamadıysa + Windows ESP varsa: iki aşamalı fallback ---
+# (NOT: geçici ro bağlar bu bölümden SONRA çözülür — kopyalama için gerekli)
+if [ "$NVRAM_FAIL" -eq 1 ] && [ -n "$WIN_PART" ]; then
+  WIN_BOOT="$WIN_MNT/EFI/BOOT/BOOTX64.EFI"
+  WIN_BOOT_LC="$WIN_MNT/EFI/boot/bootx64.efi"
+  [ -f "$WIN_BOOT" ] || WIN_BOOT="$WIN_BOOT_LC"
+  SRC="$ANKA_MNT/$ANKA_REL/grubx64.efi"
+  if [ -f "$SRC" ] && [ -f "$WIN_BOOT" ]; then
+    # zaten bizim kopyamış mıyız? (grubx64 == BOOTX64 karşılaştırması)
+    if cmp -s "$SRC" "$WIN_BOOT"; then
+      log "Windows ESP BOOTX64.EFI zaten ANKA GRUB (fallback aktif)"
+      rm -f "$PENDING"
+    else
+      touch "$PENDING"
+      log "AŞAMA 1: NVRAM yazılamadı + Windows ESP mevcut."
+      log "  Aşama 2 için: sudo yerinde-grub-varsayilan --onayla"
+      log "  (Windows ESP'deki BOOTX64.EFI, ANKA GRUB ile değiştirilir;"
+      log "   orijinal .yerinde-yedek olarak saklanır.)"
+      if [ "$ONAYLA" -eq 1 ] || { [ -t 0 ] && [ -t 1 ]; }; then
+        if [ "$ONAYLA" -ne 1 ]; then
+          echo "DİKKAT: NVRAM'e yazılamadığı için bilgisayar doğrudan Windows açılır."
+          echo "Çözüm: Windows ESP'sindeki BOOTX64.EFI, ANKA GRUB ile değiştirilecek"
+          echo "(orijinal BOOTX64.EFI.yerinde-yedek olarak yedeklenir)."
+          read -r -p "1. onay: devam edilsin mi? (evet/hayir) " c1
+          [ "$c1" = "evet" ] || { log "Aşama 2: kullanıcı 1. onayı reddetti"; exit 0; }
+          read -r -p "2. onay: emin misiniz? Bu işlem Windows'un kendi fallback yükleyicisini yedekler. (evet/hayir) " c2
+          [ "$c2" = "evet" ] || { log "Aşama 2: kullanıcı 2. onayı reddetti"; exit 0; }
+        fi
+        # Windows ESP'yi rw bağla (ro geçici bağ ise remount rw)
+        if ! mountpoint -q "$WIN_MNT"; then
+          mkdir -p "$WIN_MNT"
+          mount "$WIN_PART" "$WIN_MNT" 2>>"$LOG" || true
+        elif ! touch "$WIN_MNT/.yerinde-rw-test" 2>/dev/null; then
+          mount -o remount,rw "$WIN_PART" "$WIN_MNT" 2>>"$LOG" || true
+        else
+          rm -f "$WIN_MNT/.yerinde-rw-test"
+        fi
+        if touch "$WIN_MNT/.yerinde-rw-test" 2>/dev/null; then
+          rm -f "$WIN_MNT/.yerinde-rw-test"
+          cp -v "$WIN_BOOT" "$WIN_BOOT.yerinde-yedek" >>"$LOG" 2>&1 \
+            && log "yedek alındı: BOOTX64.EFI -> BOOTX64.EFI.yerinde-yedek"
+          if cp -v "$SRC" "$WIN_BOOT" >>"$LOG" 2>&1; then
+            log "AŞAMA 2 TAMAM: Windows ESP'ye ANKA GRUB fallback kopyalandı"
+            log "GERİ ALMA (Windows kurtarma notu):"
+            log "  Windows ESP'sini bağlayıp:"
+            log "  cp <esp>/EFI/BOOT/BOOTX64.EFI.yerinde-yedek <esp>/EFI/BOOT/BOOTX64.EFI"
+            rm -f "$PENDING"
+          else
+            log "HATA: fallback kopyalanamadı"
+          fi
+        else
+          log "HATA: Windows ESP rw bağlanamadı ($WIN_PART)"
+        fi
+      fi
+    fi
+  else
+    log "UYARI: fallback kaynağı/hedefi yok (src=$SRC win=$WIN_BOOT)"
+  fi
+elif [ "$NVRAM_FAIL" -eq 1 ]; then
+  log "UYARI: NVRAM yazılamadı ama başka ESP yok; EFI/BOOT fallback zaten kurulu (--removable)"
+fi
+
+# --- geçici ro bağlarını çöz ---
+for m in "${ESP_TMP[@]:-}"; do
+  if [ -n "$m" ] && mountpoint -q "$m"; then
+    umount "$m" 2>>"$LOG" || true
+  fi
+done
+rm -rf "$TMPROOT"
+
+touch "$MARKER"
+log "=== yerinde-grub-varsayilan bitti ==="
+exit 0
