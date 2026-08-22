@@ -21,6 +21,10 @@
 #      seçici, GRUB teması, MBR krem syslinux menüsü, 5 duvar kağıdı,
 #      sudoers wheel, ilk-oturum betiği.
 #
+# final65: AI asistanı paketi yeniden GÖMÜLDÜ (packages.x86_64 → yerinde-ai-assistant);
+# ollama+ffmpeg bağımlılık olarak gelir; masaüstüne yeşil-ikonlu (Yerinde-Destek-Yesil)
+# çalıştırma kısayolu skel'e eklendi. final18'in 'asistan YOK' kontrolleri final65'e çevrildi.
+#
 # Kullanım:  ./build-iso.sh [--prep-only] [--build-only] [--skip-prep]
 # KURALLAR: VM testi YOK; push YOK; setsid+log; her adım ls/doğrulamalı.
 
@@ -54,12 +58,15 @@ verify_sources() {
   # final25ek.md: python-pyaudio + portaudio GERİ eklendi (venv
   # --system-site-packages çevrimdışı kurulumda bunları sistemden bulur)
   # final27.md §2: ydotool + git de eklendi (cacyhos paritesi — sesli
-  # fare/klavye + tıkla-kur git clone yolu). Asistan PAKETİ + ollama
-  # hâlâ YASAK (yalnızca ARAÇLAR geldi).
-  if rg -q '^(yerinde-ai-assistant|ollama|ffmpeg)$' "$PK"; then
-    fail "final18 §1 FAIL: packages.x86_64'te asistan/ollama paketi hâlâ listeli"
+  # fare/klavye + tıkla-kur git clone yolu).
+  # final65: asistan PAKETİ ARTIK GÖMÜLÜ (kullanıcı talebi) — listede OLMALI.
+  # ollama + ffmpeg açık yazılmaz; bağımlılık olarak otomatik çekilir.
+  rg -q '^yerinde-ai-assistant$' "$PK" \
+    || fail "final65 FAIL: packages.x86_64'te yerinde-ai-assistant yok"
+  if rg -q '^ollama$' "$PK"; then
+    fail "final65 FAIL: ollama doğrudan listelenmez (bağımlılık olarak gelir)"
   fi
-  echo "PKGS OK: asistan/ollama/ffmpeg YOK (python-psutil final42 gerekli; numpy+pillow final24; ydotool+git final27)"
+  echo "PKGS OK (final65): yerinde-ai-assistant gömülü (python-psutil final42; numpy+pillow final24; ydotool+git final27)"
 
   # final27.md §2: asistan çalışma zamanı paketleri pozitif kontrol
   for p in python-pyaudio portaudio ydotool git xdotool; do
@@ -271,7 +278,48 @@ verify_sources() {
     || fail "final24 §5 FAIL: script yerel kurulum.sh araması içermiyor"
   rg -q 'yerinde-ai-assistant' "$AIROOTFS/usr/local/bin/yerinde-asistan-kur" \
     || fail "final24 §5 FAIL: script yerinde-ai-assistant paket adı içermiyor"
-  echo "ASISTAN-KUR OK (final24 §5): script (bash -n OK, 755) + masaüstü + menü .desktop"
+  # final65: masaüstü kısayolu (skel) — yeşil duvar kağıdı ikonlu
+  [ -f "$AIROOTFS/etc/skel/Desktop/yerinde-ai.desktop" ] \
+    || fail "final65 FAIL: airootfs/etc/skel/Desktop/yerinde-ai.desktop yok"
+  rg -q '^Exec=/usr/local/bin/yerinde-baslat$' "$AIROOTFS/etc/skel/Desktop/yerinde-ai.desktop" \
+    || fail "final65 FAIL: skel kısayolu hızlı lansmana (yerinde-baslat) bakmıyor"
+  rg -q 'Yerinde-Destek-Yesil' "$AIROOTFS/etc/skel/Desktop/yerinde-ai.desktop" \
+    || fail "final65 FAIL: skel kısayol ikonu Yerinde-Destek-Yesil değil"
+  # final66: hızlı lansman (overlay) + çalıştırılabilir kısayollar
+  [ -f "$AIROOTFS/usr/local/bin/yerinde-baslat" ] \
+    || fail "final66 FAIL: airootfs/usr/local/bin/yerinde-baslat (hızlı lansman) yok"
+  bash -n "$AIROOTFS/usr/local/bin/yerinde-baslat" \
+    || fail "final66 FAIL: lansman bash -n hatası"
+  rg -q 'run/archiso' "$AIROOTFS/usr/local/bin/yerinde-baslat" \
+    || fail "final66 FAIL: lansmanda canlı overlay hızlı yolu yok"
+  for pf in /usr/local/bin/yerinde-baslat /etc/skel/Desktop/yerinde-ai.desktop \
+            /etc/skel/Desktop/yerinde-asistan-kur.desktop; do
+    rg -qF "[\"$pf\"]=\"0:0:755\"" "$ISO_DIR/profiledef.sh" \
+      || fail "final66 FAIL: profiledef file_permissions'ta $pf yok (755)"
+  done
+  echo "ASISTAN-KUR OK (final24 §5 + final65 + final66): script + .desktop + gömülü asistan skel kısayolu (yeşil ikon) + hızlı lansman"
+  # final67: cowspace genişletme (256MB kök = "boş yer yok" krizi) +
+  # canlı oturumda şifresiz sudo kanıtı
+  rg -q 'cow_spacesize=4G' "$ISO_DIR/grub/grub.cfg" \
+    || fail "final67 FAIL: grub.cfg'de cow_spacesize=4G yok"
+  for sc in syslinux/archiso_sys-linux.cfg syslinux/archiso_pxe-linux.cfg; do
+    rg -q 'cow_spacesize=4G' "$ISO_DIR/$sc" \
+      || fail "final67 FAIL: $sc içinde cow_spacesize=4G yok"
+  done
+  rg -q 'sudoers\.d/yerinde-canli' "$AIROOTFS/usr/local/bin/yerinde-live-user" \
+    || fail "final67 FAIL: live-user canlı şifresiz sudo yazmıyor"
+  bash -n "$AIROOTFS/usr/local/bin/yerinde-live-user" \
+    || fail "final67 FAIL: yerinde-live-user bash -n hatası"
+  echo "LIVE-ROOT OK (final67): cow_spacesize=4G (grub+syslinux) + canlı şifresiz sudo"
+  # final68: kurulu-sistemde ollama yolu + Wayland Başlat menüsü yaması +
+  # repoda pkgrel -3 kanıtı
+  rg -q 'final68' "$AIROOTFS/usr/local/bin/yerinde-asistan-kur" \
+    || fail "final68 FAIL: asistan-kur 'zaten kurulu → çık' akışında"
+  rg -q '"win": "125"' "$PROJ/yerinde-ai-assistant/actions/keyboard_control.py" \
+    || fail "final68 FAIL: kaynakta win→125 (Wayland başlat menüsü) yaması yok"
+  [ -f "$PROJ/repo/x86_64/yerinde-ai-assistant-2.0.0-3-x86_64.pkg.tar.zst" ] \
+    || fail "final68 FAIL: repoda yerinde-ai-assistant-2.0.0-3 yok"
+  echo "ASISTAN-68 OK: zaten-kurulu akışı (ollama sorusu erişilir) + Wayland win yaması + repo -3"
 
   # final38.md §1/§2: "hepsi ya da hiç" düzeltmesi — pacman tek tek + venv
   # her zaman + eksikler pip ile TEK TEK. Yasak olan: 'pip install -r'
@@ -560,13 +608,46 @@ verify_post() {
   echo "--- ls /usr/bin/Xwayland + startplasma-wayland (ls kanıtı) ---"
   ls -l "$WA/usr/bin/Xwayland" "$WA/usr/bin/startplasma-wayland" 2>/dev/null | sed 's/^/    /'
 
-  # final18 §1 + final27 §2: asistan PAKETİ ISO'da YOK; ydotool+git ARAÇLARI VAR
-  for d in usr/share/yerinde-ai usr/share/ollama usr/share/yerinde-modeller \
-           var/lib/ollama usr/bin/yerinde usr/share/applications/yerinde-ai.desktop; do
+  # final18 §1 + final27 §2 → final65 GÜNCEL: asistan PAKETİ ARTIK ISO'DA;
+  # usr/share/yerinde-ai, usr/bin/yerinde, yerinde-ai.desktop MEŞRU hale geldi.
+  # usr/share/ollama + var/lib/ollama ise ollama paketinin KENDİ dosyalarıdır
+  # (bağımlılık olarak gelir) — yasak DEĞİL. Yalnız eski GGUF enjeksiyon
+  # dizisi yasak kalır:
+  for d in usr/share/yerinde-modeller; do
     if [ -e "$WA/$d" ]; then
-      fail "POSTFAIL (§1 inceltme): $WA/$d ISO'da var (asistan kalmış)"
+      fail "POSTFAIL (§1 inceltme): $WA/$d ISO'da var (eski enjeksiyon kalıntısı)"
     fi
   done
+  # final65 POZİTİF: gömülü asistan kanıtı (paket + bağımlılıkları)
+  [ -f "$WA/usr/bin/yerinde" ] || fail "POSTFAIL (final65): /usr/bin/yerinde yok (asistan gömülmemiş)"
+  # NOT: piper sembolik linktir ve hedefi MUTLAK yoldur (/usr/share/...) —
+  # '[ -f ]' bu linki ana makine kökünde çözer (yanlış 'kırık' sonucu);
+  # bu yüzden hedefi ISO ağacı ($WA) içine çözüyoruz.
+  PIPER_T="$(readlink "$WA/usr/bin/piper" 2>/dev/null || true)"
+  if [ -n "$PIPER_T" ]; then
+    [ -f "$WA$PIPER_T" ] \
+      || fail "POSTFAIL (final65): /usr/bin/piper kırık (hedef ISO'da yok: $PIPER_T)"
+  else
+    [ -f "$WA/usr/bin/piper" ] || fail "POSTFAIL (final65): /usr/bin/piper yok"
+  fi
+  [ -d "$WA/usr/share/yerinde-ai" ] || fail "POSTFAIL (final65): /usr/share/yerinde-ai yok"
+  [ -f "$WA/usr/share/applications/yerinde-ai.desktop" ] \
+    || fail "POSTFAIL (final65): /usr/share/applications/yerinde-ai.desktop yok"
+  [ -x "$WA/usr/bin/ollama" ] \
+    || fail "POSTFAIL (final65): /usr/bin/ollama yok (bağımlılık çekilmemiş)"
+  echo "POST OK (final65): asistan gömülü (/usr/bin/yerinde+piper, /usr/share/yerinde-ai, .desktop) + ollama bağımlılığı"
+  # final66 POST: hızlı lansman ISO'da ve kısayol ona bakıyor mu?
+  [ -x "$WA/usr/local/bin/yerinde-baslat" ] \
+    || fail "POSTFAIL (final66): /usr/local/bin/yerinde-baslat yok/çalıştırılabilir değil"
+  rg -q 'run/archiso' "$WA/usr/local/bin/yerinde-baslat" \
+    || fail "POSTFAIL (final66): lansmanda canlı overlay yolu yok"
+  rg -q '^Exec=/usr/local/bin/yerinde-baslat$' "$WA/etc/skel/Desktop/yerinde-ai.desktop" \
+    || fail "POSTFAIL (final66): masaüstü kısayolu hızlı lansmana bakmıyor"
+  for pf in etc/skel/Desktop/yerinde-ai.desktop etc/skel/Desktop/yerinde-asistan-kur.desktop; do
+    [ "$(stat -c %a "$WA/$pf" 2>/dev/null)" = "755" ] \
+      || fail "POSTFAIL (final66): /$pf izni 755 değil ($(stat -c %a "$WA/$pf" 2>/dev/null)) — Plasma güvenilir saymaz"
+  done
+  echo "POST OK (final66): hızlı lansman (overlay) aktif + kısayollar 755 (güvenilir)"
   # final27 §2: uinput/ydotoold zinciri work airootfs'te (ls kanıtı, eksikse FAIL)
   for f in etc/sysusers.d/yerinde-uinput.conf etc/udev/rules.d/80-uinput.rules \
            etc/modules-load.d/uinput.conf \
@@ -608,9 +689,9 @@ verify_post() {
   rg -q 'usermod -aG uinput,input' "$WA/usr/local/bin/yerinde-finalize.sh" \
     || fail "POSTFAIL (final27 §2): finalize usermod ISO'da yok"
   echo "POST OK (final27 §3): User=yerinde + Session=plasma.desktop + drkonqi maskı + live-user birimi"
-  echo "--- /usr/share pkg listesi (asistan YOK doğrulaması) ---"
+  echo "--- /usr/share pkg listesi (asistan GÖMÜLÜ, final65) ---"
   ls "$WA/usr/share/" | sed 's/^/    /'
-  echo "--- /usr/bin yerinde* (asistan launcher YOK) ---"
+  echo "--- /usr/bin yerinde* (gömülü asistan) ---"
   ls "$WA/usr/bin/" 2>/dev/null | { grep -i yerinde || echo '    (yerinde-* YOK)'; }
 
   # final18 §2b: PAM pam_systemd
@@ -793,7 +874,12 @@ verify_post() {
     || fail "POSTFAIL (final24 §5): /etc/skel/Desktop/yerinde-asistan-kur.desktop yok"
   rg -q 'yerinde-ai-assistant' "$WA/usr/local/bin/yerinde-asistan-kur" \
     || fail "POSTFAIL (final24 §5): kurucu script yerinde-ai-assistant içermiyor"
-  echo "POST OK (final24 §5): yerinde-asistan-kur + masaüstü + menü .desktop ISO'da (asistanın KENDİSİ YOK — yalnız kurucu)"
+  # final65: skel masaüstü kısayolu (yeşil ikon) ISO'da
+  [ -f "$WA/etc/skel/Desktop/yerinde-ai.desktop" ] \
+    || fail "POSTFAIL (final65): skel masaüstü asistan kısayolu ISO'da yok"
+  rg -q 'Yerinde-Destek-Yesil' "$WA/etc/skel/Desktop/yerinde-ai.desktop" \
+    || fail "POSTFAIL (final65): kısayol ikonu yeşil duvar kağıdı değil"
+  echo "POST OK (final24 §5 + final65): kurucu + masaüstü/menü .desktop + GÖMÜLÜ asistan skel kısayolu (yeşil ikon)"
   ls -l "$WA/usr/local/bin/yerinde-asistan-kur" | sed 's/^/    /'
 
   # final33 POST: canlı calamares yetki zinciri

@@ -13,3 +13,7 @@ key.txt
 __pycache__/
 *.pyc
 venv/
+
+# final69: büyük ikili dosyalar yerelde kalır
+packages/*/yerinde-taban-*.tar.zst
+packages/*/src/

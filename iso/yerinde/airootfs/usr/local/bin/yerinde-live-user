@@ -27,3 +27,11 @@ useradd -m -p '' \
 # Kanıt satırları journal'a düşer.
 id yerinde
 ls -ld /home/yerinde
+
+# final67: canlı oturumda şifresiz sudo — gömülü asistanın hızlı lansmanı
+# (overlayfs bind) bunu gerektirir. YALNIZCA canlıda: bu birim
+# ConditionPathExists=/run/archiso olduğu için kurulu sistemde hiç
+# çalışmaz; kurulu sistemdeki sudoers'a dokunulmaz (parola sorulur).
+printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/yerinde-canli
+chmod 440 /etc/sudoers.d/yerinde-canli
+visudo -cf /etc/sudoers.d/yerinde-canli

@@ -14,21 +14,19 @@ echo "======================================"
 echo "  YERINDE Asistanı Kur (Tıkla-Çalıştır)"
 echo "======================================"
 
-# 1) Zaten kurulu mu?
-if pacman -Qi yerinde-ai-assistant >/dev/null 2>&1; then
-    echo "Yerinde AI Asistanı zaten kurulu."
-    if command -v yerinde >/dev/null 2>&1; then
-        echo "Başlatılıyor..."
-        nohup yerinde >/dev/null 2>&1 &
-    fi
-    read -rp "Kapatmak için Enter'a basın..."
-    exit 0
-fi
-
 KURULDU=0
 PACMAN_HATA=""
 YEREL_SONUC="yerel klasör bulunamadı"
 GIT_SONUC=""
+
+# 1) Zaten kurulu mu? (final68: ARTIK ÇIKMIYORUZ — paket ISO'ya gömülü
+# olduğu için kurulu sistemde akış hep buraya düşer ve eski halinde §7
+# ollama bölümüne ASLA ulaşılamazdı. Bayrak set edilip akış sürer:
+# çevrimdışı model sorusu yine gelir, sonda asistan başlatılır.)
+if pacman -Qi yerinde-ai-assistant >/dev/null 2>&1; then
+    echo "Yerinde AI Asistanı zaten kurulu."
+    KURULDU=1
+fi
 
 # 2) İnternet durumu — AYRI satır (final25.md §1)
 if ping -c1 -W3 8.8.8.8 >/dev/null 2>&1; then

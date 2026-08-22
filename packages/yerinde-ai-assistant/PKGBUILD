@@ -1,0 +1,41 @@
+# Maintainer: Yerinde Project
+#
+# final68: YERİNDE AI Asistan paketi — artık repodan TEKRAR üretilebilir.
+# Yöntem: -2 sürümünün birebir içeriği taban tarball'ı olarak tutulur
+# (yerinde-taban-2.0.0-2.tar.zst; kaynak ağaç 6.4GB olduğu için seçici
+# paketleme listesi onunla sabitlenir), prepare() üzerine yamalar konur.
+# Gelecek sürümde hedef: doğrudan kaynak ağaçtan temiz paketleme.
+#
+# YAMALAR (pkgrel 3):
+#   yamalar/keyboard_control.py — Wayland'de "başlat menüsünü aç":
+#   ydotool haritasına win/super → evdev 125 eklendi (eskiden
+#   'kod tanımlı değil' düşüyor, dbus yedeği de tutmayınca
+#   'Wayland'de ydotool gerekiyor' mesajı okunuyordu).
+
+pkgname=yerinde-ai-assistant
+pkgver=2.0.0
+pkgrel=3
+pkgdesc="Yerinde AI Asistan — Türkçe sesli yapay zeka asistanı (vendor bağımlılıklarla)"
+arch=('x86_64')
+url="https://github.com/zamansizyolcu/yerinde-anka"
+license=('custom')
+depends=('python>=3.11' 'tk' 'portaudio' 'ffmpeg' 'python-opencv'
+         'python-psutil' 'python-pillow' 'python-pip' 'python-pyaudio'
+         'python-requests' 'ollama' 'xorg-xhost' 'xorg-xprop'
+         'xorg-xwininfo')
+optdepends=('coqui-tts: dogal TTS'
+            'vosk: cevrimdisi STT')
+options=('!strip')
+source=('yerinde-taban-2.0.0-2.tar.zst'
+        'keyboard_control-final68.py')
+noextract=()
+sha256sums=('SKIP' 'SKIP')
+
+prepare() {
+  install -m644 "${srcdir}/keyboard_control-final68.py" \
+    "${srcdir}/yerinde-ai-assistant/usr/share/yerinde-ai/app/actions/keyboard_control.py"
+}
+
+package() {
+  cp -a "${srcdir}/yerinde-ai-assistant/usr" "${pkgdir}/usr"
+}

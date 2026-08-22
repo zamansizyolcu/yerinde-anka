@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=YERINDE AI Asistan
+Comment=Türkçe sesli yapay zeka asistanı
+Exec=/usr/local/bin/yerinde-baslat
+Terminal=false
+Icon=/usr/share/wallpapers/Yerinde-Destek-Yesil/contents/images/wallpaper.png
+Categories=Utility;

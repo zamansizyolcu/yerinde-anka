@@ -1,0 +1,87 @@
+#!/bin/bash
+# final66→final67: canlı lansman — cowspace-dostu hızlı yol.
+# SORUN ZİNCİRİ (final67 teşhis): archiso'nun yazılabilir kökü (cowspace)
+# VARSAYILAN ~256MB'lık tmpfs'tir! Paketin eski lansmanı ilk çalıştırmada
+# 850MB kopyalayınca TÜM canlı sistem "boş yer yok" a düştü (compdump
+# hataları, ai.log yazılamadı...). Ayrıca canlıda şifresiz sudo olmadığı
+# için overlay yolu sessizce atlanıyordu. ÇÖZÜM:
+#   (a) boot parametresine cow_spacesize=4G eklendi (grub + syslinux),
+#   (b) canlıda şifresiz sudo (yerinde-live-user → sudoers.d/yerinde-canli),
+#   (c) bu lansman: üst katman için AYRI 2G'lik tmpfs bağlar (cowspace'i
+#       hiç şişirmez), pyc önbelleğini kapatır, adımları /tmp'ye kaydeder.
+SRC=/usr/share/yerinde-ai/app
+DST="$HOME/.yerinde/app"
+LOG=/tmp/yerinde-lansman.log
+CANLI=0; [ -d /run/archiso ] && CANLI=1
+
+log() { echo "[$(date +%T)] $*" >>"$LOG" 2>/dev/null || true; }
+bildir() {
+    command -v notify-send >/dev/null 2>&1 && \
+        notify-send -a "YERINDE AI" "$1" "$2" -t 9000 2>/dev/null
+}
+
+log "=== başlatıldı (canli=$CANLI kullanıcı=$(id -un 2>/dev/null)) ==="
+log "home alanı: $(df -h "$HOME" 2>/dev/null | tail -1)"
+
+if [ ! -f "$DST/main.py" ]; then
+    bildir "YERINDE AI başlatılıyor…" "İlk hazırlık birkaç saniye sürebilir."
+    mkdir -p "$HOME/.yerinde" 2>>"$LOG"
+    HAZIR=0
+
+    if [ "$CANLI" = 1 ] && sudo -n true 2>/dev/null; then
+        # Üst katman için AYRI büyük tmpfs → cowspace'e dokunmaz
+        U=/tmp/.yerinde-app-ust; W=/tmp/.yerinde-app-is
+        if ! mountpoint -q "$U" 2>/dev/null; then
+            sudo -n mkdir -p "$U" "$W" 2>>"$LOG"
+            sudo -n mount -t tmpfs -o size=2g,uid="$(id -u)",gid="$(id -g)" \
+                tmpfs "$U" 2>>"$LOG" || log "üst tmpfs BAŞARISIZ"
+        fi
+        mkdir -p "$DST" "$U/ust" "$W/is" 2>>"$LOG"
+        if ! mountpoint -q "$DST" 2>/dev/null; then
+            if sudo -n mount -t overlay overlay \
+                 -o "lowerdir=$SRC,upperdir=$U/ust,workdir=$W/is,index=off" \
+                 "$DST" 2>>"$LOG"; then
+                if touch "$DST/.yaz-testi" 2>/dev/null; then
+                    rm -f "$DST/.yaz-testi"; HAZIR=1
+                    log "overlay TAMAM (+2G üst tmpfs)"
+                else
+                    log "overlay bağlandı AMA YAZILAMADI"
+                    sudo -n umount "$DST" 2>>"$LOG"
+                fi
+            else
+                log "overlay mount BAŞARISIZ"
+            fi
+        else
+            HAZIR=1; log "overlay zaten bağlıydı"
+        fi
+        export PYTHONDONTWRITEBYTECODE=1
+    elif [ "$CANLI" = 1 ]; then
+        log "şifresiz sudo REDDEDİLDİ — yedek kopyalama yolu denenecek"
+    fi
+
+    if [ "$HAZIR" = 0 ] && [ ! -f "$DST/main.py" ]; then
+        BOŞ=$(df --output=avail -B M "$HOME" 2>/dev/null | tail -1 | tr -dc '0-9')
+        log "kopyalama yolu — hedefte ${BOŞ:-?}MB boş"
+        if [ -n "${BOŞ:-}" ] && [ "$BOŞ" -lt 1100 ]; then
+            bildir "YERINDE AI: disk dolu" "Hedefte ${BOŞ}MB var; ~1100MB gerekli."
+            command -v kdialog >/dev/null 2>&1 && \
+                kdialog --title "YERINDE AI" \
+                    --error "Yeterli alan yok (${BOŞ}MB). Ayrıntı: $LOG"
+            exit 1
+        fi
+        cp -r "$SRC"/. "$DST"/ 2>>"$LOG" || log "cp hatası (kod $?)"
+        chmod +x "$DST/main.py" "$DST/run.sh" 2>/dev/null
+    fi
+
+    if [ ! -f "$DST/main.py" ]; then
+        bildir "YERINDE AI açılamadı" "Ayrıntı: $LOG"
+        command -v kdialog >/dev/null 2>&1 && \
+            kdialog --title "YERINDE AI" --error "Uygulama hazırlanamadı. Ayrıntı: $LOG"
+        exit 1
+    fi
+fi
+
+cd "$DST" || exit 1
+export PYTHONDONTWRITEBYTECODE="${PYTHONDONTWRITEBYTECODE:-0}"
+PYTHONPATH="$DST/vendor${PYTHONPATH:+:$PYTHONPATH}" \
+    exec python3 main.py "$@" >>"$HOME/.yerinde/ai.log" 2>&1
