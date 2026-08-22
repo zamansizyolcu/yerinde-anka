@@ -42,6 +42,23 @@ for d in dev dev/pts proc sys run; do
   mount --bind "/$d" "$R/$d"
 done
 
+# final63: hedefe yapilan gecici baglar HER CIKIS yolunda cozulur. Kalinti bag,
+# kurulumun en sonundaki Calamares umount modulunu sert hata ile dusuruyor
+# ("The device 'dev' is mounted ... could not be unmounted"). Once duz, olmazsa
+# lazy (-l) umount denenir; efivarfs cocuk baglamasi sys'den ONCE cozulur.
+yerinde_finaliz_temizlik() {
+  umount "$R/sys/firmware/efi/efivars" >> /tmp/finalize.log 2>&1 \
+    || umount -l "$R/sys/firmware/efi/efivars" >> /tmp/finalize.log 2>&1 \
+    || true
+  local _d
+  for _d in run sys proc dev/pts dev; do
+    umount "$R/$_d" >> /tmp/finalize.log 2>&1 \
+      || umount -l "$R/$_d" >> /tmp/finalize.log 2>&1 \
+      || true
+  done
+}
+trap yerinde_finaliz_temizlik EXIT
+
 chroot "$R" systemctl disable sshd livecd NetworkManager-wait-online.service systemd-networkd choose-mirror livecd-talk livecd-alsa-unmuter >> /tmp/finalize.log 2>&1 || true
 chroot "$R" systemctl enable NetworkManager sddm >> /tmp/finalize.log 2>&1 || true
 # final46 §2: Waydroid Android ortamı için container servisi
@@ -383,9 +400,7 @@ CFG
   echo "--- BIOS: syslinux kuruldu" >> /tmp/finalize.log
 fi
 
-for d in run sys proc dev/pts dev; do
-  umount "$R/$d" >> /tmp/finalize.log 2>&1 || true
-done
+yerinde_finaliz_temizlik
 
 # final62ek: log kurulu sistemde de kalsın (parola/NVRAM kararları kanıtı)
 cp /tmp/finalize.log "$R/var/log/yerinde-finalize.log" 2>/dev/null || true
