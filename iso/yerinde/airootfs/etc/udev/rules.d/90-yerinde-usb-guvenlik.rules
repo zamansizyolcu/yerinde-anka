@@ -1,0 +1,4 @@
+# final64 §3: Harici disk kutuları otomatik askıya alma (autosuspend) ve
+# U1/U2 link güç yönetimi altında bağlantıyı düşürebiliyor; canlı kurulum
+# ortamında USB cihazları ASLA otomatik askıya alınmaz.
+ACTION=="add", SUBSYSTEM=="usb", ATTR{power/control}:="on"

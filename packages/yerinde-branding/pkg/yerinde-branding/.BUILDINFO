@@ -1,11 +1,11 @@
 format = 2
 pkgname = yerinde-branding
 pkgbase = yerinde-branding
-pkgver = 1.2.0-18
+pkgver = 1.2.0-20
 pkgarch = any
-pkgbuild_sha256sum = 0820a045f179cd4b966371b07fd72a65041d70c68e8e46af63e795bf76bf7209
+pkgbuild_sha256sum = 2995286f1ed67ccf20cbd97c27f3d974a183bc2ce4de9205d2c3e468cc4e7f00
 packager = Unknown Packager
-builddate = 1787079147
+builddate = 1787302551
 builddir = /home/yerinde/yerinde-project/packages/yerinde-branding
 startdir = /home/yerinde/yerinde-project/packages/yerinde-branding
 buildtool = makepkg

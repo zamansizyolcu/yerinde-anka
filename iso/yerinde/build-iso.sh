@@ -442,9 +442,38 @@ verify_sources() {
     || fail "final53 §3b FAIL: helper.sh bash -n hatası"
   [ -f "$PROJ/packages/yerinde-kullanici/org.yerinde.kullanici.policy" ] \
     || fail "final53 §3b FAIL: polkit policy dosyası yok"
+  # final63: parolasız-yetki kuralı + stdin parola + liste komutu
+  [ -f "$PROJ/packages/yerinde-kullanici/49-yerinde-kullanici.rules" ] \
+    || fail "final63 FAIL: 49-yerinde-kullanici.rules yok"
+  rg -q 'org\.yerinde\.kullanici\.helper' "$PROJ/packages/yerinde-kullanici/49-yerinde-kullanici.rules" \
+    || fail "final63 FAIL: rules içinde org.yerinde.kullanici.helper eylem id'si yok"
+  rg -q 'isInGroup\("wheel"\)' "$PROJ/packages/yerinde-kullanici/49-yerinde-kullanici.rules" \
+    || fail "final63 FAIL: rules wheel koşulu içermiyor"
+  rg -q 'read -r pass' "$PROJ/packages/yerinde-kullanici/helper.sh" \
+    || fail "final63 FAIL: helper.sh stdin parola okuması (IFS= read -r pass) yok"
+  rg -q '\bliste\)' "$PROJ/packages/yerinde-kullanici/helper.sh" \
+    || fail "final63 FAIL: helper.sh 'liste' komutu yok"
   rg -q '^yerinde-kullanici$' "$PK" \
     || fail "final53 §3b FAIL: packages.x86_64'te yerinde-kullanici yok"
-  echo "YERINDE-KULLANICI OK (final53 §3b): py_compile + bash -n + polkit policy + packages'te"
+  echo "YERINDE-KULLANICI OK (final53 §3b + final63): py_compile + bash -n + polkit policy+rules + stdin-parola + packages'te"
+
+  # final64 §1: mount.conf extraMounts DOLU olmalı (boş liste Calamares'te
+  # varsayılan bağlamaları SIFIRLAR: /proc /sys /dev hedefe bağlanmaz).
+  rg -q 'device: proc' "$AIROOTFS/etc/calamares/modules/mount.conf" \
+    || fail "final64 §1 FAIL: mount.conf extraMounts boş (proc girişi yok)"
+  rg -q 'device: /dev' "$AIROOTFS/etc/calamares/modules/mount.conf" \
+    || fail "final64 §1 FAIL: mount.conf extraMounts'ta /dev bind yok"
+  echo "MOUNT OK (final64 §1): mount.conf extraMounts dolu (proc/sys/dev/run/efivarfs)"
+
+  # final64 §2+§3: USB köprüsü sağlamlaştırma — SHARGE UAS kuralı +
+  # autosuspend koruması (harici diske kurulumda veriyol kopması ölümü)
+  rg -q 'quirks=2d01:d709:u' "$AIROOTFS/etc/modprobe.d/yerinde-usb-guvenlik.conf" \
+    || fail "final64 §2 FAIL: yerinde-usb-guvenlik.conf SHARGE quirks yok"
+  [ -f "$AIROOTFS/etc/udev/rules.d/90-yerinde-usb-guvenlik.rules" ] \
+    || fail "final64 §3 FAIL: 90-yerinde-usb-guvenlik.rules yok"
+  rg -q 'power/control' "$AIROOTFS/etc/udev/rules.d/90-yerinde-usb-guvenlik.rules" \
+    || fail "final64 §3 FAIL: usb-guvenlik kuralı power/control içermiyor"
+  echo "USB-GUVENLIK OK (final64 §2+§3): SHARGE BOT zorlaması + autosuspend koruması"
 }
 
 # --- SDDM QML testi (VM'siz, offscreen) ---
@@ -898,6 +927,13 @@ verify_post() {
     || fail "POSTFAIL (final53 §3b): helper.sh yok"
   [ -f "$WA/usr/share/polkit-1/actions/org.yerinde.kullanici.policy" ] \
     || fail "POSTFAIL (final53 §3b): polkit policy yok"
+  # final63 POST: parolasız-yetki kuralı ISO'da (wheel + lokal etkin oturum)
+  [ -f "$WA/usr/share/polkit-1/rules.d/49-yerinde-kullanici.rules" ] \
+    || fail "POSTFAIL (final63): /usr/share/polkit-1/rules.d/49-yerinde-kullanici.rules yok"
+  grep -q 'org\.yerinde\.kullanici\.helper' "$WA/usr/share/polkit-1/rules.d/49-yerinde-kullanici.rules" \
+    || fail "POSTFAIL (final63): rules içeriği bozuk (eylem id yok)"
+  grep -q 'input=stdin_text' "$WA/usr/bin/yerinde-kullanici" \
+    || fail "POSTFAIL (final63): GUI stdin-parola akışı yok (argv sızıntısı geri gelmiş?)"
   [ -f "$WA/usr/share/applications/yerinde-kullanici.desktop" ] \
     || fail "POSTFAIL (final53 §3b): .desktop yok"
   sudo python3 -m py_compile "$WA/usr/bin/yerinde-kullanici" 2>/dev/null \
@@ -912,6 +948,19 @@ verify_post() {
   done
   echo "POST OK (final61): autologin-check + grub-varsayilan + finalize 755 (çalıştırılabilir)"
   sudo ls -l "$WA/usr/local/bin/" | grep -E "yerinde-(autologin|grub|finalize)" | sed 's/^/    /'
+
+  # final64 POST: mount.conf + USB sağlamlaştırma ISO'da (ls kanıtı)
+  rg -q 'device: proc' "$WA/etc/calamares/modules/mount.conf" \
+    || fail "POSTFAIL (final64 §1): ISO'daki mount.conf extraMounts boş"
+  [ -f "$WA/etc/modprobe.d/yerinde-usb-guvenlik.conf" ] \
+    || fail "POSTFAIL (final64 §2): ISO'da yerinde-usb-guvenlik.conf yok"
+  rg -q 'quirks=2d01:d709:u' "$WA/etc/modprobe.d/yerinde-usb-guvenlik.conf" \
+    || fail "POSTFAIL (final64 §2): ISO'daki usb-guvenlik.conf quirks satırı yok"
+  [ -f "$WA/etc/udev/rules.d/90-yerinde-usb-guvenlik.rules" ] \
+    || fail "POSTFAIL (final64 §3): ISO'da 90-yerinde-usb-guvenlik.rules yok"
+  echo "POST OK (final64 §1-§3): mount.conf dolu + SHARGE BOT kuralı + autosuspend koruması ISO'da"
+  ls -l "$WA/etc/calamares/modules/mount.conf" "$WA/etc/modprobe.d/yerinde-usb-guvenlik.conf" \
+        "$WA/etc/udev/rules.d/90-yerinde-usb-guvenlik.rules" | sed 's/^/    /'
 
   echo "== TÜM POST DOĞRULAMALAR BAŞARILI =="
 }

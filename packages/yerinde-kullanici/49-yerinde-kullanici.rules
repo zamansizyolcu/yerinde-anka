@@ -1,0 +1,19 @@
+// final63 — Yerinde Kullanıcı Yöneticisi parolasız-yetki kuralı
+//
+// SORUN (kullanıcı kanıtı): kurulumda parola VERİLMEMİŞSE hesabın shadow
+// girdisi crypt("") boş-parola hash'idir → pkexec auth_admin diyaloğu
+// girilebilir bir parola olmadığından ASLA geçmez → kullanıcı uygulamadan
+// sonradan parola KOYAMAZ. Parola VERİLMİŞSE de "yeni parola" penceresinin
+// hemen ardından gelen pkexec diyaloğuna kullanıcı doğal olarak YENİ parolayı
+// yazıp 3 kez yanlış dener (pam_faillock deny=3) → parola DEĞİŞTİRİLEMEZ.
+//
+// ÇÖZÜM: bu helper için YEREL + ETKİN + wheel üyesi oturuma diyalogsuz izin.
+// Kapsam dar: yalnız org.yerinde.kullanici.helper eylemi; SSH/uzak oturum ve
+// wheel dışı kullanıcılar eski auth_admin akışına düşer (savunma derinliği).
+// Canlı-ortam kalamares kuralıyla aynı desen (49-yerinde-live-calamares.rules).
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.yerinde.kullanici.helper" &&
+        subject.local && subject.active && subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});

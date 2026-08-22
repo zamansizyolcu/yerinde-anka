@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 # yerinde-kullanici — Yerinde ANKA Kullanıcı Yöneticisi (Tkinter + pkexec)
 # final53.md §3b: pkexec ile çalışır; kullanıcı ekle/sil, parola belirle, grup seç.
+# final63: wheel+lokal etkin oturum için polkit kuralı diyaloğu kaldırır
+# (kurulumda parolasız kurulmuş hesaba sonradan parola KONABİLİR; parolalı
+# hesapta pkexec'e yeni parola yazılıp faillock'a takılma sorunu biter).
+# Parolalar STDIN ile taşınır (argv sızmıyor); kullanıcı seçimi açılır liste.
 
 import tkinter as tk
 from tkinter import ttk, messagebox
+import getpass
 import os
 import subprocess
 import sys
@@ -17,13 +22,14 @@ class KullaniciYoneticisi:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Yerinde Kullanıcı Yöneticisi")
-        self.root.geometry("420x500")
+        self.root.geometry("420x520")
         self.root.resizable(False, False)
         self.root.configure(bg="#F7F2E2")
 
         tk.Label(self.root, text="Yerinde Kullanıcı Yöneticisi",
                  bg="#F7F2E2", fg="#1F3D2E", font=("sans-serif", 14, "bold")).pack(pady=(12, 4))
-        tk.Label(self.root, text="Yeni kullanıcı ekle, sil veya parola değiştir.\nDeğişiklikler için yönetici parolası gerekir.",
+        tk.Label(self.root,
+                 text="Yeni kullanıcı ekle, sil veya parola değiştir.\nYönetici oturumu işlemler için yeterlidir.",
                  bg="#F7F2E2", fg="#555", font=("sans-serif", 9), justify="center").pack(pady=(0, 8))
 
         btn_frame = tk.Frame(self.root, bg="#F7F2E2")
@@ -56,6 +62,18 @@ class KullaniciYoneticisi:
         self.log.see("end")
         self.log.configure(state="disabled")
 
+    def kullanicilar(self):
+        # final63 — 'liste' komutu root gerektirmez (/etc/passwd okuma);
+        # doğrudan çağrılır → GUI listeleri diyalogsuz dolar.
+        try:
+            r = subprocess.run([HELPER, "liste"], capture_output=True,
+                               text=True, timeout=10)
+            if r.returncode == 0 and r.stdout.strip():
+                return [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
+        except Exception:
+            pass
+        return []
+
     def otogiris_degisti(self):
         # final58.md §1.4 — onay kutusu → helper.sh otogiris <acik|kapali>
         durum = "acik" if self.otogiris_var.get() else "kapali"
@@ -65,12 +83,15 @@ class KullaniciYoneticisi:
             else:
                 self._log("ℹ Oto-giriş kapandı: açılışta parola sorulacak.")
 
-    def _run(self, args):
+    def _run(self, args, stdin_text=None, timeout=300):
         try:
             r = subprocess.run(["pkexec", HELPER] + args,
-                               capture_output=True, text=True, timeout=30)
+                               input=stdin_text,
+                               capture_output=True, text=True, timeout=timeout)
             if r.returncode == 0:
-                self._log("✓ " + r.stdout.strip())
+                for ln in r.stdout.strip().splitlines():
+                    if ln.strip():
+                        self._log("✓ " + ln.strip())
                 return True
             else:
                 err = r.stderr.strip() or r.stdout.strip() or "Bilinmeyen hata"
@@ -86,10 +107,42 @@ class KullaniciYoneticisi:
             messagebox.showerror("Hata", f"Yardımcı betik bulunamadı:\n{HELPER}")
             return False
 
+    def _kullanici_secici(self, win, mevcut=True):
+        """final63 — kullanıcı açılır listesi (ad | Görünen Ad)."""
+        satirlar = self.kullanicilar()
+        adlar = [s.split("|", 1)[0] for s in satirlar]
+        gorunen = []
+        for s in satirlar:
+            parcalar = s.split("|", 1)
+            if len(parcalar) == 2 and parcalar[1]:
+                gorunen.append(f"{parcalar[0]}  ({parcalar[1]})")
+            else:
+                gorunen.append(parcalar[0])
+        varsayilan = getpass.getuser() if mevcut else (adlar[0] if adlar else "")
+        combo = ttk.Combobox(win, values=gorunen, state="readonly", width=28)
+        if varsayilan:
+            for i, g in enumerate(gorunen):
+                if g.startswith(varsayilan):
+                    combo.current(i)
+                    break
+            else:
+                gorunen.insert(0, varsayilan)
+                combo.configure(values=gorunen)
+                combo.current(0)
+        elif gorunen:
+            combo.current(0)
+        combo.pack(padx=16, fill="x")
+
+        def secili():
+            deger = combo.get().strip()
+            return deger.split("(", 1)[0].strip() if deger else ""
+
+        return secili
+
     def ekle_penceresi(self):
         win = tk.Toplevel(self.root)
         win.title("Kullanıcı Ekle")
-        win.geometry("340x260")
+        win.geometry("340x300")
         win.configure(bg="#F7F2E2")
         win.transient(self.root)
         win.grab_set()
@@ -101,6 +154,10 @@ class KullaniciYoneticisi:
         tk.Label(win, text="Parola:", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(8, 0))
         e_parola = tk.Entry(win, width=30, show="*")
         e_parola.pack(padx=16)
+
+        tk.Label(win, text="Parola (tekrar):", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(8, 0))
+        e_parola2 = tk.Entry(win, width=30, show="*")
+        e_parola2.pack(padx=16)
 
         tk.Label(win, text="Gruplar:", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(8, 0))
         grup_frame = tk.Frame(win, bg="#F7F2E2")
@@ -114,16 +171,20 @@ class KullaniciYoneticisi:
 
         def onayla():
             k = e_kullanici.get().strip()
-            p = e_parola.get().strip()
+            p = e_parola.get()
+            p2 = e_parola2.get()
             if not k or not p:
                 messagebox.showwarning("Uyarı", "Kullanıcı adı ve parola gerekli.", parent=win)
+                return
+            if p != p2:
+                messagebox.showwarning("Uyarı", "Parolalar eşleşmiyor.", parent=win)
                 return
             secilen = [g for g, v in grup_varlari.items() if v.get()]
             if not secilen:
                 secilen = ["wheel"]
             if not messagebox.askyesno("Onay", f"'{k}' kullanıcısı eklensin mi?\nGrup: {', '.join(secilen)}", parent=win):
                 return
-            if self._run(["ekle", k, p, ",".join(secilen)]):
+            if self._run(["ekle", k, ",".join(secilen)], stdin_text=p + "\n"):
                 win.destroy()
 
         tk.Button(win, text="Ekle", width=14, command=onayla,
@@ -132,19 +193,18 @@ class KullaniciYoneticisi:
     def sil_penceresi(self):
         win = tk.Toplevel(self.root)
         win.title("Kullanıcı Sil")
-        win.geometry("340x160")
+        win.geometry("340x170")
         win.configure(bg="#F7F2E2")
         win.transient(self.root)
         win.grab_set()
 
         tk.Label(win, text="Silinecek Kullanıcı:", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(12, 0))
-        e_kullanici = tk.Entry(win, width=30)
-        e_kullanici.pack(padx=16)
+        secili_k = self._kullanici_secici(win)
 
         def onayla():
-            k = e_kullanici.get().strip()
+            k = secili_k()
             if not k:
-                messagebox.showwarning("Uyarı", "Kullanıcı adı gerekli.", parent=win)
+                messagebox.showwarning("Uyarı", "Kullanıcı seçin.", parent=win)
                 return
             if not messagebox.askyesno("Onay", f"'{k}' kullanıcısı silinsin mi?\nBu işlem geri alınamaz!", parent=win):
                 return
@@ -152,33 +212,40 @@ class KullaniciYoneticisi:
                 win.destroy()
 
         tk.Button(win, text="Sil", width=14, command=onayla,
-                  bg="#C64A17", fg="white").pack(pady=12)
+                  bg="#C64A17", fg="white").pack(pady=14)
 
     def parola_penceresi(self):
         win = tk.Toplevel(self.root)
         win.title("Parola Değiştir")
-        win.geometry("340x200")
+        win.geometry("340x250")
         win.configure(bg="#F7F2E2")
         win.transient(self.root)
         win.grab_set()
 
-        tk.Label(win, text="Kullanıcı Adı:", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(12, 0))
-        e_kullanici = tk.Entry(win, width=30)
-        e_kullanici.pack(padx=16)
+        tk.Label(win, text="Kullanıcı:", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(12, 0))
+        secili_k = self._kullanici_secici(win)
 
         tk.Label(win, text="Yeni Parola:", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(8, 0))
         e_parola = tk.Entry(win, width=30, show="*")
         e_parola.pack(padx=16)
 
+        tk.Label(win, text="Yeni Parola (tekrar):", bg="#F7F2E2", fg="#1F3D2E").pack(anchor="w", padx=16, pady=(8, 0))
+        e_parola2 = tk.Entry(win, width=30, show="*")
+        e_parola2.pack(padx=16)
+
         def onayla():
-            k = e_kullanici.get().strip()
-            p = e_parola.get().strip()
+            k = secili_k()
+            p = e_parola.get()
+            p2 = e_parola2.get()
             if not k or not p:
-                messagebox.showwarning("Uyarı", "Kullanıcı adı ve yeni parola gerekli.", parent=win)
+                messagebox.showwarning("Uyarı", "Kullanıcı ve yeni parola gerekli.", parent=win)
+                return
+            if p != p2:
+                messagebox.showwarning("Uyarı", "Parolalar eşleşmiyor.", parent=win)
                 return
             if not messagebox.askyesno("Onay", f"'{k}' kullanıcısının parolası değiştirilsin mi?", parent=win):
                 return
-            if self._run(["parola", k, p]):
+            if self._run(["parola", k], stdin_text=p + "\n"):
                 win.destroy()
 
         tk.Button(win, text="Değiştir", width=14, command=onayla,

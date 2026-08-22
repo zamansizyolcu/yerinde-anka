@@ -15,8 +15,7 @@ memory/phone_book.json
 # model-egitimi/llama.cpp: iç içe git klonu — kurulum_linux.sh yeniden klonlar
 model-egitimi/llama.cpp/
 model-egitimi/venv*/
-# vosk-model: indirilebilir Vosk STT modeli (~57MB)
-vosk-model/
+
 *.pkg.tar.zst
 # yolo11n.pt: indirilebilir YOLO ağırlıkları
 yolo11n.pt
