@@ -401,6 +401,35 @@ verify_sources() {
   done
   echo "PKGS OK (final47 §4): obs-studio + libreoffice-fresh packages.x86_64'te"
 
+  # final71: Bluetooth zinciri packages.x86_64'ta (cacyhos paritesi)
+  # KÖK NEDEN: bluedevil yalnız bluez-qt çeker; bluez daemon'u YOKTU →
+  # bluetoothd yok → Plasma "Etkinleştiriliyor" deyip Aygıt Ekle butonu yok.
+  # pipewire-audio da YOKTU → A2DP kodekleri/SPA eklentileri gelmiyordu.
+  for p in bluedevil bluez bluez-utils bluez-obex pipewire-audio; do
+    rg -q "^$p$" "$PK" || fail "final71 FAIL: packages.x86_64'te $p yok"
+  done
+  echo "PKGS OK (final71): bluedevil + bluez + bluez-utils + bluez-obex + pipewire-audio listeli"
+
+  # final71: canlı ISO'da bluetooth.service etkin (hedef bluez PAKETİNDEN gelir
+  # → build öncesi dosya yoktur; linkin METNİ doğrulanır, varlığı POST'ta)
+  [ -L "$AIROOTFS/etc/systemd/system/multi-user.target.wants/bluetooth.service" ] \
+    || fail "final71 FAIL: bluetooth.service wants linki yok (canlı ISO)"
+  [ "$(readlink "$AIROOTFS/etc/systemd/system/multi-user.target.wants/bluetooth.service")" \
+      = "/usr/lib/systemd/system/bluetooth.service" ] \
+    || fail "final71 FAIL: bluetooth.service wants linki hedefi yanlış"
+  # final71: D-Bus aktivasyon alias'ı (org.bluez SystemdService hedefi)
+  [ -L "$AIROOTFS/etc/systemd/system/dbus-org.bluez.service" ] \
+    || fail "final71 FAIL: dbus-org.bluez.service alias'ı yok (D-Bus aktivasyonu ölür)"
+  [ "$(readlink "$AIROOTFS/etc/systemd/system/dbus-org.bluez.service")" \
+      = "/usr/lib/systemd/system/bluetooth.service" ] \
+    || fail "final71 FAIL: dbus-org.bluez.service alias hedefi yanlış"
+  # final71: kurulu sistemde de etkinleşmeli (finalize)
+  rg -q 'systemctl enable bluetooth' "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
+    || fail "final71 FAIL: finalize.sh kurulu sistemde bluetooth.service'i etkinleştirmiyor"
+  bash -n "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
+    || fail "final71 FAIL: finalize.sh bash -n hatası"
+  echo "BLUETOOTH OK (final71): canlı wants linki + dbus-org.bluez alias'ı + finalize systemctl enable bluetooth"
+
   # final42 §4: finalize.sh icinde NVIDIA tespit kodu
   rg -q 'lspci.*grep -qi nvidia' "$AIROOTFS/usr/local/bin/yerinde-finalize.sh" \
     || fail "final42 §4 FAIL: finalize.sh NVIDIA tespit kodu yok"
@@ -950,6 +979,37 @@ verify_post() {
     fi
   done
   echo "POST OK (final47 §4): obs-studio + libreoffice-fresh ISO'da"
+
+  # final71 POST: Bluetooth zinciri ISO'da KURULU ve ETKİN (ls/pacman kanıtı)
+  for p in bluez bluez-utils bluez-obex bluedevil pipewire-audio; do
+    if ! pacman -r "$WA" -Q 2>/dev/null | grep -q "^$p "; then
+      fail "POSTFAIL (final71): $p ISO'da kurulu değil"
+    fi
+  done
+  [ -x "$WA/usr/bin/bluetoothctl" ] \
+    || fail "POSTFAIL (final71): /usr/bin/bluetoothctl yok (bluez-utils kurulmamış)"
+  [ -f "$WA/usr/lib/bluetooth/bluetoothd" ] \
+    || fail "POSTFAIL (final71): /usr/lib/bluetooth/bluetoothd yok (bluez daemon'u kurulmamış)"
+  [ -f "$WA/usr/lib/bluetooth/obexd" ] \
+    || fail "POSTFAIL (final71): /usr/lib/bluetooth/obexd yok (bluez-obex kurulmamış)"
+  # A2DP/HSP/HFP SPA eklentisi — eşleşen kulaklıktan SES için şart
+  [ -f "$WA/usr/lib/spa-0.2/bluez5/libspa-bluez5.so" ] \
+    || fail "POSTFAIL (final71): spa-0.2/bluez5/libspa-bluez5.so yok (A2DP sesi gelmez)"
+  [ -L "$WA/etc/systemd/system/multi-user.target.wants/bluetooth.service" ] \
+    || fail "POSTFAIL (final71): bluetooth.service wants linki ISO'da yok (daemon açılışta başlamaz)"
+  local BTW
+  BTW="$(readlink "$WA/etc/systemd/system/multi-user.target.wants/bluetooth.service")"
+  case "$BTW" in /*) BTW="$WA$BTW" ;; esac
+  [ -f "$BTW" ] || fail "POSTFAIL (final71): bluetooth.service wants linki boşa bakıyor ($BTW)"
+  [ -L "$WA/etc/systemd/system/dbus-org.bluez.service" ] \
+    || fail "POSTFAIL (final71): dbus-org.bluez.service alias'ı ISO'da yok"
+  rg -q 'systemctl enable bluetooth' "$WA/usr/local/bin/yerinde-finalize.sh" \
+    || fail "POSTFAIL (final71): finalize.sh'te systemctl enable bluetooth yok (kurulu sistemde daemon yok kalır)"
+  echo "POST OK (final71): bluetoothd+bluetoothctl+obexd+bluez5 SPA kurulu; canlı wants + dbus alias + finalize enable ISO'da"
+  echo "--- ls bluetooth zinciri (kanıt) ---"
+  ls -l "$WA/usr/lib/bluetooth/" | sed 's/^/    /'
+  ls -l "$WA/etc/systemd/system/multi-user.target.wants/bluetooth.service" \
+        "$WA/etc/systemd/system/dbus-org.bluez.service" | sed 's/^/    /'
 
   # final47 §2: gorev-yoneticisi wrapper (system python kullanır)
   [ -x "$WA/usr/bin/yerinde-gorev-yoneticisi-wrapper" ] \

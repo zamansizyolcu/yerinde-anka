@@ -152,10 +152,12 @@ mesa
 networkmanager
 noto-fonts
 pipewire
+pipewire-alsa
 pipewire-pulse
 plasma-meta
 qt5-wayland
 qt6-wayland
+rtkit
 sddm
 wireplumber
 xdg-user-dirs
@@ -215,3 +217,20 @@ libreoffice-fresh
 # final65: AI asistanı ISO'ya GÖMÜLÜ (kullanıcı talebi). ollama+ffmpeg açıkça
 # listelenmez; yerinde-ai-assistant bağımlılığı olarak otomatik gelir.
 yerinde-ai-assistant
+# final71: BLUETOOTH DÜZELTMESİ (cacyhos paritesi — kullanıcı kulaklık raporu)
+# KÖK NEDEN: bluedevil yalnızca bluez-qt'ye (Qt bağları) bağımlıdır; bluez
+# DAEMON'u (bluetoothd) hiç kurulmuyordu → Plasma Bluetooth sayfası
+# "Etkinleştiriliyor" deyip kalıyor, aygıt listesi + "Aygıt Ekle" butonu
+# GÖRÜNMÜYOR. Ayrıca pipewire meta paketi pipewire-audio'yu çekmediğinden
+# SPA bluez5 eklentileri + sbc/aptX/LDAC/AAC kodekleri de eksikti
+# (eşleşse bile A2DP ses akışı OLMAYACAKTI).
+#   bluez          : bluetoothd daemon'u + D-Bus servisi
+#   bluez-utils    : bluetoothctl (eşleştirme tanısı için şart)
+#   bluez-obex     : telefon→PC dosya aktarımı (OBEX push)
+#   pipewire-audio : A2DP/HSP/HFP SPA eklentileri + kodekler
+#   bluedevil      : KDE Bluetooth entegrasyonu (açıkça yazılır — belge değeri)
+bluez
+bluez-utils
+bluez-obex
+pipewire-audio
+bluedevil

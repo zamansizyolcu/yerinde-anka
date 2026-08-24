@@ -61,6 +61,9 @@ trap yerinde_finaliz_temizlik EXIT
 
 chroot "$R" systemctl disable sshd livecd NetworkManager-wait-online.service systemd-networkd choose-mirror livecd-talk livecd-alsa-unmuter >> /tmp/finalize.log 2>&1 || true
 chroot "$R" systemctl enable NetworkManager sddm >> /tmp/finalize.log 2>&1 || true
+# final71: kurulu sistemde Bluetooth daemon'u (canlı ISO'daki wants linkinin
+# aynısı; eşleşmemiş olsa da bluedevil + pipewire-audio A2DP bunu şart kılar)
+chroot "$R" systemctl enable bluetooth >> /tmp/finalize.log 2>&1 || true
 # final46 §2: Waydroid Android ortamı için container servisi
 chroot "$R" systemctl enable waydroid-container >> /tmp/finalize.log 2>&1 || true
 # final18.md §2b: X11 oturumunda kapat/yeniden başlat yetkisi için SDDM PAM'ine
