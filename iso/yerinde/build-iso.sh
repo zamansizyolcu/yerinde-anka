@@ -317,9 +317,13 @@ verify_sources() {
     || fail "final68 FAIL: asistan-kur 'zaten kurulu → çık' akışında"
   rg -q '"win": "125"' "$PROJ/yerinde-ai-assistant/actions/keyboard_control.py" \
     || fail "final68 FAIL: kaynakta win→125 (Wayland başlat menüsü) yaması yok"
-  [ -f "$PROJ/repo/x86_64/yerinde-ai-assistant-2.0.0-3-x86_64.pkg.tar.zst" ] \
-    || fail "final68 FAIL: repoda yerinde-ai-assistant-2.0.0-3 yok"
-  echo "ASISTAN-68 OK: zaten-kurulu akışı (ollama sorusu erişilir) + Wayland win yaması + repo -3"
+  [ -f "$PROJ/repo/x86_64/yerinde-ai-assistant-2.0.0-4-x86_64.pkg.tar.zst" ] \
+    || fail "final68 FAIL: repoda yerinde-ai-assistant-2.0.0-4 yok"
+  # pkgrel 4: dvrip vendor'da — ISO'daki asistan bahçe kamerası açabilsin
+  tar --zstd -tf "$PROJ/repo/x86_64/yerinde-ai-assistant-2.0.0-4-x86_64.pkg.tar.zst" \
+    | grep -q 'vendor/dvrip/__init__.py' \
+    || fail "final68+dvrip FAIL: paket vendor/dvrip içermiyor (bahçe kamerası)"
+  echo "ASISTAN-68 OK: zaten-kurulu akışı (ollama sorusu erişilir) + Wayland win yaması + repo -4 + dvrip"
 
   # final38.md §1/§2: "hepsi ya da hiç" düzeltmesi — pacman tek tek + venv
   # her zaman + eksikler pip ile TEK TEK. Yasak olan: 'pip install -r'
@@ -396,10 +400,10 @@ verify_sources() {
   echo "PKGS OK (final42 §4): NVIDIA ailesi packages.x86_64'te (nvidia meta-paket Artik yok → finalize halleder)"
 
   # final47 §4: OBS + LibreOffice packages.x86_64'ta
-  for p in obs-studio libreoffice-fresh; do
+  for p in obs-studio libreoffice-fresh libreoffice-fresh-tr; do
     rg -q "^$p$" "$PK" || fail "final47 §4 FAIL: packages.x86_64'te $p yok"
   done
-  echo "PKGS OK (final47 §4): obs-studio + libreoffice-fresh packages.x86_64'te"
+  echo "PKGS OK (final47 §4): obs-studio + libreoffice-fresh(-tr) packages.x86_64'te"
 
   # final71: Bluetooth zinciri packages.x86_64'ta (cacyhos paritesi)
   # KÖK NEDEN: bluedevil yalnız bluez-qt çeker; bluez daemon'u YOKTU →
@@ -973,12 +977,12 @@ verify_post() {
   echo "POST OK (final46 §1): plasma-welcome KALDIRILDI"
 
   # final47 §4: obs-studio + libreoffice-fresh ISO'da (kullanıcı isteği)
-  for p in obs-studio libreoffice-fresh; do
+  for p in obs-studio libreoffice-fresh libreoffice-fresh-tr; do
     if ! pacman -r "$WA" -Q 2>/dev/null | grep -q "^$p "; then
       fail "POSTFAIL (final47 §4): $p ISO'da yok"
     fi
   done
-  echo "POST OK (final47 §4): obs-studio + libreoffice-fresh ISO'da"
+  echo "POST OK (final47 §4): obs-studio + libreoffice-fresh(-tr) ISO'da"
 
   # final71 POST: Bluetooth zinciri ISO'da KURULU ve ETKİN (ls/pacman kanıtı)
   for p in bluez bluez-utils bluez-obex bluedevil pipewire-audio; do

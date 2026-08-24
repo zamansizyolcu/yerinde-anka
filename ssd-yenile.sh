@@ -107,7 +107,7 @@ echo "-- EFI BOOTX64:";    test -f "$M/boot/EFI/BOOT/BOOTX64.EFI" && echo OK
 echo "-- EFI YerindeANKA:";test -f "$M/boot/EFI/YerindeANKA/grubx64.efi" && echo OK
 echo "-- fstab:";          grep -vE '^#' "$M/etc/fstab"
 echo "-- kullanici:";      grep yerinde "$M/etc/passwd"
-echo "-- oto-giris:";      cat "$M/etc/sddm.conf.d/yerinde-autologin.conf" 2>/dev/null
+echo "-- oto-giris:";      cat "$M/etc/sddm.conf.d/yerinde-autologin.conf" 2>/dev/null || echo "(kapali — parolali giris)"
 echo "-- ses servisi:";    test -e "$M/etc/systemd/system/multi-user.target.wants/yerinde-ses.service" && echo OK
 echo "-- pipewire linkleri:"; ls "$M/etc/systemd/user/sockets.target.wants/" | grep pipe
 

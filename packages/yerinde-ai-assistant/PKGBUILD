@@ -11,10 +11,15 @@
 #   ydotool haritasına win/super → evdev 125 eklendi (eskiden
 #   'kod tanımlı değil' düşüyor, dbus yedeği de tutmayınca
 #   'Wayland'de ydotool gerekiyor' mesajı okunuyordu).
+# YAMALAR (pkgrel 4):
+#   dvrip/ — vendor/ içinde dvrip YOKTU; ISO'daki asistan bahçe
+#   kamerası açarken 'dvrip kütüphanesi kurulu değil' hatası
+#   veriyordu. Pure-Python dvrip 0.0.3 kaynak ağacıyla vendor'a
+#   eklenir (pip'siz, çevrimdışı canlı ISO'da çalışsın diye).
 
 pkgname=yerinde-ai-assistant
 pkgver=2.0.0
-pkgrel=3
+pkgrel=4
 pkgdesc="Yerinde AI Asistan — Türkçe sesli yapay zeka asistanı (vendor bağımlılıklarla)"
 arch=('x86_64')
 url="https://github.com/zamansizyolcu/yerinde-anka"
@@ -27,13 +32,20 @@ optdepends=('coqui-tts: dogal TTS'
             'vosk: cevrimdisi STT')
 options=('!strip')
 source=('yerinde-taban-2.0.0-2.tar.zst'
-        'keyboard_control-final68.py')
-noextract=()
-sha256sums=('SKIP' 'SKIP')
+        'keyboard_control-final68.py'
+        'dvrip-0.0.3.tar.gz')
+sha256sums=('SKIP' 'SKIP' 'SKIP')
 
 prepare() {
   install -m644 "${srcdir}/keyboard_control-final68.py" \
     "${srcdir}/yerinde-ai-assistant/usr/share/yerinde-ai/app/actions/keyboard_control.py"
+  # pkgrel 4: dvrip (pure Python) vendor'a eklenir — __pycache__ hariç.
+  tar -xzf "${srcdir}/dvrip-0.0.3.tar.gz" -C "${srcdir}"
+  local _v="${srcdir}/yerinde-ai-assistant/usr/share/yerinde-ai/app/vendor"
+  rm -rf "${_v}/dvrip" "${_v}/dvrip-0.0.3.dist-info"
+  cp -a "${srcdir}/dvrip" "${_v}/dvrip"
+  cp -a "${srcdir}/dvrip-0.0.3.dist-info" "${_v}/dvrip-0.0.3.dist-info"
+  rm -rf "${_v}/dvrip/__pycache__"
 }
 
 package() {

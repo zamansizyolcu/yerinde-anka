@@ -214,6 +214,8 @@ python-psutil
 # final47 §4: OBS Studio + LibreOffice (kullanıcı isteği)
 obs-studio
 libreoffice-fresh
+# Türkçe arayüz + yazım denetimi (kullanıcı isteği — LibreOffice TR menüler)
+libreoffice-fresh-tr
 # final65: AI asistanı ISO'ya GÖMÜLÜ (kullanıcı talebi). ollama+ffmpeg açıkça
 # listelenmez; yerinde-ai-assistant bağımlılığı olarak otomatik gelir.
 yerinde-ai-assistant
