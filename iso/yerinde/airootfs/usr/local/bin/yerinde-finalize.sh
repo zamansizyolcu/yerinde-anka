@@ -13,8 +13,17 @@ echo "=== finalize basladi: $(date -Is)"
 mkdir -p "$R/boot"
 if [ -f /run/archiso/bootmnt/arch/boot/x86_64/vmlinuz-linux ]; then
   cp -v /run/archiso/bootmnt/arch/boot/x86_64/vmlinuz-linux "$R/boot/vmlinuz-linux"
-elif [ -f "$R/usr/share/yerinde/vmlinuz-linux" ]; then
-  cp -v "$R/usr/share/yerinde/vmlinuz-linux" "$R/boot/vmlinuz-linux"
+else
+  # final72: gömülü /usr/share/yerinde/vmlinuz-linux BAYAT olabilir (çekirdek
+  # güncellenir, gömülü kopya eski kalır → kurulu modüllerle sürüm uyuşmaz →
+  # mkinitcpio 'not a valid kernel module directory' HATASI, initramfs üretilemez).
+  # Önce kurulu modül diziniyle GARANTİ eşleşen /usr/lib/modules/<sürüm>/vmlinuz.
+  MODV="$(ls "$R"/usr/lib/modules/*/vmlinuz 2>/dev/null | sort -V | tail -1)"
+  if [ -n "$MODV" ]; then
+    cp -v "$MODV" "$R/boot/vmlinuz-linux"
+  elif [ -f "$R/usr/share/yerinde/vmlinuz-linux" ]; then
+    cp -v "$R/usr/share/yerinde/vmlinuz-linux" "$R/boot/vmlinuz-linux"
+  fi
 fi
 ls -l "$R/boot/vmlinuz-linux"
 

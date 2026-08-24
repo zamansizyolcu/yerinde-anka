@@ -6,7 +6,7 @@
 # ilk acilista yerinde-grub-varsayilan.service kurar.
 set -euo pipefail
 
-ISO=/home/yerinde/yerinde-project/iso/yerinde/out/yerinde-anka-2026.08.23-x86_64.iso
+ISO=/home/yerinde/yerinde-project/iso/yerinde/out/yerinde-anka-2026.08.24-x86_64.iso
 ESP_PART=/dev/sda4
 ROOT_PART=/dev/sda5
 M=/mnt-yeni-anka
@@ -30,6 +30,7 @@ lsblk -no NAME,SIZE,FSTYPE,LABEL "$ROOT_PART" "$ESP_PART" | sed 's/^/    /'
 umount -l "$M" 2>/dev/null || true
 umount -l "$M/boot" 2>/dev/null || true
 mkfs.vfat -F32 -n YERINDE "$ESP_PART"
+ESP_UUID=$(blkid -s UUID -o value "$ESP_PART")
 mkfs.ext4 -F -L anka-root "$ROOT_PART"
 
 mkdir -p "$M"
@@ -79,16 +80,16 @@ SW_UUID=$(blkid -s UUID -o value /dev/sda6)
 cat > "$M/etc/fstab" <<FSTAB
 UUID=$ROOT_UUID	/	ext4	rw,relatime	0 1
 
-UUID=06A2-50B4	/boot	vfat	rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro	0 2
+UUID=$ESP_UUID	/boot	vfat	rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro	0 2
 
 UUID=$SW_UUID	none	swap	defaults	0 0
 FSTAB
 
-# cekirdek eslestirmesi: ISO'daki GUNCEL vmlinuz'u kullan (gomulu eski olabilir)
-mount -o loop,ro "$ISO" /mnt-yeni-sfs 2>/dev/null || true
-[ -f /mnt-yeni-sfs/arch/boot/x86_64/vmlinuz-linux ] && \
-  cp /mnt-yeni-sfs/arch/boot/x86_64/vmlinuz-linux "$M/boot/vmlinuz-linux"
-umount /mnt-yeni-sfs 2>/dev/null || true
+# cekirdek eslestirmesi (final72): finalize'in gomulu-vmlinuz yedegi bayat olabilir
+# (7.1.8 gomulu + 7.1.9 moduller → mkinitcpio 'not a valid kernel module directory').
+# Modul diziniyle garanti eslesen /usr/lib/modules/<surum>/vmlinuz kopyalanir.
+MODV="$(ls "$M"/usr/lib/modules/*/vmlinuz 2>/dev/null | sort -V | tail -1)"
+if [ -n "$MODV" ]; then cp -v "$MODV" "$M/boot/vmlinuz-linux"; fi
 
 # initramfs + locale
 for d in proc sys dev; do mount --bind "/$d" "$M/$d"; done
@@ -110,5 +111,8 @@ echo "-- oto-giris:";      cat "$M/etc/sddm.conf.d/yerinde-autologin.conf" 2>/de
 echo "-- ses servisi:";    test -e "$M/etc/systemd/system/multi-user.target.wants/yerinde-ses.service" && echo OK
 echo "-- pipewire linkleri:"; ls "$M/etc/systemd/user/sockets.target.wants/" | grep pipe
 
-umount "$M/boot"; umount "$M"
+# final72: pacman-key'in chroot'ta biraktigi gpg-agent mount'u tutabilir
+chroot "$M" gpgconf --kill all 2>/dev/null || true
+umount "$M/boot" 2>/dev/null || umount -l "$M/boot"
+umount "$M" 2>/dev/null || umount -l "$M"
 log "TAMAM — /dev/sda uzerine son sistem kuruldu."
