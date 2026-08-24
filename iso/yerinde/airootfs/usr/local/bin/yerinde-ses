@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# final70: canlı + kurulu sistemde açılışta ALSA seviyelerini sağlıklı hale getirir.
+#
+# SORUN: stok livecd-alsa-unmuter yalnız accessibility=on ile koştuğu için
+# normal açılışta hiçbir kanal sessizden çıkarılmıyor/seviye yükseltilmiyor;
+# ses "kısık" çıkıyordu. Bu birim her kartta yaygın oynatma kontrollerini
+# sessizden çıkarıp %90'a ayarlar (WirePlumber/PipeWire bunları devralır).
+set -u
+
+log() { systemd-cat -t yerinde-ses printf '%s\n' "$*"; }
+
+# /proc/asound/cardN → gerçek kart indeksleri
+cards=$(sed -n 's/^[[:space:]]*\([0-9]\+\)[[:space:]].*/\1/p' /proc/asound/cards 2>/dev/null)
+[ -n "$cards" ] || { log "ses karti yok"; exit 0; }
+
+for c in $cards; do
+    log "kart $c sanitize ediliyor"
+    # Oynatma kontrolleri: sessizden çıkar + %90
+    for ctl in Master 'Master Mono' 'Master Digital' PCM Front Speaker Headphone \
+               Playback DAC DAC,0 DAC,1 Wave Music AC97 Synth CD Digital; do
+        amixer -q -c "$c" sset "$ctl" 90% unmute 2>/dev/null || true
+    done
+    # Girişleri kapat (mikrofon yankı/geribesleme önlemi)
+    for ctl in Mic 'Mic Boost' Internal Microphone; do
+        amixer -q -c "$c" sset "$ctl" 0% mute 2>/dev/null || true
+    done
+    # Aç/kapa anahtarları
+    amixer -q -c "$c" sset 'Master Playback Switch' on 2>/dev/null || true
+    amixer -q -c "$c" sset 'Speaker Playback Switch' on 2>/dev/null || true
+    amixer -q -c "$c" sset 'Headphone Playback Switch' on 2>/dev/null || true
+done
+
+log "tum kartlar sanitize edildi"
+exit 0

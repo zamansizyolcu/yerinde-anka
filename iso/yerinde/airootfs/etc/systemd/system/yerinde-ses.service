@@ -1,0 +1,13 @@
+[Unit]
+Description=YERINDE ses kartlarini sessizden cikar ve seviyeleri duzenle
+# final70: "ses kisik cikiyor + simge kirmizi carpi" onarimi (ALSA tarafi)
+After=systemd-udevd.service sound.target
+Wants=systemd-udevd.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/yerinde-ses
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -25,6 +25,8 @@ file_permissions=(
   ["/usr/local/bin/choose-mirror"]="0:0:755"
   ["/usr/local/bin/Installation_guide"]="0:0:755"
   ["/usr/local/bin/livecd-sound"]="0:0:755"
+  # final70: acilista ALSA seviyelerini duzelt (kisik ses onarimi)
+  ["/usr/local/bin/yerinde-ses"]="0:0:755"
   ["/usr/local/bin/yerinde-finalize.sh"]="0:0:755"
   ["/usr/local/bin/yerinde-keyring-init"]="0:0:755"
   ["/usr/local/bin/yerinde-asistan-kur"]="0:0:755"
