@@ -972,6 +972,20 @@ class YerindeLive:
                     else:
                         result = status
 
+            elif name == "get_camera_status":
+                parts = []
+                webcam_active = self._webcam_streamer.is_active
+                parts.append(f"Webcam: {'açık (canlı akış)' if webcam_active else 'kapalı'}")
+                garden_active = self._garden_streamer.is_active
+                last_err = getattr(self._garden_streamer, "last_error", None)
+                if garden_active:
+                    parts.append("Bahçe kamerası: açık (canlı akış)")
+                elif last_err:
+                    parts.append(f"Bahçe kamerası: kapalı (son hata: {last_err})")
+                else:
+                    parts.append("Bahçe kamerası: kapalı")
+                result = " | ".join(parts)
+
             elif name == "play_media":
                 r = await loop.run_in_executor(
                     None,

@@ -5397,6 +5397,13 @@ class YerindeUI:
             cam_blink = "●" if self.status_blink else "◉"
             c.create_text(W-22, 52, text=f"{cam_blink}  KAMERA CANLI",
                           fill=C_RED, font=font_body_bold(9), anchor="e")
+        # Bahçe kamerası canlı yayın göstergesi
+        if self._garden_active:
+            gcam_blink = "●" if self.status_blink else "◉"
+            gcam_y = 52 if self._webcam_active else 52
+            c.create_text(W-22, 76 if self._webcam_active else 52,
+                          text=f"{gcam_blink}  BAHÇE KAMERASI CANLI",
+                          fill=C_GREEN, font=font_body_bold(9), anchor="e")
 
         # ── FOOTER ───────────────────────────────────────────────────────────
         c.create_rectangle(0, H-FOOTER_H, W, H, fill=C_DIMMER, outline="")

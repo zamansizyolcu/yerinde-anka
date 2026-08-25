@@ -2,7 +2,7 @@
 
 pkgname=yerinde-branding
 pkgver=1.2.0
-pkgrel=22
+pkgrel=24
 pkgdesc="Yerinde branding package"
 arch=('any')
 url="https://yerinde.example.com"
@@ -63,8 +63,10 @@ source=(
   'yerinde-poweroff.desktop'
   'bluedevil.mo'
   'bluedevil5.mo'
+  'kcm_bluetooth.mo'
+  'plasma_applet_org.kde.plasma.bluetooth.mo'
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm644 "$srcdir/os-release" "$pkgdir/etc/os-release"
@@ -95,17 +97,24 @@ package() {
   install -Dm644 "$srcdir/yerinde-poweroff.desktop" \
     "$pkgdir/usr/share/applications/yerinde-poweroff.desktop"
 
-  # final74 §1: Bluetooth "Forget Device" penceresi Türkçe çevirisi.
-  # Bluedevil 6 (KDE6) katalog adı bluedevil.mo; bluedevil5.mo görev
-  # gereği yedek/isim uyumu için yanında sevkedilir. Birleştirilmiş
-  # katalog: mevcut TR çeviriler korunur + eksik msgstr'ler doldurulur.
-  # NOT: bluedevil paketi bluedevil.mo içerdiğinden dosya ÇAKIŞIR;
-  # katalog /usr/share/yerinde/locale altında taşınır, .INSTALL
-  # scriptlet'i kurulumdan sonra gerçek locale dizinine kopyalar.
+  # final74 §1 + final75: Bluetooth "Forget Device" penceresi Türkçe çevirisi.
+  # Pencere (ForgetDeviceDialog.qml) hangi çeviri etki alanının yüklendiğine
+  # göre 3 katalogdan birinden okur (upstream hiçbirinde çevrilmemiş):
+  #   bluedevil / kcm_bluetooth / plasma_applet_org.kde.plasma.bluetooth
+  # → ÜÇÜNE DE aynı girdiler eklenir (msgcat birleştirme, mevcut çeviriler
+  #   SİLİNMEZ). bluedevil5.mo görev gereği isim uyumu için yanında.
+  # NOT: bu paketler aynı .mo dosyalarını içerdiğinden dosya ÇAKIŞIR;
+  # kataloglar /usr/share/yerinde/locale altında taşınır, .INSTALL
+  # scriptlet'i + mkarchiso kancası kurulumdan sonra gerçek locale
+  # dizinine kopyalar.
   install -Dm644 "$srcdir/bluedevil.mo" \
     "$pkgdir/usr/share/yerinde/locale/tr/LC_MESSAGES/bluedevil.mo"
   install -Dm644 "$srcdir/bluedevil5.mo" \
     "$pkgdir/usr/share/yerinde/locale/tr/LC_MESSAGES/bluedevil5.mo"
+  install -Dm644 "$srcdir/kcm_bluetooth.mo" \
+    "$pkgdir/usr/share/yerinde/locale/tr/LC_MESSAGES/kcm_bluetooth.mo"
+  install -Dm644 "$srcdir/plasma_applet_org.kde.plasma.bluetooth.mo" \
+    "$pkgdir/usr/share/yerinde/locale/tr/LC_MESSAGES/plasma_applet_org.kde.plasma.bluetooth.mo"
 
   _install_wallpaper() {
     local ton="$1" src="$2"
@@ -254,8 +263,8 @@ EOF
     || { echo "POWER DESKTOP FAIL: OnlyShowIn=KDE yok -> build FAIL" >&2; exit 1; }
   echo "POWER DESKTOP OK: yerinde-reboot.desktop + yerinde-poweroff.desktop (systemctl + OnlyShowIn=KDE)"
 
-  # Doğrulama (final74.md §1): Bluetooth TR kataloğu + kritik çeviriler
-  for _mo in bluedevil bluedevil5; do
+  # Doğrulama (final74.md §1 + final75): Bluetooth TR katalogları + kritik çeviriler
+  for _mo in bluedevil bluedevil5 kcm_bluetooth plasma_applet_org.kde.plasma.bluetooth; do
     [ -s "$pkgdir/usr/share/yerinde/locale/tr/LC_MESSAGES/$_mo.mo" ] \
       || { echo "BT MO FAIL: $_mo.mo yok/boyut 0 -> build FAIL" >&2; exit 1; }
   done
@@ -263,6 +272,16 @@ EOF
     || { echo "BT MO FAIL: yerinde-branding.install yok -> build FAIL" >&2; exit 1; }
   grep -q "usr/share/locale/tr/LC_MESSAGES" "$startdir/yerinde-branding.install" \
     || { echo "BT MO FAIL: install scriptlet locale kopyalamıyor -> build FAIL" >&2; exit 1; }
+  # ÜÇ katalog da kritik girdileri içermeli (hangi domain yüklenirse yüklensin)
+  for _mo in bluedevil kcm_bluetooth plasma_applet_org.kde.plasma.bluetooth; do
+    msgunfmt "$pkgdir/usr/share/yerinde/locale/tr/LC_MESSAGES/$_mo.mo" > "$srcdir/bt-check.po"
+    grep -q "Bu Aygıt Unutulsun mu" "$srcdir/bt-check.po" \
+      || { echo "BT MO FAIL: $_mo.mo 'Bu Aygıt Unutulsun mu?' içermiyor -> build FAIL" >&2; exit 1; }
+    grep -q "Aygıtı Unut" "$srcdir/bt-check.po" \
+      || { echo "BT MO FAIL: $_mo.mo 'Aygıtı Unut' içermiyor -> build FAIL" >&2; exit 1; }
+    grep -q "emin misin" "$srcdir/bt-check.po" \
+      || { echo "BT MO FAIL: $_mo.mo 'Are you sure...' TR çevirisi yok -> build FAIL" >&2; exit 1; }
+  done
   msgunfmt "$pkgdir/usr/share/yerinde/locale/tr/LC_MESSAGES/bluedevil.mo" > "$srcdir/bt-check.po"
   grep -q 'msgid "Forget this Device?"' "$srcdir/bt-check.po" \
     && grep -A1 'msgid "Forget this Device?"' "$srcdir/bt-check.po" | grep -q 'Bu Aygıt Unutulsun mu' \

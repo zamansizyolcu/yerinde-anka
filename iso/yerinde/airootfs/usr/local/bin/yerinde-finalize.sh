@@ -75,6 +75,13 @@ chroot "$R" systemctl enable NetworkManager sddm >> /tmp/finalize.log 2>&1 || tr
 chroot "$R" systemctl enable bluetooth >> /tmp/finalize.log 2>&1 || true
 # final46 §2: Waydroid Android ortamı için container servisi
 chroot "$R" systemctl enable waydroid-container >> /tmp/finalize.log 2>&1 || true
+# final76 §1: tr_TR.UTF-8 locale arşivini üret — Qt/KDE/GRUB dil seçimi
+# /usr/lib/locale/locale-archive'a bakar; arşiv boşsa (locale-gen hiç
+# koşmadıysa) uygulamalar İngilizce'ye düşer (Bluetooth "Forget Device"
+# penceresi İngilizce kalması bu yüzden). /etc/locale.gen zaten tr_TR
+# satırını içeriyor; /etc/locale.conf LANG=tr_TR.UTF-8 atar.
+chroot "$R" locale-gen >> /tmp/finalize.log 2>&1 || true
+chroot "$R" systemctl enable locale-gen.service >> /tmp/finalize.log 2>&1 || true
 # final18.md §2b: X11 oturumunda kapat/yeniden başlat yetkisi için SDDM PAM'ine
 # açıkça pam_systemd satırı (sistem-login include'u sağlar ama garantiye alınır).
 for _pf in sddm sddm-autologin; do
@@ -237,7 +244,28 @@ if [ -d /sys/firmware/efi ]; then
     grep -q '^GRUB_THEME=' "$R/etc/default/grub" 2>/dev/null \
       || echo 'GRUB_THEME="/boot/grub/themes/anka/theme.txt"' >> "$R/etc/default/grub"
     sed -i 's|^GRUB_THEME=.*|GRUB_THEME="/boot/grub/themes/anka/theme.txt"|' "$R/etc/default/grub"
-    chroot "$R" grub-mkconfig -o /boot/grub/grub.cfg
+    # final75: GRUB menü alt yardım satırları Türkçe (Use the ↑ ↓ keys /
+    # Press enter to boot...). 00_header LANG ortam değişkeninden
+    # 'set lang=tr_TR' + 'insmod gettext' üretir; katalog
+    # /boot/grub/locale altında olmalı (grub tr_TR→tr geri düşüşü yapar).
+    mkdir -p "$R/boot/grub/locale"
+    cp "$R/usr/share/locale/tr/LC_MESSAGES/grub.mo" "$R/boot/grub/locale/tr.mo" 2>/dev/null || true
+    LANG=tr_TR.UTF-8 chroot "$R" grub-mkconfig -o /boot/grub/grub.cfg
+    # final76 §2: grub-mkconfig LANG/GRUB_LANG ortam değişkenini çoğu zaman
+    # grub.cfg'ye 'set lang=tr_TR' olarak yansıtmaz — oluşturulan dosyaya
+    # gettext desteği ve Türkçe dil ayarını doğrudan enjekte et.
+    if ! grep -q 'set lang=tr_TR' "$R/boot/grub/grub.cfg" 2>/dev/null; then
+      # insmod gettext + set lang bloğunu set theme satırının hemen altına ekle
+      if grep -q 'set theme=' "$R/boot/grub/grub.cfg" 2>/dev/null; then
+        sed -i '/^set theme=.*$/a\insmod gettext\nset locale_dir="($prefix)/locale"\nset lang=tr_TR' "$R/boot/grub/grub.cfg"
+      else
+        # theme satırı yoksa dosyanın başına ekle (güvenli fallback)
+        sed -i '1i\insmod gettext\nset locale_dir="($prefix)/locale"\nset lang=tr_TR' "$R/boot/grub/grub.cfg"
+      fi
+    fi
+    grep -q 'set lang=tr_TR' "$R/boot/grub/grub.cfg" \
+      && echo "GRUB TR OK: menü yardımı Türkçe (lang=tr_TR + locale/tr.mo)" >> /tmp/finalize.log \
+      || echo "GRUB TR UYARI: set lang=tr_TR enjekte edilemedi" >> /tmp/finalize.log
     # final15.md §1: GRUB menü yazılarını Türkçeleştir (idempotent).
     # 10_linux alt menüyü "Advanced options for ${OS}" (OS=Yerinde ANKA Linux)
     # diye üretir; 30_uefi-firmware "UEFI Firmware Settings" üretir.

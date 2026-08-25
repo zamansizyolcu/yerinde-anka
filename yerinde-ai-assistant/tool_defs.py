@@ -322,6 +322,18 @@ TOOL_DECLARATIONS = [
         }
     },
     {
+        "name": "get_camera_status",
+        "description": (
+            "Kameraların (webcam ve bahçe kamerası) güncel durumunu sorgular. "
+            "Kullanıcı 'kamera açık mı?', 'bahçe kamerası durumu ne?', 'kameralar çalışıyor mu?' "
+            "gibi bir şey söylediğinde kullan. Hangi kameranın aktif olduğunu ve akış durumunu bildirir."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {}
+        }
+    },
+    {
         "name": "garden_ptz",
         "description": (
             "Bahçe (Yoosee/DVRIP IP) kamerasının DÖNEN KAFASINI (PTZ) çevirir. "

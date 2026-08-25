@@ -317,13 +317,13 @@ verify_sources() {
     || fail "final68 FAIL: asistan-kur 'zaten kurulu → çık' akışında"
   rg -q '"win": "125"' "$PROJ/yerinde-ai-assistant/actions/keyboard_control.py" \
     || fail "final68 FAIL: kaynakta win→125 (Wayland başlat menüsü) yaması yok"
-  [ -f "$PROJ/repo/x86_64/yerinde-ai-assistant-2.0.0-4-x86_64.pkg.tar.zst" ] \
-    || fail "final68 FAIL: repoda yerinde-ai-assistant-2.0.0-4 yok"
-  # pkgrel 4: dvrip vendor'da — ISO'daki asistan bahçe kamerası açabilsin
-  tar --zstd -tf "$PROJ/repo/x86_64/yerinde-ai-assistant-2.0.0-4-x86_64.pkg.tar.zst" \
+  [ -f "$PROJ/repo/x86_64/yerinde-ai-assistant-2.0.0-6-x86_64.pkg.tar.zst" ] \
+    || fail "final68 FAIL: repoda yerinde-ai-assistant-2.0.0-6 yok"
+  # pkgrel 6: get_camera_status aracı + UI bahçe kamerası göstergesi
+  tar --zstd -tf "$PROJ/repo/x86_64/yerinde-ai-assistant-2.0.0-6-x86_64.pkg.tar.zst" \
     | grep -q 'vendor/dvrip/__init__.py' \
     || fail "final68+dvrip FAIL: paket vendor/dvrip içermiyor (bahçe kamerası)"
-  echo "ASISTAN-68 OK: zaten-kurulu akışı (ollama sorusu erişilir) + Wayland win yaması + repo -4 + dvrip"
+  echo "ASISTAN-68 OK: zaten-kurulu akışı (ollama sorusu erişilir) + Wayland win yaması + repo -6 + dvrip"
 
   # final38.md §1/§2: "hepsi ya da hiç" düzeltmesi — pacman tek tek + venv
   # her zaman + eksikler pip ile TEK TEK. Yasak olan: 'pip install -r'
@@ -1141,6 +1141,38 @@ verify_post() {
     || fail "POSTFAIL (final74 §1): ISO'daki bluedevil.mo 'Aygıtı Unut' içermiyor"
   echo "POST OK (final74 §1): TR bluetooth katalogu locale'e yazıldı (Bu Aygıt Unutulsun mu? + Aygıtı Unut + Vazgeç)"
   sudo ls -l "$WA/usr/share/locale/tr/LC_MESSAGES/" | grep -E "bluedevil5?\.mo" | sed 's/^/    /'
+
+  # final76 POST §1: locale-gen + locale-gen.service ISO'da mevcut (tr_TR arşivi üretilmeli)
+  [ -x "$WA/usr/bin/locale-gen" ] \
+    || fail "POSTFAIL (final76 §1): /usr/bin/locale-gen yok"
+  grep -q '^tr_TR.UTF-8' "$WA/etc/locale.gen" \
+    || fail "POSTFAIL (final76 §1): locale.gen'da tr_TR.UTF-8 satırı yok"
+  [ -f "$WA/etc/locale.conf" ] \
+    || fail "POSTFAIL (final76 §1): /etc/locale.conf yok"
+  grep -q 'LANG=tr_TR.UTF-8' "$WA/etc/locale.conf" \
+    || fail "POSTFAIL (final76 §1): locale.conf LANG=tr_TR.UTF-8 değil"
+  [ -f "$WA/etc/systemd/system/locale-gen.service" ] \
+    || fail "POSTFAIL (final76 §1): locale-gen.service tanımlı değil"
+  echo "POST OK (final76 §1): locale-gen + locale.conf + locale-gen.service ISO'da"
+
+  # final76 POST §2: finalize.sh'de locale-gen + GRUB TR enjeksiyonu mevcut
+  grep -q 'locale-gen' "$WA/usr/local/bin/yerinde-finalize.sh" \
+    || fail "POSTFAIL (final76 §2): finalize.sh'de locale-gen çağrısı yok"
+  grep -q 'set lang=tr_TR' "$WA/usr/local/bin/yerinde-finalize.sh" \
+    || fail "POSTFAIL (final76 §2): finalize.sh'de GRUB set lang=tr_TR enjeksiyonu yok"
+  echo "POST OK (final76 §2): finalize.sh locale-gen + GRUB TR enjeksiyonu mevcut"
+
+  # final76 POST §3: GRUB locale dosyası ISO'da mevcut (finalize.sh bunu
+  # /boot/grub/locale/tr.mo'ya kopyalar; burada kaynak konumunu kontrol et)
+  [ -s "$WA/usr/share/locale/tr/LC_MESSAGES/grub.mo" ] \
+    || fail "POSTFAIL (final76 §3): /usr/share/locale/tr/LC_MESSAGES/grub.mo ISO'da yok"
+  echo "POST OK (final76 §3): grub locale tr.mo ISO'da mevcut"
+
+  # final77 POST §1: Hesap makinesi ISO'da
+  if ! pacman -r "$WA" -Q 2>/dev/null | grep -q "^kcalc "; then
+    fail "POSTFAIL (final77 §1): kcalc ISO'da kurulu değil"
+  fi
+  echo "POST OK (final77 §1): kcalc ISO'da"
 
   # final73 POST §2-§3: pre-unpackfs sfs köprüsü ISO'da (ls + conf kanıtı)
   [ -x "$WA/usr/local/bin/yerinde-sfs-kopru.sh" ] \

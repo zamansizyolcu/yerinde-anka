@@ -333,6 +333,25 @@ class ToolExecutor:
                     return "Kameraya konuşuyorsunuz — tekrar deyince kapanır."
                 return status
 
+            if name == "get_camera_status":
+                parts = []
+                # Webcam durumu
+                webcam_active = self.webcam is not None and getattr(self.webcam, "is_active", False)
+                parts.append(f"Webcam: {'açık (canlı akış)' if webcam_active else 'kapalı'}")
+                # Bahçe kamerası durumu
+                if self.garden is not None:
+                    garden_active = getattr(self.garden, "is_active", False)
+                    last_err = getattr(self.garden, "last_error", None)
+                    if garden_active:
+                        parts.append("Bahçe kamerası: açık (canlı akış)")
+                    elif last_err:
+                        parts.append(f"Bahçe kamerası: kapalı (son hata: {last_err})")
+                    else:
+                        parts.append("Bahçe kamerası: kapalı")
+                else:
+                    parts.append("Bahçe kamerası: bağlı değil")
+                return " | ".join(parts)
+
             if name == "zumre_tutanagi_olustur":
                 return zumre_tutanagi_olustur(
                     args.get("donem_turu", ""),
