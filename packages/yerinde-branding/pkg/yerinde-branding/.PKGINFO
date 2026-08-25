@@ -3,12 +3,12 @@
 pkgname = yerinde-branding
 pkgbase = yerinde-branding
 xdata = pkgtype=pkg
-pkgver = 1.2.0-20
+pkgver = 1.2.0-22
 pkgdesc = Yerinde branding package
 url = https://yerinde.example.com
-builddate = 1787302551
+builddate = 1787644638
 packager = Unknown Packager
-size = 12040014
+size = 12060694
 arch = any
 license = GPL
 replaces = cachyos-wallpapers

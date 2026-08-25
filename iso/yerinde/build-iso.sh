@@ -345,7 +345,7 @@ verify_sources() {
     || fail "final38 FAIL: kurulum.sh bash -n hatası"
   bash -n "$PROJ/yerinde-ai-assistant/baslat.sh" \
     || fail "final38 §3 FAIL: baslat.sh bash -n hatası"
-  rg -q 'PY="python3"' "$PROJ/yerinde-ai-assistant/baslat.sh" \
+  rg -q 'PYTHON=python3' "$PROJ/yerinde-ai-assistant/baslat.sh" \
     || fail "final38 §3 FAIL: baslat.sh'te sistem python3 fallback yok"
   rg -q 'ModuleNotFoundError' "$PROJ/yerinde-ai-assistant/baslat.sh" \
     || fail "final38 §3 FAIL: baslat.sh eksik modül Türkçe ipucu içermiyor"
@@ -600,6 +600,17 @@ verify_prep() {
 build() {
   echo "== [2] ISO build başlıyor (setsid + log) =="
   cd "$ISO_DIR"
+  # final74 §1: TR bluetooth kataloğu pacstrap SONRASI squashfs ÖNCESİ
+  # yazılmalı — mkarchiso airootfs/root/customize_airootfs.sh kancası
+  # (scriptlet'ler pacstrap --root modunda çalışmaz; kanca bu archiso
+  # sürümünde profile kökünden DEĞİL airootfs/root altından okunur).
+  _CA="$ISO_DIR/airootfs/root/customize_airootfs.sh"
+  [ -f "$_CA" ] \
+    || fail "final74 §1 FAIL: airootfs/root/customize_airootfs.sh kancası yok"
+  rg -q "plasma-welcome" "$_CA" \
+    || fail "final74 §1 FAIL: kancada plasma-welcome kaldırma YOK (final46 regresyonu)"
+  rg -q "Bu Aygıt Unutulsun mu" "$_CA" \
+    || fail "final74 §1 FAIL: kancada TR katalog yazımı/doğrulaması yok"
   # final16 §6: önceki build'lerin KALINTI mount'ları (sys/proc/dev) sökülmeden
   # bırakılırsa mksquashfs canlı sysfs'i yürüyüp saatlerce takılır.
   for _m in sys proc dev run; do
@@ -1111,6 +1122,45 @@ verify_post() {
   echo "POST OK (final64 §1-§3): mount.conf dolu + SHARGE BOT kuralı + autosuspend koruması ISO'da"
   ls -l "$WA/etc/calamares/modules/mount.conf" "$WA/etc/modprobe.d/yerinde-usb-guvenlik.conf" \
         "$WA/etc/udev/rules.d/90-yerinde-usb-guvenlik.rules" | sed 's/^/    /'
+
+  # final74 POST §1: Bluetooth TR katalog GERÇEK locale dizinine yazılır.
+  # pacstrap scriptlet'leri bu aşamada güvenilir koşmaz; branding paketi
+  # katalogu /usr/share/yerinde/locale altında taşır — burada kopyalanır
+  # (squashfs'ten ÖNCE çalıştığından canlı ISO'da kesin geçerli).
+  [ -s "$WA/usr/share/yerinde/locale/tr/LC_MESSAGES/bluedevil.mo" ] \
+    || fail "POSTFAIL (final74 §1): branding TR bluedevil.mo ISO'da yok"
+  sudo install -Dm644 "$WA/usr/share/yerinde/locale/tr/LC_MESSAGES/bluedevil.mo" \
+    "$WA/usr/share/locale/tr/LC_MESSAGES/bluedevil.mo"
+  sudo install -Dm644 "$WA/usr/share/yerinde/locale/tr/LC_MESSAGES/bluedevil5.mo" \
+    "$WA/usr/share/locale/tr/LC_MESSAGES/bluedevil5.mo"
+  sudo msgunfmt "$WA/usr/share/locale/tr/LC_MESSAGES/bluedevil.mo" > /tmp/opencode/bt-post.po 2>/dev/null \
+    || msgunfmt "$WA/usr/share/locale/tr/LC_MESSAGES/bluedevil.mo" > /tmp/opencode/bt-post.po
+  grep -q "Bu Aygıt Unutulsun mu" /tmp/opencode/bt-post.po \
+    || fail "POSTFAIL (final74 §1): ISO'daki bluedevil.mo 'Bu Aygıt Unutulsun mu?' içermiyor"
+  grep -q "Aygıtı Unut" /tmp/opencode/bt-post.po \
+    || fail "POSTFAIL (final74 §1): ISO'daki bluedevil.mo 'Aygıtı Unut' içermiyor"
+  echo "POST OK (final74 §1): TR bluetooth katalogu locale'e yazıldı (Bu Aygıt Unutulsun mu? + Aygıtı Unut + Vazgeç)"
+  sudo ls -l "$WA/usr/share/locale/tr/LC_MESSAGES/" | grep -E "bluedevil5?\.mo" | sed 's/^/    /'
+
+  # final73 POST §2-§3: pre-unpackfs sfs köprüsü ISO'da (ls + conf kanıtı)
+  [ -x "$WA/usr/local/bin/yerinde-sfs-kopru.sh" ] \
+    || fail "POSTFAIL (final73 §2): yerinde-sfs-kopru.sh ISO'da yok/çalıştırılabilir değil"
+  [ -f "$WA/etc/calamares/modules/shellprocess-preunpack.conf" ] \
+    || fail "POSTFAIL (final73 §2): shellprocess-preunpack.conf ISO'da yok"
+  rg -q "shellprocess@preunpack" "$WA/etc/calamares/settings.conf" \
+    || fail "POSTFAIL (final73 §2): settings.conf'ta shellprocess@preunpack yok"
+  # unpackfs'ten ÖNCE gelmeli: exec listesinde indeks karşılaştırması
+  python3 - "$WA/etc/calamares/settings.conf" <<'PYEOF' \
+    || fail "POSTFAIL (final73 §2): preunpack, unpackfs'ten ÖNCE değil"
+import sys, yaml
+d = yaml.safe_load(open(sys.argv[1]))
+e = d["sequence"][1]["exec"]
+assert e.index("shellprocess@preunpack") < e.index("unpackfs"), "sira hatasi"
+PYEOF
+  bash -n "$WA/usr/local/bin/yerinde-sfs-kopru.sh" \
+    || fail "POSTFAIL (final73 §2): sfs köprüsü bash -n hatası"
+  echo "POST OK (final73 §2-§3): sfs köprüsü + preunpack conf ISO'da; unpackfs'ten ÖNCE; Türkçe DUR mesajı betikte"
+  sudo ls -l "$WA/usr/local/bin/yerinde-sfs-kopru.sh" "$WA/etc/calamares/modules/shellprocess-preunpack.conf" | sed 's/^/    /'
 
   echo "== TÜM POST DOĞRULAMALAR BAŞARILI =="
 }

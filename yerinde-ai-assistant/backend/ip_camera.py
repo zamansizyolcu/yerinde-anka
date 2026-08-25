@@ -357,7 +357,7 @@ class GardenCamStreamer:
         """PTZ komutlarını gönderir; bağlantı koparsa yeni bağlantıyla bir kez daha dener."""
         dvrip = self._get_dvrip()
         if dvrip is None:
-            self.last_error = "dvrip kütüphanesi kurulu değil"
+            self.last_error = "dvrip eksik: ./venv/bin/python -m pip install dvrip"
             return "error: %s" % self.last_error
         stop_cmd = DIRECTION_COMMANDS["stop"]
         # Komutlar düz string ya da (komut, payload_override) ikilisi olabilir.
@@ -460,7 +460,7 @@ class GardenCamStreamer:
     def _connect_and_login(self):
         dvrip = self._get_dvrip()
         if dvrip is None:
-            self.last_error = "dvrip kütüphanesi kurulu değil"
+            self.last_error = "dvrip eksik: ./venv/bin/python -m pip install dvrip"
             return "error: %s" % self.last_error
 
         # (Yeniden) bağlanma isteği kullanıcının kamerayı kullanmak istediği
@@ -1423,5 +1423,9 @@ def _initialize_dvrip():
             TalkClaim=TalkClaim,
             RawTalkData=RawTalkData,
         )
-    except Exception:
+    except Exception as _exc:
+        # final74 §2: dvrip kurulu değilse NET Türkçe ipucu ver (venv önceliği)
+        import sys
+        print("dvrip eksik: ./venv/bin/python -m pip install dvrip "
+              "(import hatası: %s)" % _exc, file=sys.stderr)
         _DVRIP = None

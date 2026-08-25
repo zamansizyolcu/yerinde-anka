@@ -2,12 +2,13 @@
 
 pkgname=yerinde-branding
 pkgver=1.2.0
-pkgrel=20
+pkgrel=22
 pkgdesc="Yerinde branding package"
 arch=('any')
 url="https://yerinde.example.com"
 license=('GPL')
 backup=('etc/os-release')
+install=yerinde-branding.install
 
 conflicts=(
   'cachyos-wallpapers'
@@ -60,8 +61,10 @@ source=(
   'yerinde-timeouts.conf'
   'yerinde-reboot.desktop'
   'yerinde-poweroff.desktop'
+  'bluedevil.mo'
+  'bluedevil5.mo'
 )
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm644 "$srcdir/os-release" "$pkgdir/etc/os-release"
@@ -91,6 +94,18 @@ package() {
     "$pkgdir/usr/share/applications/yerinde-reboot.desktop"
   install -Dm644 "$srcdir/yerinde-poweroff.desktop" \
     "$pkgdir/usr/share/applications/yerinde-poweroff.desktop"
+
+  # final74 §1: Bluetooth "Forget Device" penceresi Türkçe çevirisi.
+  # Bluedevil 6 (KDE6) katalog adı bluedevil.mo; bluedevil5.mo görev
+  # gereği yedek/isim uyumu için yanında sevkedilir. Birleştirilmiş
+  # katalog: mevcut TR çeviriler korunur + eksik msgstr'ler doldurulur.
+  # NOT: bluedevil paketi bluedevil.mo içerdiğinden dosya ÇAKIŞIR;
+  # katalog /usr/share/yerinde/locale altında taşınır, .INSTALL
+  # scriptlet'i kurulumdan sonra gerçek locale dizinine kopyalar.
+  install -Dm644 "$srcdir/bluedevil.mo" \
+    "$pkgdir/usr/share/yerinde/locale/tr/LC_MESSAGES/bluedevil.mo"
+  install -Dm644 "$srcdir/bluedevil5.mo" \
+    "$pkgdir/usr/share/yerinde/locale/tr/LC_MESSAGES/bluedevil5.mo"
 
   _install_wallpaper() {
     local ton="$1" src="$2"
@@ -238,4 +253,25 @@ EOF
   grep -q 'OnlyShowIn=KDE' "$pkgdir/usr/share/applications/yerinde-poweroff.desktop" \
     || { echo "POWER DESKTOP FAIL: OnlyShowIn=KDE yok -> build FAIL" >&2; exit 1; }
   echo "POWER DESKTOP OK: yerinde-reboot.desktop + yerinde-poweroff.desktop (systemctl + OnlyShowIn=KDE)"
+
+  # Doğrulama (final74.md §1): Bluetooth TR kataloğu + kritik çeviriler
+  for _mo in bluedevil bluedevil5; do
+    [ -s "$pkgdir/usr/share/yerinde/locale/tr/LC_MESSAGES/$_mo.mo" ] \
+      || { echo "BT MO FAIL: $_mo.mo yok/boyut 0 -> build FAIL" >&2; exit 1; }
+  done
+  [ -f "$startdir/yerinde-branding.install" ] \
+    || { echo "BT MO FAIL: yerinde-branding.install yok -> build FAIL" >&2; exit 1; }
+  grep -q "usr/share/locale/tr/LC_MESSAGES" "$startdir/yerinde-branding.install" \
+    || { echo "BT MO FAIL: install scriptlet locale kopyalamıyor -> build FAIL" >&2; exit 1; }
+  msgunfmt "$pkgdir/usr/share/yerinde/locale/tr/LC_MESSAGES/bluedevil.mo" > "$srcdir/bt-check.po"
+  grep -q 'msgid "Forget this Device?"' "$srcdir/bt-check.po" \
+    && grep -A1 'msgid "Forget this Device?"' "$srcdir/bt-check.po" | grep -q 'Bu Aygıt Unutulsun mu' \
+    || { echo "BT MO FAIL: 'Forget this Device?' TR çevirisi yok -> build FAIL" >&2; exit 1; }
+  grep -q 'Aygıtı Unut' "$srcdir/bt-check.po" \
+    || { echo "BT MO FAIL: 'Aygıtı Unut' yok -> build FAIL" >&2; exit 1; }
+  grep -A1 'msgid "Cancel"' "$srcdir/bt-check.po" | grep -q 'Vazgeç' \
+    || { echo "BT MO FAIL: Cancel=Vazgeç yok -> build FAIL" >&2; exit 1; }
+  grep -q 'emin misin' "$srcdir/bt-check.po" \
+    || { echo "BT MO FAIL: 'Are you sure you want to forget' TR çevirisi yok -> build FAIL" >&2; exit 1; }
+  echo "BT MO OK: bluedevil(.mo/.5.mo) TR katalog — Bu Aygıt Unutulsun mu? + Aygıtı Unut + Vazgeç"
 }

@@ -1,0 +1,23 @@
+# final74 §1: Bluetooth TR katalog sevkı — pacman dosya çakışmasına
+# karşı katalog /usr/share/yerinde/locale altında taşınır; kurulum
+# SONRASI post_install/post_upgrade ile gerçek locale dizinine kopyalanır
+# (bluedevil paketi aynı dosyayı içerdiği için doğrudan paketlenemez).
+# Pacman scriptlet'leri transaction sonunda çalıştığından bluedevil'den
+# SONRA uygulanır → hem canlı ISO hem kurulu sistemde geçerli olur.
+
+post_install() {
+  _kopyala
+}
+
+post_upgrade() {
+  _kopyala
+}
+
+_kopyala() {
+  for _m in bluedevil bluedevil5; do
+    if [ -s "/usr/share/yerinde/locale/tr/LC_MESSAGES/${_m}.mo" ]; then
+      install -Dm644 "/usr/share/yerinde/locale/tr/LC_MESSAGES/${_m}.mo" \
+        "/usr/share/locale/tr/LC_MESSAGES/${_m}.mo"
+    fi
+  done
+}

@@ -40,5 +40,7 @@ file_permissions=(
   ["/usr/local/bin/yerinde-autologin-check.sh"]="0:0:755"
   ["/usr/local/bin/yerinde-grub-varsayilan"]="0:0:755"
   ["/usr/local/bin/yerinde-set-wallpaper"]="0:0:755"
+  # final73: pre-unpackfs sfs köprüsü (calamares shellprocess çalıştırmalı)
+  ["/usr/local/bin/yerinde-sfs-kopru.sh"]="0:0:755"
   ["/etc/sudoers.d/wheel"]="0:0:440"
 )

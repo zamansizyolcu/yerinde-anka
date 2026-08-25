@@ -5,19 +5,19 @@
 #   - venv/bin/python yoksa SİSTEM python3 fallback'i
 #   - uygulama açılamazsa Türkçe ipucu: eksik modül adı + kurulacak komut
 cd "$(dirname "$0")"
+DIR="$(pwd)"
 
 if [ ! -d venv ]; then
     python -m venv --system-site-packages venv 2>/dev/null || true
 fi
 
-if [ -x venv/bin/python ]; then
-    PY="venv/bin/python"
-else
-    PY="python3"
-fi
+# final74 §2: venv ÖNCE — venv python'u varsa dvrip (bahçe kamerası) dahil
+# tüm bağımlılıklar oradan gelir; yoksa sistem python3 fallback'i.
+PYTHON="$DIR/venv/bin/python"
+[ -x "$PYTHON" ] || PYTHON=python3
 
 HATA_LOG="$(mktemp)"
-"$PY" main.py 2> >(tee "$HATA_LOG" >&2)
+"$PYTHON" main.py 2> >(tee "$HATA_LOG" >&2)
 RC=$?
 
 if [ "$RC" -ne 0 ]; then
